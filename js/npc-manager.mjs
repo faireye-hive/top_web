@@ -14,14 +14,22 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
   const group=new THREE.Group();group.name='NPCs de Garner';scene.add(group);
   const loader=new (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader();
   const glbCache=new Map();
+  // 404/rede falha uma vez por GLB e não é repetido a cada atualização do jogo.
+  const failedModels=new Set();
   const maxDistance=70, maxDistance2=maxDistance*maxDistance;
   const activeMax=20;
   let lastUpdate=0,playerX=NaN,playerZ=NaN,disposed=false;
   async function loadModel(path){
+    if(failedModels.has(path))return null;
     if(!glbCache.has(path)){
       const modelUrl=new URL(path,new URL(url,location.href)).href;
+      // Uma promise por modelo; personagens repetidos compartilham o download.
+      // Se o arquivo estiver ausente, registra uma falha definitiva nesta sessão.
+      // Ao publicar novos GLBs, basta atualizar a página para tentar novamente.
       glbCache.set(path,loader.loadAsync(modelUrl).catch(error=>{
-        glbCache.delete(path);throw error;
+        failedModels.add(path);
+        console.warn('Modelo GLB de NPC indisponível (verifique assets/npcs/models):',path,error);
+        return null;
       }));
     }
     return glbCache.get(path);
@@ -30,6 +38,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
     npc.pending=true;
     try{
       const gltf=await loadModel(npc.model);
+      if(!gltf){npc.failed=true;return;}
       if(disposed)return;
       const object=cloneSkeleton(gltf.scene);
       object.name='NPC · '+npc.name;
@@ -43,7 +52,8 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
         npc.mixer.clipAction(idle).play();
       }
     }catch(error){
-      console.warn('NPC não carregado:',npc.characterId,npc.model,error);
+      npc.failed=true;
+      console.warn('Falha ao instanciar NPC:',npc.characterId,npc.model,error);
     }finally{npc.pending=false}
   }
   function update(dt,px,pz){
@@ -57,7 +67,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
     const visible=new Set(close.map(item=>item.npc));
     for(const npc of records)if(npc.object)npc.object.visible=visible.has(npc);
     for(const {npc} of close){
-      if(!npc.object&&!npc.pending)void showNpc(npc);
+      if(!npc.object&&!npc.pending&&!npc.failed)void showNpc(npc);
     }
   }
   function nearest(px,pz,radius=2.3){
