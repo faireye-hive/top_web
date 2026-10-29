@@ -2,7 +2,7 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
 // Loader opcional: sem NPCs em manifest.json, não carrega modelos nem cria draw calls.
 // Modelos são GLBs com texturas embutidas; tipos repetidos compartilham GPU assets.
-export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json'}) {
+export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json?v=2'}) {
   const res=await fetch(url);
   if(!res.ok)throw new Error('Manifesto de NPCs não encontrado: '+url);
   const manifest=await res.json();

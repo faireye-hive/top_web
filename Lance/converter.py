@@ -85,27 +85,67 @@ def parse_lgo(data: bytes, name: str, flip_v: bool = False):
 
 def parse_lab(data:bytes):
     version,bones,frames,dummy_count,keytype=struct.unpack_from('<5I',data,0)
-    assert version>=0x1003 and keytype==3 and 1<=bones<=256 and frames<=20000,(version,keytype)
+    assert version>=0x1003 and keytype in (1,2,3) and 1<=bones<=256 and frames<=20000,(version,keytype)
     parents=[u32(data,20+i*72+68) for i in range(bones)]
     names=[]
     for i in range(bones):
-        raw=data[20+i*72:20+i*72+64].split(b'\0',1)[0]
+        raw=data[20+i*72:20+i*72+64].split(b'\\0',1)[0]
         names.append(raw.decode('latin1',errors='replace').strip() or f'osso_{i}')
     offset=20+bones*72
     inverse=np.frombuffer(data,dtype='<f4',count=bones*16,offset=offset).copy().reshape(bones,4,4)
     offset+=bones*64+dummy_count*72
     pos=np.empty((bones,frames,3),dtype='<f4')
     quat=np.empty((bones,frames,4),dtype='<f4')
-    for i in range(bones):
-        pos[i]=np.frombuffer(data,dtype='<f4',count=frames*3,offset=offset).reshape(frames,3)
-        offset+=frames*3*4
-        quat[i]=np.frombuffer(data,dtype='<f4',count=frames*4,offset=offset).reshape(frames,4)
-        offset+=frames*4*4
+    scales=np.ones((bones,3),dtype=np.float32)
+    if keytype in (1,2):
+        # Formatos antigos LAB: 4x3 (1) ou 4x4 (2), matrizes DirectX
+        # com vetores linha. A decomposição usa a rotação transposta.
+        width=12 if keytype==1 else 16
+        matrix=np.frombuffer(data,dtype='<f4',count=bones*frames*width,offset=offset).reshape(bones,frames,width)
+        offset+=bones*frames*width*4
+        def mat_quat(m):
+            r=np.array([[m[0],m[4] if width==16 else m[3],m[8] if width==16 else m[6]],
+                        [m[1],m[5] if width==16 else m[4],m[9] if width==16 else m[7]],
+                        [m[2],m[6] if width==16 else m[5],m[10] if width==16 else m[8]]],dtype=np.float64)
+            if np.linalg.det(r)<0:
+                r[:,2]*=-1  # refletir eixo de escala, preservando a pose histórica
+            tr=r[0,0]+r[1,1]+r[2,2]
+            if tr>0:
+                S=np.sqrt(tr+1)*2
+                q=[(r[2,1]-r[1,2])/S,(r[0,2]-r[2,0])/S,(r[1,0]-r[0,1])/S,S/4]
+            else:
+                idx=int(np.argmax(np.diag(r)))
+                if idx==0:
+                    S=np.sqrt(max(1e-9,1+r[0,0]-r[1,1]-r[2,2]))*2
+                    q=[S/4,(r[0,1]+r[1,0])/S,(r[0,2]+r[2,0])/S,(r[2,1]-r[1,2])/S]
+                elif idx==1:
+                    S=np.sqrt(max(1e-9,1+r[1,1]-r[0,0]-r[2,2]))*2
+                    q=[(r[0,1]+r[1,0])/S,S/4,(r[1,2]+r[2,1])/S,(r[0,2]-r[2,0])/S]
+                else:
+                    S=np.sqrt(max(1e-9,1+r[2,2]-r[0,0]-r[1,1]))*2
+                    q=[(r[0,2]+r[2,0])/S,(r[1,2]+r[2,1])/S,S/4,(r[1,0]-r[0,1])/S]
+            return np.array(q,dtype=np.float32)
+        for bone in range(bones):
+            for frame in range(frames):
+                m=matrix[bone,frame]
+                pos[bone,frame]=m[9:12] if keytype==1 else m[12:15]
+                quat[bone,frame]=mat_quat(m)
+                if frame==0:
+                    rm=np.array([[m[0],m[4] if width==16 else m[3],m[8] if width==16 else m[6]],
+                                 [m[1],m[5] if width==16 else m[4],m[9] if width==16 else m[7]],
+                                 [m[2],m[6] if width==16 else m[5],m[10] if width==16 else m[8]]])
+                    if np.linalg.det(rm)<0:scales[bone,2]=-1
+    else:
+        for i in range(bones):
+            pos[i]=np.frombuffer(data,dtype='<f4',count=frames*3,offset=offset).reshape(frames,3)
+            offset+=frames*3*4
+            quat[i]=np.frombuffer(data,dtype='<f4',count=frames*4,offset=offset).reshape(frames,4)
+            offset+=frames*4*4
     assert offset==len(data),('lab end',offset,len(data))
-    # Normalização protege contra ruídos e evita quaternions que nao podem ser interpolados.
     qlength=np.linalg.norm(quat,axis=2,keepdims=True)
     quat=quat/np.maximum(qlength,1e-9)
-    return dict(bones=bones,frames=frames,parents=parents,names=names,inv=inverse,pos=pos,quat=quat)
+    return dict(bones=bones,frames=frames,parents=parents,names=names,inv=inverse,pos=pos,quat=quat,scales=scales)
+
 
 def clips_from_table(text, frame_count, section=1, actions=None, all_actions=False):
     """Lê CharacterAction.tx para a seção (tipo de ação do personagem).
@@ -276,6 +316,8 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
             node={'name':f'Osso {i:02d} · {lab["names"][i]}',
                   'translation':lab['pos'][i,0].astype(float).tolist(),
                   'rotation':lab['quat'][i,0].astype(float).tolist()}
+            if not np.allclose(lab['scales'][i],1):
+                node['scale']=lab['scales'][i].astype(float).tolist()
             g['nodes'].append(node)
         for i,parent in enumerate(lab['parents']):
             if parent!=0xffffffff and parent<lab['bones']:

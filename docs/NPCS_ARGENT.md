@@ -1,3 +1,57 @@
+# Argent City — GLBs reais convertidos (2026-10-29)
+
+Recebemos `TOP_NPCs_Argent_assets.zip`, que contém todos os LGO/LAB e PNGs
+necessários para os cinco tipos selecionados. **A conversão foi concluída
+fora do GitHub, os binários ainda precisam ser enviados à branch.**
+
+## Arquivos produzidos
+
+| Character ID | Arquivo | Ossos | Texturas embutidas | Clipes |
+|---|---|---:|---:|---|
+| 11 | `npc_0011.glb` | 38 | 1 | Parado, Pose, Pose 2 |
+| 13 | `npc_0013.glb` | 29 | 1 | Parado, Pose, Pose 2 |
+| 17 | `npc_0017.glb` | 37 | 1 | Parado, Pose, Pose 2 |
+| 18 | `npc_0018.glb` | 38 | 1 | Parado, Pose, Pose 2 |
+| 20 | `npc_0020.glb` | 29 | 2 | Parado, Pose, Pose 2 |
+
+`assets/npcs/manifest.json` contém 14 posições extraídas do `garnernpc.txt`
+para esses IDs num raio de 140 unidades de Argent City (2230,2775).
+Os nomes históricos incluem Goldie, Senna, Marriam, Jimberry e Chiroro.
+Esses tipos podem representar vários NPCs com nomes distintos.
+
+## Como colocar os GLBs no repositório
+
+1. Baixe `TOP_Web_NPCs_Argent_5_GLBS.zip` entregue na conversa do ChatGPT.
+2. Na raiz do `top_web`, verifique que está na branch
+   `feat/argent-npcs-real-glb-manifest`.
+3. Extraia **na raiz do repositório**:
+   ```bash
+   unzip -o TOP_Web_NPCs_Argent_5_GLBS.zip 'assets/npcs/*'
+   git add assets/npcs/
+   git commit -m "assets(npcs): add five original Argent GLBs"
+   git push origin feat/argent-npcs-real-glb-manifest
+   ```
+4. Confirme que `assets/npcs/models/npc_0011.glb` até
+   `assets/npcs/models/npc_0020.glb` aparecem na branch.
+5. Rode `python3 -m http.server 8000` na raiz para testar.
+6. Só faça o merge depois da chegada dos **cinco binários**.
+
+O GLB guarda as texturas; nenhum arquivo BMP/PNG adicional é necessário.
+
+## Detalhe corrigido no conversor
+
+`Lance/converter.py` foi atualizado para suportar `keyType=1` e
+`keyType=2` nos arquivos LAB. O suporte anterior era exclusivo do
+`keyType=3`; Trader e Blacksmith usavam `keyType=1`.
+Alguns ossos possuem transformações refletidas, representadas com escala
+negativa no eixo Z, necessária para reproduzir sua matriz local no glTF.
+
+**Observação:** os GLBs e seus canais foram verificados estruturalmente,
+mas falta confirmar orientação, escala e posição visual em um navegador real.
+O diálogo de NPCs ainda é um placeholder; missões virão depois.
+
+---
+
 # TOP Web — NPCs de Argent City (assets opcionais)
 
 ## O que já existe

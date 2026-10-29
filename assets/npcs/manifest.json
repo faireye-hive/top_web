@@ -1,6 +1,153 @@
 {
   "version": 1,
   "map": "garner",
-  "models": {},
-  "npcs": []
+  "models": {
+    "11": "models/npc_0011.glb",
+    "13": "models/npc_0013.glb",
+    "17": "models/npc_0017.glb",
+    "18": "models/npc_0018.glb",
+    "20": "models/npc_0020.glb"
+  },
+  "npcs": [
+    {
+      "serial": 0,
+      "name": "Argent Teleporter - Jovial",
+      "characterId": 11,
+      "x": 2187,
+      "z": 2776,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 2,
+      "name": "Blacksmith - Goldie",
+      "characterId": 20,
+      "x": 2193.12,
+      "z": 2706.12,
+      "yaw": 114,
+      "region": "Argent City",
+      "model": "models/npc_0020.glb"
+    },
+    {
+      "serial": 5,
+      "name": "Granny Beldi",
+      "characterId": 18,
+      "x": 2277.25,
+      "z": 2769.25,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0018.glb"
+    },
+    {
+      "serial": 7,
+      "name": "Trader - Chiroro",
+      "characterId": 17,
+      "x": 2331.07,
+      "z": 2821.94,
+      "yaw": 234,
+      "region": "Argent City",
+      "model": "models/npc_0017.glb"
+    },
+    {
+      "serial": 8,
+      "name": "Physican - Ditto",
+      "characterId": 17,
+      "x": 2250.75,
+      "z": 2770.25,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0017.glb"
+    },
+    {
+      "serial": 10,
+      "name": "Innkeeper - Marriam",
+      "characterId": 13,
+      "x": 2211.5,
+      "z": 2781.25,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0013.glb"
+    },
+    {
+      "serial": 18,
+      "name": "Grocery - Jimberry",
+      "characterId": 17,
+      "x": 2232,
+      "z": 2729,
+      "yaw": 175,
+      "region": "Argent City",
+      "model": "models/npc_0017.glb"
+    },
+    {
+      "serial": 19,
+      "name": "Tailor - Granny Nila",
+      "characterId": 18,
+      "x": 2267.81,
+      "z": 2704.75,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0018.glb"
+    },
+    {
+      "serial": 21,
+      "name": "Newbie Guide - Senna",
+      "characterId": 11,
+      "x": 2223.75,
+      "z": 2785.25,
+      "yaw": 180,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 22,
+      "name": "Barmaid - Donna",
+      "characterId": 11,
+      "x": 2224.99,
+      "z": 2887.5,
+      "yaw": 264,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 52,
+      "name": "Arena Administrator",
+      "characterId": 11,
+      "x": 2210.82,
+      "z": 2893.4,
+      "yaw": 264,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 122,
+      "name": "Island Teleporter - Silvius",
+      "characterId": 11,
+      "x": 2248.68,
+      "z": 2853.75,
+      "yaw": 269,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 138,
+      "name": "Redemption - Bingo",
+      "characterId": 11,
+      "x": 2231.45,
+      "z": 2715.19,
+      "yaw": 264,
+      "region": "Argent City",
+      "model": "models/npc_0011.glb"
+    },
+    {
+      "serial": 143,
+      "name": "Mysterious Granny",
+      "characterId": 18,
+      "x": 2158,
+      "z": 2792,
+      "yaw": 351,
+      "region": "Argent City",
+      "model": "models/npc_0018.glb"
+    }
+  ]
 }
