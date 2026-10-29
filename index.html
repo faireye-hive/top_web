@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#081520">
 <title>TOP Web · Garner Exploration</title>
 <style>
@@ -10,6 +10,7 @@
 @media(max-width:950px){.side{top:auto;bottom:90px;max-height:200px;overflow:auto;width:220px}.minimapbox{width:175px}.mapcanvas{height:145px}.foothelp{display:none}.notice{display:none}.bottom{bottom:8px;max-width:calc(100vw - 20px);overflow:auto}.mobilecontrols{display:block}}
 @media(max-width:640px){.brand{top:10px;left:10px}.logo{width:38px;height:38px}.brand strong{font-size:14px}.brand .sub{font-size:9px}.minimapbox{right:9px;top:10px;width:132px;padding:8px}.maptitle{font-size:10px}.mapcanvas{height:112px}.side{left:8px;bottom:95px;width:186px;max-height:175px;padding:10px}.bottom{width:calc(100% - 12px);justify-content:flex-start}.bottom button{font-size:12px}.mobilecontrols{bottom:85px;right:7px}.dpad{grid-template-columns:repeat(3,34px)}.dpad button{height:34px}.kv{font-size:10px}.kv strong{font-size:10px}}
 </style>
+<link rel="stylesheet" href="./mobile.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -49,8 +50,20 @@
 <div class="hud foothelp">Clique no chão: cristal azul até chegar · cursor de cadeira senta · cursor de parede encosta · <span class="kbd">Insert</span> no ponto · brilho no painel</div>
 <div class="hud notice panel">Garner original: Objetos 3D carregados sob demanda em toda a área exportada. Modelos LMO convertidos para GLB. A extensão de cenário ainda é experimental.</div>
 <div class="hud toast" id="toast"></div>
-<div class="mobilecontrols"><div class="dpad"><div></div><button data-key="KeyW">↑</button><div></div><button data-key="KeyA">←</button><button data-key="KeyS">↓</button><button data-key="KeyD">→</button></div></div>
+<div class="mobilecontrols" id="mobile-ui" aria-label="Controles para celular">
+  <button class="mobile-settings" id="mobile-settings" type="button" aria-controls="settings" aria-expanded="false">⚙ Configurações</button>
+  <div class="mobile-joystick" id="mobile-joystick" aria-label="Joystick para caminhar">
+    <div class="mobile-joystick-ring" id="mobile-joystick-ring"><div class="mobile-knob" id="mobile-knob"></div></div>
+    <span class="mobile-caption">Mover · Arraste para caminhar</span>
+  </div>
+  <div class="mobile-actions">
+    <div class="mobile-zoom"><button id="mobile-zoom-out" type="button" aria-label="Afastar câmera">−</button><button id="mobile-zoom-in" type="button" aria-label="Aproximar câmera">+</button></div>
+    <button id="mobile-interact" type="button" aria-label="Sentar ou interagir">◎<small>Interagir</small></button>
+    <button id="mobile-run" type="button" aria-label="Alternar corrida" aria-pressed="false">⇧<small>Correr</small></button>
+    <button id="mobile-attack" type="button" aria-label="Atacar">⚔<small>Atacar</small></button>
+  </div>
+</div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Garner</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=17"></script>
+<script type="module" src="./js/main.js?v=18"></script>
 </body>
 </html>
