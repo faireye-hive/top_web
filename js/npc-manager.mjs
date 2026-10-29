@@ -19,8 +19,8 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
   let lastUpdate=0,playerX=NaN,playerZ=NaN,disposed=false;
   async function loadModel(path){
     if(!glbCache.has(path)){
-      const url=new URL(path,new URL('../npcs/',new URL(url,location.href))).href;
-      glbCache.set(path,loader.loadAsync(url).catch(error=>{
+      const modelUrl=new URL(path,new URL(url,location.href)).href;
+      glbCache.set(path,loader.loadAsync(modelUrl).catch(error=>{
         glbCache.delete(path);throw error;
       }));
     }
