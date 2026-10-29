@@ -4,10 +4,14 @@ import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
-import { initMobileControls } from './mobile-controls.js?v=1';
-import { initRpgHud } from './rpg-hud.mjs';
+import { initMobileControls } from './mobile-controls.js?v=2';
+import { initRpgHud } from './rpg-hud.mjs?v=3';
+import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=2';
+import { resolvePrimaryAction } from './context-action.mjs';
+import { createCombat, COMBAT } from './combat-state.mjs?v=2';
+import { createMonsterManager } from './monster-manager.mjs';
 import { calculateMovementSpeed } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs?v=3';
+import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
@@ -21,7 +25,8 @@ import { seatCenter, findSafeExit } from './pose-utils.mjs';
 // yaw 0 olha para +Z; yaw π olha para −Z e o olho fica no +Z (o lado do rosto).
 // W anda nesse olhar. D anda na direita da tela (no yaw π, isso é +X).
 const $ = id => document.getElementById(id);
-const MOBILE_UI = window.matchMedia('(pointer: coarse), (max-width: 780px)').matches;
+const mobileQuery=window.matchMedia('(pointer: coarse), (max-width: 780px), (orientation: landscape) and (max-height: 600px)');
+let MOBILE_UI=mobileQuery.matches;
 document.body.classList.toggle('mobile-ui', MOBILE_UI);
 const ORIGIN = { x: 2218.5, z: 2776.5 };
 const CHUNK=64, RADIUS=3, STRIDE=7;
@@ -57,7 +62,10 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
-let rpgHud=null, npcManager=null;
+let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
+const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
+let equipmentManifest=null,changingLoadout=false;
+const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -65,7 +73,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
-const maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
+let maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
 let renderPixelRatio=maxPixelRatio;
 renderer.setPixelRatio(renderPixelRatio);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -396,6 +404,7 @@ function faceTravel(dx,dz,dt){
   avatar.rotation.y+=THREE.MathUtils.clamp(diff,-dt*12,dt*12);
 }
 function teleport(x,z){
+  stopCombat();
   x=THREE.MathUtils.clamp(x,world.ox+.01,world.ox+world.w-1.01);
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
@@ -422,14 +431,27 @@ function updateHUD(){
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
+function primaryContext(){
+  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,
+    npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
+}
+function primaryAction(){
+  if(changingLoadout||changingCharacter||rpgHud?.isOpen())return;
+  const context=primaryContext();
+  if(context.type==='attack')return attack();
+  return tryPose();
+}
 function tryPose(){
-  if(seated){if(standUp())toast('Em pé.');return true;}
-  const mark=poseHere(playerPos.x, playerPos.z);
-  if(mark){sitDown(mark);return true;}
-  const npc=npcManager?.nearest(playerPos.x,playerPos.z);
-  if(npc){toast(npc.name+' · diálogo em desenvolvimento');return true;}
-  toast('Chegue perto de um banco, parede ou NPC.');
-  return false;
+  stopCombat();
+  const context=primaryContext();
+  if(context.type==='recovering')return false;
+  if(context.type==='stand'){if(standUp())toast('Em pé.');return true;}
+  if(context.type==='npc'){toast(context.npc.name+' · diálogo em desenvolvimento');return true;}
+  if(context.type==='pose'){
+    if(hero.character!=='lance'){toast('As poses de banco ainda estão disponíveis apenas para Lance.');return false;}
+    sitDown(context.pose);return true;
+  }
+  toast('Chegue perto de um banco, parede ou NPC.');return false;
 }
 function playClip(match,once=false){
   if(!mixer||!animations.length)return false;
@@ -450,14 +472,106 @@ function playClip(match,once=false){
   if(!once&&match==='Parado')$('idle').classList.add('active');
   return true;
 }
-function attack(){
-  if(!mixer||attackPlaying)return;
-  attackPlaying=true;
-  playClip('Ataque 1',true);
+function stopCombat(){
+  if(combat?.auto){attackPlaying=false;playClip('Parado');}
+  combat?.stop();
 }
+function attack(){
+  if(!combat||changingCharacter||rpgHud?.isOpen()||hero.hp<=0)return;
+  if(seated){toast('Levante antes de combater.');return;}
+  if(combat.auto){stopCombat();toast('Ataque automático desligado.');return;}
+  keys.clear();touchMove.forward=0;touchMove.sideways=0;
+  moverTarget=null;pendingPose=null;waypoint.hide();
+  combat.toggle();toast('Auto ligado: aproximando do alvo mais próximo. Toque novamente para parar.');
+}
+function clearAvatar(){
+  mixer?.stopAllAction();if(avatar)mixer?.uncacheRoot(avatar);
+  if(!avatar)return;
+  const geometries=new Set(),materials=new Set(),textures=new Set();
+  avatar.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}});
+  scene.remove(avatar);geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>{t.source?.data?.close?.();t.dispose();});
+}
+async function loadCharacter(id){
+  if(changingCharacter||!CHARACTERS[id])return;
+  changingCharacter=true;stopCombat();
+  const selector=$('hero-character');if(selector)selector.disabled=true;
+  try{
+    const relative=hero.equipped?equipmentManifest?.sets?.[hero.job]?.models?.[id]:null;
+    if(hero.equipped&&!relative)throw new Error('Conjunto indisponível para esse personagem.');
+    const model=relative?'assets/equipment/'+relative:CHARACTERS[id].model;
+    const gltf=await new GLTFLoader().loadAsync(model+'?v=3');
+    const yaw=avatar?.rotation.y||0;clearAvatar();
+    hero.character=id;setPref('topweb_character',id);
+    avatar=gltf.scene;avatar.name=CHARACTERS[id].name;scene.add(avatar);
+    headBone=null;tailBone=null;
+    avatar.traverse(o=>{
+      if(o.isMesh)o.frustumCulled=false;
+      if(o.name.includes('Ponytail1Nub'))tailBone=o;
+      else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
+    });
+    avatar.position.copy(playerPos);avatar.rotation.y=yaw;
+    animations=gltf.animations;runningAction=null;currentClip='';attackPlaying=false;
+    mixer=new THREE.AnimationMixer(avatar);
+    mixer.addEventListener('finished',()=>{
+      if(seated){if(seated.role==='sit'&&!currentClip.toLowerCase().includes('sentado'))playClip('Sentado');return;}
+      attackPlaying=false;playClip('Parado');
+    });
+    playClip('Parado');rpgHud?.setClips(animations);rpgHud?.setStats(heroSnapshot(hero));
+  }finally{
+    changingCharacter=false;if(selector){selector.disabled=false;selector.value=hero.character;}
+  }
+}
+function combatReachable(a,b){
+  const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.3));
+  let previous=sampleHeight(a.x,a.z);
+  for(let i=1;i<=steps;i++){
+    const x=a.x+(b.x-a.x)*i/steps,z=a.z+(b.z-a.z)*i/steps,h=sampleHeight(x,z);
+    if(!occupied(x,z)||solidAt(x,z,h)||Math.abs(h-previous)>STEP_UP)return false;
+    previous=h;
+  }
+  return true;
+}
+function combatEvent(event){
+  monsterManager?.onEvent(event);
+  if(event.type==='swing'){
+    if(avatar)avatar.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
+    attackPlaying=playClip('Ataque 1',true);
+    if(attackPlaying&&runningAction)runningAction.setEffectiveTimeScale(runningAction.getClip().duration/(event.period*.85));
+  }
+  const feedback=$('combat-feedback');
+  if(event.type==='hit'){saveHero();if(event.improved)toast('Sua prática de ataque melhorou!');}
+  if(event.type==='kill')saveHero();
+  if(event.type==='hit'&&feedback)feedback.textContent=event.damage?`${event.monster.name}: −${event.damage} HP`:'O alvo esquivou.';
+  if(event.type==='hurt'&&feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
+  if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
+  if(event.type==='defeat'){attackPlaying=false;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
+  if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
+}
+function updateCombatHud(){
+  rpgHud?.setStats(heroSnapshot(hero));
+  const target=combat?.target;
+  $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:'Nenhum alvo próximo';
+  $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
+  $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto?(target?'Auto · combatendo':'Auto · procure monstros próximos'):'Auto desligado';
+  for(const id of ['mobile-attack','atk']){
+    const button=$(id);button?.setAttribute('aria-pressed',String(!!combat?.auto));
+    button?.classList.toggle('auto-active',!!combat?.auto);
+  }
+  const context=primaryContext(),button=$('mobile-attack');
+  button?.setAttribute('aria-label',context.type==='attack'?'Alternar ataque automático':context.label);
+  if(context.type==='attack')button?.setAttribute('aria-pressed',String(!!combat?.auto));else button?.removeAttribute('aria-pressed');
+  if(context.npc){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
+  button?.classList.toggle('interaction-ready',context.type!=='attack'&&context.type!=='recovering');
+  const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
+  const label=button?.querySelector('small');if(label)label.textContent=context.label;
+  if(button)button.disabled=hero.hp<=0||changingCharacter||changingLoadout;
+  $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
+
+}
+
 function showLoadingError(error){console.error(error);$('loadingmessage').textContent=`Erro: ${error?.message||error}`;$('loadinghint').textContent='Abra via http://localhost:8000 e verifique sua conexão com a internet.';$('retry').hidden=false;}
 async function fetchMap(){
-  const response=await fetch('assets/region.gmap.gz');
+  const response=await fetch('assets/argent/region.gmap.gz');
   if(!response.ok)throw new Error(`Não foi possível carregar o terreno (${response.status})`);
   if(!('DecompressionStream' in window))throw new Error('Este navegador não oferece DecompressionStream(gzip). Atualize o Firefox/Chrome.');
   const downloaded=await response.arrayBuffer();
@@ -1293,7 +1407,7 @@ async function boot(){
       landMat.map=terrainAtlas;landMat.needsUpdate=true;
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
-    try{objects=await (await fetch('assets/objects.json?v=2')).json()}catch{objects=[]}
+    try{objects=await (await fetch('assets/argent/objects.json?v=1')).json()}catch{objects=[]}
     indexEffects();
     try{objectCatalog=await (await fetch('assets/objects_catalog.json')).json()}catch{objectCatalog={}}
     generateMinimap();
@@ -1312,32 +1426,15 @@ async function boot(){
     else playerPos.set(ORIGIN.x,sampleHeight(ORIGIN.x,ORIGIN.z),ORIGIN.z);
     placeCamera();
     updateChunks();updateHUD();drawMinimap();
-    progress(62,'Importando modelo original do Lance e suas animações...');
-    const gltf=await new GLTFLoader().loadAsync('assets/characters/lance.glb?v=2');
-    avatar=gltf.scene;avatar.name='Lance';scene.add(avatar);
-    avatar.traverse(o=>{
-      if(o.isMesh){o.frustumCulled=false;if(o.material)o.material.side=THREE.DoubleSide;}
-      if(o.name.includes('Ponytail1Nub'))tailBone=o;
-      else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
-    });
-    avatar.position.copy(playerPos);
-    avatar.rotation.y=0;
-    animations=gltf.animations;
-    rpgHud?.setClips(animations);
-    if(animations.length){
-      mixer=new THREE.AnimationMixer(avatar);
-      mixer.addEventListener('finished',()=>{
-        if(seated){
-          if(seated.role==='sit' && !currentClip.toLowerCase().includes('sentado'))playClip('Sentado');
-          return;
-        }
-        attackPlaying=false;playClip('Parado');
-      });
-      playClip('Parado');
-    }
+    progress(62,'Importando personagem e animações…');
+    const gearResponse=await fetch('assets/equipment/manifest.json?v=1');
+    if(!gearResponse.ok)throw new Error('Catálogo de equipamentos indisponível.');
+    equipmentManifest=await gearResponse.json();
+    await loadCharacter(hero.character);
+    updateEquipmentUi();
     progress(78,'Carregando biblioteca compartilhada de casas, árvores e objetos...');
     try {
-      const sceneGltf=await new GLTFLoader().loadAsync('assets/modelos_cenario.glb');
+      const sceneGltf=await new GLTFLoader().loadAsync('assets/argent/modelos_cenario.glb');
       createSceneLibrary(sceneGltf);
       updateSceneInstances(true);
     } catch (err) {
@@ -1352,6 +1449,16 @@ async function boot(){
       npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight});
       if(npcManager.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
+    try{
+      monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,findSpawn:(x,z)=>{
+        for(let radius=0;radius<=8;radius+=1)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
+          const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
+          if(occupied(px,pz)&&!solidAt(px,pz,sampleHeight(px,pz)))return [px,pz];
+        }
+        return null;
+      }});
+      combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,onEvent:combatEvent});
+    }catch(error){console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
@@ -1389,6 +1496,9 @@ function update(dt){
   const sideways=keySide+touchMove.sideways;
   let dx=fwd.x*fw+right.x*sideways;
   let dz=fwd.z*fw+right.z*sideways;
+  if(combat?.auto&&npcManager?.nearest(playerPos.x,playerPos.z))stopCombat();
+  const manualMove=!!(dx||dz||moverTarget);
+  if(manualMove)stopCombat();
   if(dx||dz){moverTarget=null;pendingPose=null;waypoint.hide();}
   else if(moverTarget){
     dx=moverTarget.x-playerPos.x;dz=moverTarget.z-playerPos.z;
@@ -1398,6 +1508,14 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter);
+  combat?.update(dt,playerPos,{paused:combatPaused,moving:manualMove});
+  let chasing=false;
+  const target=combat?.target;
+  if(combat?.auto&&target&&!manualMove&&Math.hypot(target.x-playerPos.x,target.z-playerPos.z)>COMBAT.range*.92){
+    dx=target.x-playerPos.x;dz=target.z-playerPos.z;chasing=true;
+  }
+  if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
   const wish=Math.hypot(dx,dz);
   if(seated && seated.role==='sit' && runningAction && !currentClip.toLowerCase().includes('sentado')){
     const sitClip=runningAction.getClip();
@@ -1410,7 +1528,7 @@ function update(dt){
     const speed=calculateMovementSpeed({
       running,
       digital:!!(keyFw||keySide),
-      destination:!!moverTarget,
+      destination:!!moverTarget||chasing,
       analogX:touchMove.sideways,
       analogY:touchMove.forward
     });
@@ -1432,6 +1550,7 @@ function update(dt){
       else if(step(playerPos.x,playerPos.z+sz)){playerPos.z+=sz;moved=true;}
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
+    if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
     faceTravel(dx,dz,dt);
     cameraFollowTarget=Math.atan2(dx,dz);
     // O rumo do avatar guia a câmera quando caminha para a frente.
@@ -1468,8 +1587,9 @@ function update(dt){
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
+  monsterManager?.update(dt,playerPos,combat?.target);
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
-  if(performance.now()-hudTime>250){updateHUD();drawMinimap();hudTime=performance.now();}
+  if(performance.now()-hudTime>250){updateCombatHud();updateHUD();drawMinimap();hudTime=performance.now();}
   if($('toast').classList.contains('show')&&performance.now()-lastToast>4100)$('toast').classList.remove('show');
 }
 let qualitySampleTime=0, qualityFrameCount=0, qualityFrameMs=0, lastFrameTime=0;
@@ -1490,7 +1610,7 @@ function adaptMobileResolution(time){
 function animate(time=performance.now()){
   requestAnimationFrame(animate);
   const dt=Math.min(.045,clock.getDelta());
-  if(document.hidden){lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
+  if(document.hidden||(MOBILE_UI&&innerHeight>innerWidth)){stopCombat();lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
   if(!testing)update(dt);
   renderer.render(scene,camera);
   adaptMobileResolution(time);
@@ -1588,12 +1708,15 @@ window.__selfTestControls=async function(){
 };
 rpgHud=initRpgHud({
   onOpen:()=>{
+    stopCombat();
     keys.clear();touchMove.forward=0;touchMove.sideways=0;
     moverTarget=null;pendingPose=null;waypoint.hide();
     document.dispatchEvent(new Event('topweb:menu-open'));
     if(!seated){attackPlaying=false;playClip('Parado');}
   },
   onPlayClip:clip=>{
+    stopCombat();
+    if(hero.hp<=0||changingCharacter)return false;
     if(seated){toast('Levante antes de executar uma skill.');return false;}
     if(attackPlaying)return false;
     const played=playClip(clip,true);
@@ -1603,7 +1726,43 @@ rpgHud=initRpgHud({
   },
   onMessage:toast
 });
-rpgHud.setStats({name:'Lance'});
+rpgHud.setStats(heroSnapshot(hero));
+function updateEquipmentUi(){
+  $('hero-class').value=hero.job;$('hero-character').value=hero.character;
+  for(const option of $('hero-character').options)option.disabled=!CLASSES[hero.job].characters.includes(option.value);
+  $('equipment-toggle').textContent=hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1';
+  const items=equipmentManifest?.sets?.[hero.job]?.items||[];
+  const labels={2:'Corpo',3:'Mãos',4:'Pés',6:'Mão esquerda',9:'Mão direita'};
+  const list=$('equipment-list');list.replaceChildren();
+  for(const item of items){
+    const row=document.createElement('li');
+    row.textContent=`${labels[item.slot]} · ${item.name}${hero.equipped?' · equipado':''}`;list.append(row);
+  }
+  $('equipment-note').textContent=hero.job==='champion'?'Tattoo e Roar são do tier 55. As luvas e botas Warrior de nível 50 não foram incluídas.':'Visuais do tier 55 original, liberados no nível 1. Bônus novos: +4 ataque e +4 defesa pelo conjunto.';
+}
+async function changeLoadout(change){
+  if(changingLoadout||changingCharacter)return;
+  if(seated&&!standUp())return;
+  const previous={job:hero.job,character:hero.character,equipped:hero.equipped};
+  changingLoadout=true;stopCombat();$('hero-class').disabled=true;
+  try{
+    change();refreshHero(hero);await loadCharacter(hero.character);saveHero();
+  }catch(error){
+    Object.assign(hero,previous);refreshHero(hero);console.error(error);toast('Não foi possível carregar o visual. O conjunto anterior foi mantido.');
+  }finally{changingLoadout=false;$('hero-class').disabled=false;updateEquipmentUi();updateCombatHud();}
+}
+for(const [key,profile] of Object.entries(CLASSES)){
+  const option=document.createElement('option');option.value=key;option.textContent=profile.name;$('hero-class').append(option);
+}
+updateEquipmentUi();
+$('hero-character').addEventListener('change',e=>{const value=e.target.value;void changeLoadout(()=>{hero.character=value;});});
+$('hero-class').addEventListener('change',e=>{const value=e.target.value;void changeLoadout(()=>selectClass(hero,value));});
+$('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
+$('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
+window.addEventListener('blur',()=>{stopCombat();saveHero();});
+window.addEventListener('pagehide',saveHero);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCombat();});
+
 $('colormode').addEventListener('change',e=>{colorMode=e.target.value;landMat.map=colorMode==='textured'?terrainAtlas:null;landMat.needsUpdate=true;clearChunks();updateChunks();generateMinimap();drawMinimap();});
 $('water').addEventListener('change',e=>{showWater=e.target.checked;for(const c of chunkMap.values())if(c.water)c.water.visible=showWater;});
 $('wire').addEventListener('change',e=>{wireframe=e.target.checked;landMat.wireframe=wireframe;});
@@ -1620,10 +1779,10 @@ $('noclip').addEventListener('change',e=>{allowBlocked=e.target.checked;toast(al
 $('reset').addEventListener('click',()=>{localStorage.removeItem('topweb_garner_position');CAM.yaw=Math.PI-.35;CAM.dist=15;CAM.lift=1.85;teleport(2218.5,2776.5);});
 $('toggle').addEventListener('click',()=>document.body.classList.toggle('compact'));
 $('show').addEventListener('click',()=>{document.body.classList.remove('compact');document.body.classList.toggle('nohud');});
-$('idle').addEventListener('click',()=>{attackPlaying=false;playClip('Parado');});
-$('run').addEventListener('click',()=>{attackPlaying=false;playClip('Correr');});
-$('atk').addEventListener('click',attack);
-$('dance').addEventListener('click',()=>{attackPlaying=false;playClip('Acenar',true);});
+$('idle').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Parado');});
+$('run').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Correr');});
+$('atk').addEventListener('click',primaryAction);
+$('dance').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Acenar',true);});
 if($('sit'))$('sit').addEventListener('click',()=>{attackPlaying=false;tryPose();});
 function setVisualMode(mode){
   visualMode=mode==='cinematic'?'cinematic':'classic';
@@ -1674,6 +1833,8 @@ function aimMode(point){
   return 'move';
 }
 function orderMove(x,z,pose){
+  stopCombat();
+  if(hero.hp<=0||changingCharacter)return false;
   const free=walkable(x,z)?[x,z]:findFree(x,z);
   if(!free){toast('Destino bloqueado. Clique em área navegável.');return false;}
   moverTarget=new THREE.Vector3(free[0],sampleHeight(free[0],free[1]),free[1]);
@@ -1692,21 +1853,34 @@ window.addEventListener('keydown',e=>{
   if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
   if(e.repeat&&(e.code==='Space'||e.code==='Insert'))return;
   if(e.code==='Insert'){e.preventDefault();tryPose();return;}
-  if(e.code==='Space')attack();else keys.add(e.code);
+  if(e.code==='Space')primaryAction();else keys.add(e.code);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('blur',()=>keys.clear());
-if(MOBILE_UI){
+let mobileControlsInitialized=false;
+function configureMobileControls(){
+  if(!MOBILE_UI||mobileControlsInitialized)return;
+  mobileControlsInitialized=true;
   const visibility=$('visrange');
   if(visibility){visibility.value=String(sceneVisibilityRadius);$('visvalue').textContent=sceneVisibilityRadius+' m';}
   initMobileControls({
     onMove:(sideways,forward)=>{touchMove.sideways=sideways;touchMove.forward=forward;},
     onRun:enabled=>{touchRunning=enabled;},
-    onAttack:attack,
-    onInteract:tryPose,
+    onAttack:primaryAction,
     onZoom:delta=>{CAM.dist+=delta;clampCam();}
   });
 }
+configureMobileControls();
+mobileQuery.addEventListener('change',()=>{
+  MOBILE_UI=mobileQuery.matches;document.body.classList.toggle('mobile-ui',MOBILE_UI);
+  maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
+  renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
+  configureMobileControls();resize();stopCombat();
+  document.dispatchEvent(new Event('topweb:menu-open'));
+});
+window.addEventListener('resize',()=>{
+  if(MOBILE_UI&&innerHeight>innerWidth){keys.clear();stopCombat();document.dispatchEvent(new Event('topweb:menu-open'));}
+});
 for(const b of document.querySelectorAll('[data-key]')){
   const code=b.dataset.key;
   b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(code)});

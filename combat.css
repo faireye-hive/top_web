@@ -1,0 +1,18 @@
+.combat-panel{position:fixed;z-index:25;top:90px;left:50%;transform:translateX(-50%);width:245px;max-width:calc(100vw - 24px);padding:10px 12px;color:#f3e7ce;border:1px solid #b6a16b;background:linear-gradient(135deg,#152737ef,#081520ed);border-radius:12px;box-shadow:0 4px 18px #0006;font:12px/1.5 system-ui;pointer-events:auto}
+.combat-panel strong,.combat-panel span,.combat-panel small{display:block}
+.combat-panel strong{color:#ffd579;font-size:13px}
+.combat-panel small{color:#c6d4db;min-height:34px}
+.combat-panel button{width:100%;min-height:36px;margin-top:5px;font:inherit}
+.combat-health{height:5px;background:#39292b;border-radius:5px;overflow:hidden;margin:5px 0}
+.combat-health i{display:block;height:100%;width:0;background:#ee7d69;transition:width .15s}
+.auto-active{outline:2px solid #ffe299;box-shadow:0 0 16px #eab849aa!important}
+.hero-character-label{display:block;margin-bottom:6px;color:#cfdfec}
+#hero-character{width:100%;min-height:44px;background:#122b3b;color:#fff;border:1px solid #8d8058;border-radius:8px;padding:8px}
+.rpg-stat-cell{position:relative;gap:6px;flex-wrap:wrap}
+.attribute-add{min-width:44px;min-height:44px;margin-left:auto;font-size:22px;line-height:1;border-radius:8px}
+.attribute-add:disabled{opacity:.3}
+body.rpg-open .combat-panel,body.mobile-settings-open .combat-panel,body.nohud .combat-panel{display:none}
+body.mobile-ui .combat-panel{top:calc(env(safe-area-inset-top,0px) + 190px);left:12px;transform:none;width:195px;padding:7px 10px;font-size:11px}
+body.mobile-ui .combat-panel button{min-height:32px}
+@media (max-height:520px){body.mobile-ui .combat-panel{top:calc(env(safe-area-inset-top,0px) + 72px);left:210px;width:195px}.combat-panel small{display:none}}
+@media (max-width:370px){body.mobile-ui .combat-panel{width:170px}.combat-panel small{font-size:10px}}

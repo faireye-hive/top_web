@@ -1,3 +1,36 @@
+# TOP Web 0.13 — Evanescence, prática e botão contextual
+
+- **Celular deitado:** ataque/interação no mesmo botão; Skills em arco ao redor.
+- **Bolsa:** conjuntos visuais do tier 55 original, liberados no nível 1.
+- **Seis classes:** atributos crescem automaticamente; ataque melhora com a prática
+  de cada tipo de arma. Progresso salvo no navegador.
+- Argent continua com recorte leve, três modelos de monstros e combate local.
+
+Veja [regras, equipamentos, conversão e verificações](docs/ARGENT_MOBILE.md).
+As seções abaixo registram o histórico das versões anteriores.
+
+---
+
+# TOP Web 0.12 — Argent mobile: monstros e combate local
+
+Primeira base jogável com **visuais convertidos e regras novas**:
+
+- Forest Spirit, Mini Bee e Cuddly Lamb em GLB (437 KiB no total), seis
+  instâncias de treino perto do ponto inicial de Argent.
+- HUD para **celular deitado**, com controles nas laterais e aviso em retrato.
+- Botão **Auto**: alvo próximo, aproximação e ataques repetidos. Movimento e
+  menus interrompem o combate. Há HP, dano, esquiva, XP e reaparecimento.
+- **Herói → Status**: cinco atributos distribuíveis, stats derivados e seleção
+  de Lance, Phyllis, Carsise ou Ami. Progresso limitado à sessão.
+- Recorte exclusivo de Argent: terreno de 1,75 MiB descompactado e biblioteca
+  de cenário de 12,4 MiB. O jogo não baixa mais Garner inteiro.
+
+Veja [regras, limites, conversão e verificações](docs/ARGENT_MOBILE.md).
+Pets, equipamentos e habilidades com dano continuam para etapas posteriores.
+As seções abaixo são o histórico das versões anteriores.
+
+---
+
 # TOP Web 0.11 — NPCs originais de Argent City
 
 Os dados históricos de 14 NPCs (cinco modelos originais: IDs 11, 13, 17,

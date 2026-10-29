@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "map": "argent",
+  "note": "Somente visuais históricos. Posições de treino e atributos são novos do TOP Web.",
+  "species": {
+    "forest-spirit": {
+      "name": "Forest Spirit",
+      "sourceCharacterId": 103,
+      "model": "models/forest-spirit.glb",
+      "maxHp": 60,
+      "attack": 9,
+      "defense": 2,
+      "accuracy": 65,
+      "evasion": 4,
+      "attackSpeed": 0.65,
+      "xp": 10
+    },
+    "mini-bee": {
+      "name": "Mini Bee",
+      "sourceCharacterId": 206,
+      "model": "models/mini-bee.glb",
+      "maxHp": 45,
+      "attack": 8,
+      "defense": 1,
+      "accuracy": 70,
+      "evasion": 12,
+      "attackSpeed": 0.8,
+      "xp": 10
+    },
+    "cuddly-lamb": {
+      "name": "Cuddly Lamb",
+      "sourceCharacterId": 125,
+      "model": "models/cuddly-lamb.glb",
+      "maxHp": 85,
+      "attack": 11,
+      "defense": 4,
+      "accuracy": 60,
+      "evasion": 2,
+      "attackSpeed": 0.55,
+      "xp": 14
+    }
+  },
+  "spawns": [
+    {
+      "species": "forest-spirit",
+      "x": 2219.5,
+      "z": 2770.5
+    },
+    {
+      "species": "mini-bee",
+      "x": 2223.5,
+      "z": 2770.5
+    },
+    {
+      "species": "cuddly-lamb",
+      "x": 2225.5,
+      "z": 2774.5
+    },
+    {
+      "species": "forest-spirit",
+      "x": 2223.5,
+      "z": 2778.5
+    },
+    {
+      "species": "mini-bee",
+      "x": 2219.5,
+      "z": 2778.5
+    },
+    {
+      "species": "cuddly-lamb",
+      "x": 2219.5,
+      "z": 2774.5
+    }
+  ]
+}

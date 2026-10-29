@@ -1,0 +1,85 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHero,selectClass,trainAttack,gainExperience,heroSnapshot,serializeHero,restoreHero,refreshHero} from '../js/hero-state.mjs';
+import {createCombat,nearestMonster,COMBAT} from '../js/combat-state.mjs';
+
+const monster=(extra={})=>({x:1,z:0,ready:true,hp:60,maxHp:60,attack:9,defense:2,
+  accuracy:65,evasion:4,attackSpeed:.65,xp:10,...extra});
+function setup(enemies=[monster()]) {
+  const hero=createHero(),events=[];
+  const combat=createCombat({hero,monsters:enemies,random:()=>0,onEvent:e=>events.push(e)});
+  return {hero,events,combat,enemies};
+}
+function advance(combat,seconds,position={x:0,z:0},options) {
+  for(let time=0;time<seconds;time+=.05)combat.update(.05,position,options);
+}
+test('seleção ignora mortos, modelos não carregados, distantes e caminhos bloqueados',()=>{
+  const good=monster({x:4});
+  assert.equal(nearestMonster([monster({hp:0}),monster({ready:false}),monster({x:30}),good],{x:0,z:0}),good);
+  assert.equal(nearestMonster([monster(),good],{x:0,z:0},12,(p,m)=>m.x>2),good);
+  assert.equal(nearestMonster([],{x:0,z:0}),null);
+});
+test('ataque aplica impacto após preparação, respeita cadência e alcance',()=>{
+  const {combat,enemies,events}=setup();combat.toggle();
+  combat.update(.01,{x:0,z:0});assert.equal(enemies[0].hp,60);
+  advance(combat,.5);assert.ok(enemies[0].hp<60);
+  assert.equal(events.filter(e=>e.type==='swing').length,1);
+  advance(combat,.4);assert.equal(events.filter(e=>e.type==='swing').length,1);
+  const hp=enemies[0].hp;advance(combat,2,{x:10,z:0});assert.equal(enemies[0].hp,hp);
+});
+test('mover ou abrir menu cancela o golpe pendente e o modo auto',()=>{
+  for(const options of [{moving:true},{paused:true}]) {
+    const {combat,enemies}=setup();combat.toggle();combat.update(.01,{x:0,z:0});
+    advance(combat,1,{x:0,z:0},options);
+    assert.equal(enemies[0].hp,60);assert.equal(combat.auto,false);assert.equal(combat.target,null);
+  }
+});
+test('alvo que morre concede XP uma vez, permite outro alvo e reaparece',()=>{
+  const {combat,hero,enemies,events}=setup([monster({hp:1}),monster({x:3})]);
+  combat.toggle();advance(combat,.6);
+  assert.equal(enemies[0].hp,0);assert.equal(hero.xp,10);
+  advance(combat,.3);assert.equal(combat.target,enemies[1]);
+  combat.stop();advance(combat,COMBAT.respawn+1);
+  assert.equal(enemies[0].hp,60);assert.equal(hero.xp,10);
+  assert.equal(events.filter(e=>e.type==='kill').length,1);
+});
+test('derrota suspende ataque e recupera o herói sem ataques acumulados',()=>{
+  const {combat,hero,enemies,events}=setup([monster({engaged:true,attack:1000})]);
+  combat.update(.05,{x:0,z:0});assert.equal(hero.hp,0);assert.equal(combat.auto,false);
+  advance(combat,COMBAT.recovery+.1);
+  assert.equal(hero.hp,hero.stats.maxHp);assert.equal(enemies[0].engaged,false);
+  assert.ok(events.some(e=>e.type==='revive'));
+});
+test('atributos crescem automaticamente conforme a classe, sem pontos manuais',()=>{
+  const hero=createHero('ami');selectClass(hero,'cleric');
+  assert.equal(gainExperience(hero,120),2);assert.equal(hero.level,3);
+  assert.equal(hero.attributes.intelligence,11);assert.equal(hero.attributes.constitution,9);
+  assert.equal(hero.attributes.strength,5);assert.equal(heroSnapshot(hero).name,'Ami');
+  assert.equal(hero.stats.attack,28); // Cleric usa Inteligência no ataque básico.
+  assert.equal(hero.hp,hero.stats.maxHp);
+});
+test('prática vem de golpes válidos e mantém proficiência separada por arma',()=>{
+  const hero=createHero();const attack=hero.stats.attack;
+  for(let i=0;i<19;i++)assert.equal(trainAttack(hero),false);
+  assert.equal(trainAttack(hero),true);assert.equal(hero.stats.attack,attack+1);
+  assert.equal(hero.practice.unarmed.level,11);
+  hero.equipped=true;refreshHero(hero);assert.equal(heroSnapshot(hero).practiceLevel,10);
+  for(let i=0;i<20;i++)trainAttack(hero);
+  assert.equal(hero.practice.sword.level,11);assert.equal(hero.practice.unarmed.level,11);
+});
+test('cancelamento, distância e reprodução de animações não treinam ataque',()=>{
+  const {hero,combat}=setup();combat.toggle();
+  combat.update(.01,{x:0,z:0});combat.stop();advance(combat,2);
+  assert.equal(hero.practice.unarmed.uses,0);
+  combat.toggle();advance(combat,2,{x:9,z:0});assert.equal(hero.practice.unarmed.uses,0);
+  advance(combat,.6);assert.equal(hero.practice.unarmed.uses,1);
+});
+test('save validado conserva classe, equipamento e prática; números inválidos são descartados',()=>{
+  const hero=createHero('phyllis');selectClass(hero,'seal-master');hero.equipped=true;refreshHero(hero);
+  gainExperience(hero,40);for(let i=0;i<24;i++)trainAttack(hero);
+  const saved=serializeHero(hero),restored=restoreHero(saved);
+  assert.equal(restored.job,'seal-master');assert.equal(restored.level,2);
+  assert.equal(restored.equipped,true);assert.deepEqual(restored.practice,hero.practice);
+  assert.equal(restoreHero(saved.replace('"level":2','"level":-2')).level,1);
+  assert.equal(restoreHero('not json').level,1);
+});

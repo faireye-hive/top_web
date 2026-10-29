@@ -67,7 +67,7 @@ body.mobile-ui .minimapbox{
  background:radial-gradient(circle,#346b84,#06253e 77%);overflow:visible;z-index:38;
 }
 body.mobile-ui .minimapbox::after{
- content:'Garner';position:absolute;bottom:-10px;left:17%;right:17%;background:#0d2c43;
+ content:'Argent';position:absolute;bottom:-10px;left:17%;right:17%;background:#0d2c43;
  border:1px solid #e8c47e;border-radius:14px;font-size:10px;font-weight:900;text-align:center;
  padding:2px;color:#fff1c9;text-shadow:0 1px 2px #000;pointer-events:none
 }

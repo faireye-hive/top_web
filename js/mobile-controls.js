@@ -1,4 +1,4 @@
-export function initMobileControls({onMove,onRun,onAttack,onInteract,onZoom}){
+export function initMobileControls({onMove,onRun,onAttack,onZoom}){
  const $=id=>document.getElementById(id), pad=$('mobile-joystick'),ring=$('mobile-joystick-ring'),knob=$('mobile-knob');
  if(!pad||!ring||!knob)return;
  let pointer=null,running=false;
@@ -13,7 +13,6 @@ export function initMobileControls({onMove,onRun,onAttack,onInteract,onZoom}){
  const run=$('mobile-run');
  run?.addEventListener('click',()=>{running=!running;run.classList.toggle('active',running);run.setAttribute('aria-pressed',String(running));onRun(running)});
  $('mobile-attack')?.addEventListener('click',onAttack);
- $('mobile-interact')?.addEventListener('click',onInteract);
  $('mobile-zoom-in')?.addEventListener('click',()=>onZoom(-1.6));
  $('mobile-zoom-out')?.addEventListener('click',()=>onZoom(1.6));
  const settings=$('mobile-settings');

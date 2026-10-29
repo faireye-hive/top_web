@@ -73,7 +73,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
   function nearest(px,pz,radius=2.3){
     let best=null, distance2=radius*radius;
     for(const npc of records){
-      if(!npc.object)continue;
+      if(!npc.object?.visible)continue;
       const d2=(npc.x-px)**2+(npc.z-pz)**2;
       if(d2<distance2){best=npc;distance2=d2}
     }

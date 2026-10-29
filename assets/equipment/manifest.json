@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "minimumLevel": 1,
+  "originalTier": 55,
+  "sets": {
+    "crusader": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 768,
+          "name": "Armor of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 807,
+          "name": "Gauntlets of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 808,
+          "name": "Greaves of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 6,
+          "id": 775,
+          "name": "Dance of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 775,
+          "name": "Dance of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 3,
+      "models": {
+        "lance": "models/lance-crusader.glb",
+        "phyllis": "models/phyllis-crusader.glb"
+      }
+    },
+    "champion": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 765,
+          "name": "Tattoo of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 772,
+          "name": "Roar of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 2,
+      "models": {
+        "carsise": "models/carsise-champion.glb"
+      }
+    },
+    "sharpshooter": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 779,
+          "name": "Coat of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 809,
+          "name": "Gloves of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 810,
+          "name": "Shoes of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 783,
+          "name": "Bellow of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 4,
+      "models": {
+        "lance": "models/lance-sharpshooter.glb",
+        "phyllis": "models/phyllis-sharpshooter.glb"
+      }
+    },
+    "cleric": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 791,
+          "name": "Robe of the Arcane",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 812,
+          "name": "Gloves of the Arcane",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 814,
+          "name": "Boots of the of the Arcane",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 787,
+          "name": "Staff of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 1,
+      "models": {
+        "phyllis": "models/phyllis-cleric.glb",
+        "ami": "models/ami-cleric.glb"
+      }
+    },
+    "seal-master": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 797,
+          "name": "Robe of Malediction",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 811,
+          "name": "Gloves of Malediction",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 813,
+          "name": "Boots of Malediction",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 794,
+          "name": "Staff of Mirage",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 1,
+      "models": {
+        "phyllis": "models/phyllis-seal-master.glb",
+        "ami": "models/ami-seal-master.glb"
+      }
+    },
+    "voyager": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 805,
+          "name": "Cloak of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 815,
+          "name": "Heavy Gloves of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 877,
+          "name": "Boots of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 9,
+          "id": 801,
+          "name": "Tooth of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 6,
+      "models": {
+        "lance": "models/lance-voyager.glb",
+        "phyllis": "models/phyllis-voyager.glb",
+        "ami": "models/ami-voyager.glb"
+      }
+    }
+  }
+}

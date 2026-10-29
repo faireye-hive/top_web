@@ -269,7 +269,8 @@ class GLBWriter:
 
 def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
             lab_name: str|None=None, lgo_names: list[str]|None=None,
-            action_section: int=1, action_ids: list[int]|None=None, all_actions: bool=False):
+            action_section: int=1, action_ids: list[int]|None=None, all_actions: bool=False,
+            geometry_overrides: dict|None=None):
     import contextlib
     with contextlib.ExitStack() as stack:
         # input ZIP com os arquivos selecionados (opção principal), ou pasta
@@ -295,7 +296,11 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
             if missing:raise ValueError(f'LGOs não encontrados: {sorted(missing)}')
         if not lgolist:raise ValueError('Nenhum arquivo .lgo encontrado.')
         lab=parse_lab(read_entry(labs[0]))
-        geoms=[parse_lgo(read_entry(p),Path(p).name, flip_v=flip_v) for p in lgolist]
+        geoms=[]
+        for path in lgolist:
+            geom=parse_lgo(read_entry(path),Path(path).name, flip_v=flip_v)
+            geom.update((geometry_overrides or {}).get(path, {}))
+            geoms.append(geom)
         for geom in geoms:
             bad=geom['joints'][geom['weights']>0]>=(lab['bones'])
             if np.any(bad):

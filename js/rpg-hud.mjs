@@ -106,6 +106,8 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
     for(const el of overlay.querySelectorAll('[data-rpg-stat]')){
       el.textContent=statText(stats[el.dataset.rpgStat]);
     }
+    const desktopName=$('desktop-character-name');if(desktopName)desktopName.textContent=String(stats.name||'Lance');
+    const mobileName=$('mobile-character-name');if(mobileName)mobileName.textContent=String(stats.name||'Lance');
     const display=$('rpg-character-name');
     if(display)display.textContent=String(stats.name||'Lance');
     const hp=$('mobile-hp'),mp=$('mobile-mp');

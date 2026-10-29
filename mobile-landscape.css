@@ -1,0 +1,96 @@
+/* HUD deitado: cantos para os polegares, centro livre para o mundo. */
+.orientation-hint{display:none}
+.hero-name{flex:1;min-width:0}
+.hero-character-choice{width:145px;flex:none}
+.hero-character-choice .hero-character-label{font-size:10px;margin-bottom:2px}
+.hero-character-choice #hero-character{padding:5px 8px}
+.hero-stat-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.hero-stat-heading h3{margin:0}
+.hero-stat-heading p{margin:0;font-size:11px;color:#bfd3d4}
+.hero-class-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+.hero-class-row select{min-height:44px;padding:5px 9px;background:#122b3b;color:#fff;border:1px solid #8d8058;border-radius:8px;max-width:190px}
+.hero-class-row>span{color:#a7c6c9;font-size:11px}
+.practice-summary{font-size:12px;padding:7px 10px;margin:7px 0;background:#071b2699;border:1px solid #bfd9db28;border-radius:8px;color:#e5cb91}
+.equipment-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:6px}
+.equipment-list li{padding:10px;border:1px solid #bfd9db28;background:#071b2699;border-radius:8px;font-size:12px}
+#equipment-toggle{min-height:44px;padding:8px 14px;background:#6e583c;color:#fff0c1;border:1px solid #d8b873;border-radius:9px}
+body.mobile-ui #mobile-attack.interaction-ready{background:radial-gradient(circle at 32% 18%,#459980,#155f5b 65%,#0b2935);border-color:#baf5dd;box-shadow:0 0 14px #75e3b980}
+body.mobile-ui{--safe-left:max(12px,env(safe-area-inset-left));--safe-right:max(12px,env(safe-area-inset-right));--safe-top:max(8px,env(safe-area-inset-top));--safe-bottom:max(10px,env(safe-area-inset-bottom))}
+body.mobile-ui button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body.mobile-ui .rpg-skill-hotbar button{display:grid;place-items:center}
+body.mobile-ui .rpg-hotbar-symbol{position:absolute;inset:0;display:grid;place-items:center;width:100%;height:100%}
+body.mobile-ui .rpg-hotbar-symbol svg{display:block;width:70%;height:70%}
+body.mobile-ui .mobile-actions button svg{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);width:25px;height:25px}
+body.mobile-ui .mobile-actions button small{position:absolute;bottom:7px;left:0;right:0;margin:0!important;text-align:center}
+body.mobile-ui #mobile-attack svg{width:40px;height:40px}
+body.mobile-ui .mobile-nav-button:disabled{display:none}
+body.mobile-ui .rpg-toggle::before{content:none}
+body.mobile-ui .rpg-stat-cell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 6px}
+body.mobile-ui .rpg-stat-cell>span{grid-column:1;font-size:11px}
+body.mobile-ui .rpg-stat-cell>strong{grid-column:1;grid-row:2;margin:0;font-size:17px}
+body.mobile-ui .attribute-add{grid-column:2;grid-row:1/3;margin:0}
+body.mobile-ui .mobile-zoom button{min-width:40px;min-height:40px;width:40px;height:40px}
+body.mobile-ui .toast{pointer-events:none;max-width:calc(100vw - 32px)}
+
+@media(orientation:landscape){
+ body.mobile-ui .mobile-player-card{left:var(--safe-left);top:var(--safe-top);width:184px;height:60px;padding:5px 8px;gap:6px}
+ body.mobile-ui .mobile-player-portrait{width:44px;height:44px;flex:none}
+ body.mobile-ui .mobile-player-title strong{font-size:13px}
+ body.mobile-ui .mobile-player-title span{font-size:9px}
+ body.mobile-ui .mobile-stat-track{height:14px}
+ body.mobile-ui .minimapbox{right:var(--safe-right);top:var(--safe-top);width:90px;height:90px}
+ body.mobile-ui .mobile-top-nav{top:var(--safe-top);right:calc(var(--safe-right) + 108px);gap:8px}
+ body.mobile-ui .mobile-nav-button{width:44px;min-width:44px;min-height:52px;font-size:9px}
+ body.mobile-ui .mobile-nav-button svg{width:40px;height:40px;padding:9px}
+ body.mobile-ui .rpg-toggle{left:var(--safe-left);top:calc(var(--safe-top) + 69px);min-width:84px;min-height:44px;padding:8px 12px;font-size:12px}
+ body.mobile-ui .combat-panel{left:50%;top:calc(var(--safe-top) + 65px);transform:translateX(-50%);width:214px;max-width:calc(100vw - 240px);padding:6px 10px;border-radius:9px;font-size:11px;pointer-events:none}
+ body.mobile-ui .combat-panel strong{font-size:11px}
+ body.mobile-ui .combat-panel small{display:none}
+ body.mobile-ui .combat-health{margin:4px 0 0;height:4px}
+ body.mobile-ui .mobile-joystick{left:var(--safe-left);bottom:var(--safe-bottom);width:112px}
+ body.mobile-ui .mobile-joystick-ring{width:112px;height:112px}
+ body.mobile-ui .mobile-knob{width:50px;height:50px}
+ body.mobile-ui .mobile-actions{right:var(--safe-right);bottom:var(--safe-bottom);width:208px;height:88px}
+ body.mobile-ui #mobile-attack{width:82px;height:82px;right:0;bottom:0}
+ body.mobile-ui #mobile-run{position:fixed;left:calc(var(--safe-left) + 124px);right:auto;bottom:var(--safe-bottom);width:48px;height:48px}
+ body.mobile-ui .rpg-skill-hotbar{right:var(--safe-right);bottom:var(--safe-bottom);width:208px;height:190px;display:block;pointer-events:none}
+ body.mobile-ui .rpg-skill-hotbar button{position:absolute;width:46px;height:46px;border-width:2px;pointer-events:auto}
+ body.mobile-ui .rpg-skill-hotbar button:nth-child(1){right:140px;bottom:2px}
+ body.mobile-ui .rpg-skill-hotbar button:nth-child(2){right:130px;bottom:62px}
+ body.mobile-ui .rpg-skill-hotbar button:nth-child(3){right:85px;bottom:114px}
+ body.mobile-ui .rpg-skill-hotbar button:nth-child(4){right:23px;bottom:128px}
+ body.mobile-ui .rpg-hotbar-number{width:18px;height:18px;font-size:10px;border-width:1px}
+ body.mobile-ui .mobile-zoom{right:calc(var(--safe-right) + 100px);top:calc(var(--safe-top) + 64px);flex-direction:row;gap:5px;width:85px}
+ body.mobile-ui .rpg-panel{left:auto;right:auto;bottom:auto;position:relative;width:min(720px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));max-height:calc(100dvh - 16px);border-radius:14px}
+ body.mobile-ui .rpg-panel-header{padding:8px 12px}
+ body.mobile-ui .rpg-panel-header h2{font-size:16px}
+ body.mobile-ui .rpg-panel-header p{display:none}
+ body.mobile-ui .rpg-panel-header button{width:44px;height:44px}
+ body.mobile-ui .rpg-tabs{padding:4px 10px}
+ body.mobile-ui .rpg-tabs button{min-height:40px;padding:5px}
+ body.mobile-ui .rpg-panel-body{padding:10px 12px}
+ body.mobile-ui .rpg-character-card{padding:7px 10px;margin-bottom:8px}
+ body.mobile-ui .rpg-character-card small{font-size:10px}
+ body.mobile-ui .rpg-avatar-symbol{width:32px;height:32px;font-size:22px}
+ body.mobile-ui .rpg-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ body.mobile-ui .rpg-stat-cell{padding:8px;min-height:60px}
+ body.mobile-ui .rpg-info-note{font-size:11px;padding:7px 9px;margin-top:8px}
+ body.mobile-ui .rpg-assign-actions button{width:44px;height:44px}
+ body.mobile-ui.mobile-settings-open .side{top:var(--safe-top);left:var(--safe-left);width:min(320px,calc(100vw - 24px));max-height:calc(100dvh - 20px)}
+ body.mobile-ui .toast{left:50%;top:auto;bottom:calc(var(--safe-bottom) + 10px);transform:translateX(-50%);width:max-content;max-width:calc(100vw - 460px);font-size:11px}
+}
+@media(orientation:landscape) and (max-width:700px){
+ body.mobile-ui .mobile-player-card{width:165px}
+ body.mobile-ui .mobile-top-nav{gap:3px;right:calc(var(--safe-right) + 100px)}
+ body.mobile-ui .mobile-zoom{top:calc(var(--safe-top) + 64px)}
+ body.mobile-ui .rpg-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body.mobile-ui .combat-panel{width:190px;max-width:calc(100vw - 400px);top:calc(var(--safe-top) + 64px)}
+ body.mobile-ui .toast{max-width:calc(100vw - 300px)}
+}
+@media(orientation:portrait){
+ body.mobile-ui .orientation-hint{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center;color:#f4e9cf;background:#081923f5;font:15px/1.5 system-ui;touch-action:none}
+ body.mobile-ui .orientation-hint>span{font-size:70px;color:#edc77c;line-height:1}
+ body.mobile-ui .orientation-hint>strong{font-size:24px}
+ body.mobile-ui .orientation-hint>p{max-width:250px;margin:0;color:#b9cdd8}
+ body.mobile-ui .orientation-hint~.mobilecontrols,body.mobile-ui .rpg-toggle,body.mobile-ui .rpg-skill-hotbar,body.mobile-ui .combat-panel{visibility:hidden}
+}
