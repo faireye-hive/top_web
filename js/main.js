@@ -5,6 +5,8 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=1';
+import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
+import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -24,8 +26,16 @@ const LOOK_H=1.15;
 const BODY_R=0.22;
 // Mesmos limites de sources/Engine/include/top/ClassicCamera.h.
 const CAM={yaw:Math.PI-0.35,dist:15,lift:1.85};
+const getPref=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
+const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
+let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
+let cameraManualUntil=0;
+let cameraFollowTarget=null;
+let seatFacingReversed=getPref('topweb_seat_reverse','1')!=='0';
+let visualMode=getPref('topweb_visual_mode','classic');
+function manualCamera(){cameraManualUntil=performance.now()+2500}
 function clampCam(){
-  CAM.dist=THREE.MathUtils.clamp(Number.isFinite(CAM.dist)?CAM.dist:15,4.5,22);
+  CAM.dist=THREE.MathUtils.clamp(Number.isFinite(CAM.dist)?CAM.dist:15,3.2,22);
   CAM.lift=THREE.MathUtils.clamp(Number.isFinite(CAM.lift)?CAM.lift:1.85,1.35,2.4);
 }
 // Único lugar que constrói o referencial da câmera. O olho é colocado com este
@@ -49,13 +59,13 @@ const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
-scene.fog=new THREE.FogExp2(0x8aafba,.0062);
+scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
 const maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
 let renderPixelRatio=maxPixelRatio;
 renderer.setPixelRatio(renderPixelRatio);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMapping=THREE.NoToneMapping; // clássico: evita a perda de saturação do ACES
 renderer.toneMappingExposure=1.12;
 const camera=new THREE.PerspectiveCamera(51.6,1,.3,800);
 const hemi=new THREE.HemisphereLight(0xd5e4ee,0x4a5850,0.9);
@@ -351,10 +361,13 @@ function updateObjectMarkers(){
 }
 function placeCamera(){
   clampCam();
+  const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
+  const desiredFov=cameraFovAtDistance(CAM.dist);
+  if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
   const {fwd}=cameraBasis();
   _look.set(playerPos.x,playerPos.y+LOOK_H,playerPos.z);
   let dist=CAM.dist;
-  const eyeY=playerPos.y+CAM.dist*CAM.lift;
+  const eyeY=playerPos.y+CAM.dist*pitch;
   const steps=12;
   for(let i=1;i<=steps;i++){
     const t=i/steps;
@@ -363,7 +376,7 @@ function placeCamera(){
     const y=_look.y+(eyeY-_look.y)*t;
     if(sampleHeight(x,z)+.55>y){dist=Math.max(2.4,CAM.dist*(i-1)/steps);break;}
   }
-  _eye.set(_look.x-fwd.x*dist,playerPos.y+dist*CAM.lift,_look.z-fwd.z*dist);
+  _eye.set(_look.x-fwd.x*dist,playerPos.y+dist*pitch,_look.z-fwd.z*dist);
   camera.position.copy(_eye);
   camera.lookAt(_look);
 }
@@ -383,6 +396,8 @@ function teleport(x,z){
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
+  // Teleporte também deve soltar a pose; serve como saída de emergência.
+  if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
@@ -399,12 +414,12 @@ function updateHUD(){
   $('texid').textContent=t?`#${t.tex}`:'fora';
   $('region').textContent=t?`${t.region} ${t.region&9?'· terra':'· sem passagem'}`:'fora';
   $('objcount').textContent=objects.length.toLocaleString('pt-BR');
-  const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(CAM.lift)*180/Math.PI)}°`;
+  const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
 function tryPose(){
-  if(seated){standUp();toast('Em pé.');return true;}
+  if(seated){if(standUp())toast('Em pé.');return true;}
   const mark=poseHere(playerPos.x, playerPos.z);
   if(mark){sitDown(mark);return true;}
   toast('Chegue perto de um banco ou de uma parede. O cursor muda em cima do ponto.');
@@ -567,40 +582,58 @@ function sitDown(mark){
   const clip=mark.role==='lean'?'Encostar':'Banco';
   const played=playClip(clip,true)||playClip(mark.role==='lean'?'Encostar':'Sentar',true);
   if(!played){toast('A animação desse ponto ainda não está no Lance.');return false;}
-  seated=mark;
-  moverTarget=null;
+  // Guarda o lado pelo qual entrou: o .obj pode marcar piso bloqueado no assento.
+  seated={...mark,returnPosition:playerPos.clone(),returnYaw:avatar?.rotation.y??0};
+  moverTarget=null;pendingPose=null;waypoint.hide();
   attackPlaying=false;
-  // O pé fica na face do volume, do lado de onde a pessoa chegou.
-  // Encostar fica para fora da parede; sentar entra um pouco no banco.
-  const [lx,lz]=localOf(mark.basis,playerPos.x-mark.x,playerPos.z-mark.z);
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  let ex=clamp(lx,mark.minX,mark.maxX), ez=clamp(lz,mark.minZ,mark.maxZ);
-  if(lx>=mark.minX&&lx<=mark.maxX&&lz>=mark.minZ&&lz<=mark.maxZ){
-    const faces=[[Math.abs(lx-mark.minX),mark.minX,ez],[Math.abs(mark.maxX-lx),mark.maxX,ez],[Math.abs(lz-mark.minZ),ex,mark.minZ],[Math.abs(mark.maxZ-lz),ex,mark.maxZ]];
-    faces.sort((a,b)=>a[0]-b[0]);
-    ex=faces[0][1];ez=faces[0][2];
+  // Para bancos, o marcador indica o CENTRO da pose (não a face mais próxima).
+  // Encostar continua escolhendo a face do lado de aproximação.
+  let sx,sz;
+  if(mark.role==='sit'){
+    const center=seatCenter(mark);
+    [sx,sz]=worldFrom(mark,center.x,center.z);
+  }else{
+    const [lx,lz]=localOf(mark.basis,playerPos.x-mark.x,playerPos.z-mark.z);
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    let ex=clamp(lx,mark.minX,mark.maxX),ez=clamp(lz,mark.minZ,mark.maxZ);
+    if(lx>=mark.minX&&lx<=mark.maxX&&lz>=mark.minZ&&lz<=mark.maxZ){
+      const faces=[[Math.abs(lx-mark.minX),mark.minX,ez],[Math.abs(mark.maxX-lx),mark.maxX,ez],[Math.abs(lz-mark.minZ),ex,mark.minZ],[Math.abs(mark.maxZ-lz),ex,mark.maxZ]];
+      faces.sort((a,b)=>a[0]-b[0]);ex=faces[0][1];ez=faces[0][2];
+    }
+    const midX=(mark.minX+mark.maxX)/2,midZ=(mark.minZ+mark.maxZ)/2;
+    const vx=midX-ex,vz=midZ-ez,span=Math.hypot(vx,vz)||1;
+    [sx,sz]=worldFrom(mark,ex-vx/span*0.28,ez-vz/span*0.28);
   }
-  const midX=(mark.minX+mark.maxX)/2, midZ=(mark.minZ+mark.maxZ)/2;
-  const vx=midX-ex, vz=midZ-ez, span=Math.hypot(vx,vz)||1;
-  const inset=mark.role==='lean'?-0.28:0.12;
-  const [sx,sz]=worldFrom(mark,ex+vx/span*inset,ez+vz/span*inset);
   const seat=footSurface(sx,sz,Math.max(sampleHeight(sx,sz),mark.base)+0.45);
   playerPos.set(sx,seat,sz);
-  if(avatar){avatar.position.copy(playerPos);avatar.rotation.y=mark.yaw;}
+  if(avatar){
+    avatar.position.copy(playerPos);
+    avatar.rotation.y=mark.yaw+(mark.role==='sit'&&seatFacingReversed?Math.PI:0);
+  }
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   toast(mark.role==='lean'?'Encostado na parede. Insert levanta.':'Sentado. Insert levanta.');
   return true;
 }
 function standUp(){
-  if(!seated)return;
-  seated=null;
-  attackPlaying=false;
-  if(!walkable(playerPos.x,playerPos.z)){
-    const free=findFree(playerPos.x,playerPos.z);
-    if(free)playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
+  if(!seated)return true;
+  const previous=seated;
+  const origin=previous.returnPosition||playerPos;
+  const canStand=(x,z)=>{
+    if(!occupied(x,z))return false;
+    const feet=footSurface(x,z,origin.y);
+    return !solidAt(x,z,feet);
+  };
+  const exit=findSafeExit(origin,canStand,9);
+  if(!exit){
+    toast('Não encontrei espaço seguro para levantar. Use o minimapa para sair.');
+    return false;
   }
-  if(avatar)avatar.position.copy(playerPos);
+  seated=null;attackPlaying=false;pendingPose=null;moverTarget=null;waypoint.hide();
+  const y=footSurface(exit[0],exit[1],origin.y);
+  playerPos.set(exit[0],y,exit[1]);
+  if(avatar){avatar.position.copy(playerPos);avatar.rotation.y=previous.returnYaw;}
   playClip('Parado');
+  return true;
 }
 function indexScenePlaces(){
   poseMarks.length=0;floorSlabs.length=0;solidSlabs.length=0;walkPlaces.length=0;
@@ -1331,8 +1364,8 @@ let hudTime=0;
 function update(dt){
   if(mixer&&!effectHold)mixer.update(dt);
   if(!effectHold)seaMat.uniforms.uTime.value+=dt;
-  if(keys.has('ArrowLeft')||keys.has('KeyQ'))CAM.yaw-=dt*1.6;
-  if(keys.has('ArrowRight')||keys.has('KeyE'))CAM.yaw+=dt*1.6;
+  if(keys.has('ArrowLeft')||keys.has('KeyQ')){CAM.yaw-=dt*1.6;manualCamera();}
+  if(keys.has('ArrowRight')||keys.has('KeyE')){CAM.yaw+=dt*1.6;manualCamera();}
   if(keys.has('ArrowDown'))CAM.lift-=dt*.55;
   if(keys.has('ArrowUp'))CAM.lift+=dt*.55;
   clampCam();
@@ -1357,7 +1390,7 @@ function update(dt){
     const sitClip=runningAction.getClip();
     if(sitClip && runningAction.time>=sitClip.duration-1/30)playClip('Sentado');
   }
-  if(seated && (wish>.01 || moverTarget))standUp();
+  if(seated && (wish>.01 || moverTarget) && !standUp())return;
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
     const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
@@ -1382,6 +1415,13 @@ function update(dt){
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
     faceTravel(dx,dz,dt);
+    cameraFollowTarget=Math.atan2(dx,dz);
+    // O rumo do avatar guia a câmera quando caminha para a frente.
+    // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
+    if(autoCameraEnabled && performance.now()>cameraManualUntil &&
+       (fw>.15 || (moverTarget&&!(keyFw||keySide))) && !seated){
+      CAM.yaw=followAngle(CAM.yaw,Math.atan2(dx,dz),dt,2.0);
+    }
     if(!attackPlaying){
       if(moved){
         playClip('Correr');
@@ -1389,6 +1429,12 @@ function update(dt){
       }else if(currentClip.toLowerCase().includes('correr'))playClip('Parado');
     }
   }else if(!seated && !attackPlaying&&currentClip.toLowerCase().includes('correr'))playClip('Parado');
+  // No movimento puramente lateral, espera soltar o controle antes de girar
+  // atrás do personagem: evita transformar A/D em uma órbita infinita.
+  if(wish<=.01 && autoCameraEnabled && !seated && cameraFollowTarget!==null &&
+     performance.now()>cameraManualUntil){
+    CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
+  }
   playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
@@ -1542,6 +1588,26 @@ $('run').addEventListener('click',()=>{attackPlaying=false;playClip('Correr');})
 $('atk').addEventListener('click',attack);
 $('dance').addEventListener('click',()=>{attackPlaying=false;playClip('Acenar',true);});
 if($('sit'))$('sit').addEventListener('click',()=>{attackPlaying=false;tryPose();});
+function setVisualMode(mode){
+  visualMode=mode==='cinematic'?'cinematic':'classic';
+  renderer.toneMapping=visualMode==='cinematic'?THREE.ACESFilmicToneMapping:THREE.NoToneMapping;
+  scene.fog.density=visualMode==='cinematic'?.0062:.0042;
+  $('visualmode').value=visualMode;
+  setPref('topweb_visual_mode',visualMode);
+}
+$('autocamera').checked=autoCameraEnabled;
+$('autocamera').addEventListener('change',e=>{
+  autoCameraEnabled=e.target.checked;
+  setPref('topweb_auto_camera',autoCameraEnabled?'1':'0');
+});
+$('seatdirection').value=seatFacingReversed?'reverse':'original';
+$('seatdirection').addEventListener('change',e=>{
+  seatFacingReversed=e.target.value==='reverse';
+  setPref('topweb_seat_reverse',seatFacingReversed?'1':'0');
+  toast('Orientação de banco aplicada à próxima interação.');
+});
+setVisualMode(visualMode);
+$('visualmode').addEventListener('change',e=>setVisualMode(e.target.value));
 function syncBrightness(v){
   const n=brightness.apply(v);
   const input=$('brightness'); if(input) input.value=String(n);
@@ -1624,7 +1690,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
   if(drag&&e.pointerId===drag.id&&(drag.touch||(e.buttons&2)!==0)){
     const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
     drag.x=e.clientX;drag.y=e.clientY;
-    CAM.yaw-=dx*0.008;CAM.lift+=dy*0.0035;clampCam();
+    CAM.yaw-=dx*0.008;CAM.lift+=dy*0.0035;manualCamera();clampCam();
     applyCursor(renderer.domElement,'look');
     return;
   }
@@ -1647,7 +1713,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(!pt)return;
   const mark=poseHere(pt.x,pt.z);
   if(mark&&poseHere(playerPos.x,playerPos.z)===mark){
-    moverTarget=null;pendingPose=null;waypoint.hide();sitDown(mark);return;
+    moverTarget=null;pendingPose=null;waypoint.hide();if(seated)standUp();else sitDown(mark);return;
   }
   if(mark){orderMove(pt.x,pt.z,mark);return;}
   if(walkable(pt.x,pt.z))orderMove(pt.x,pt.z,null);
