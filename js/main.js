@@ -6,6 +6,7 @@ import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=1';
 import { initRpgHud } from './rpg-hud.mjs';
+import { calculateMovementSpeed } from './movement-speed.mjs';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
@@ -1397,8 +1398,13 @@ function update(dt){
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
     const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
-    const analogStrength=(keyFw||keySide)?1:Math.max(0.35,Math.min(1,Math.hypot(touchMove.sideways,touchMove.forward)));
-    const speed=(running?7.2:4.8)*analogStrength;
+    const speed=calculateMovementSpeed({
+      running,
+      digital:!!(keyFw||keySide),
+      destination:!!moverTarget,
+      analogX:touchMove.sideways,
+      analogY:touchMove.forward
+    });
     const travel=speed*dt;
     const sub=Math.max(1,Math.ceil(travel/.2));
     const sx=dx*travel/sub,sz=dz*travel/sub;
