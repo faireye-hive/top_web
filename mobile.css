@@ -1,0 +1,18 @@
+canvas#game{touch-action:none}.mobilecontrols{display:none!important}
+body.mobile-ui .mobilecontrols{display:block!important;position:fixed;inset:0;z-index:35;pointer-events:none;user-select:none;-webkit-user-select:none}
+body.mobile-ui .mobilecontrols button,body.mobile-ui .mobile-joystick{pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+body.mobile-ui .bottom,body.mobile-ui .foothelp,body.mobile-ui .notice,body.mobile-ui .side{display:none}
+body.mobile-ui.mobile-settings-open .side{display:block;position:fixed;left:10px;top:112px;bottom:auto;width:min(300px,calc(100vw - 20px));max-height:min(62dvh,480px);overflow:auto;touch-action:pan-y;z-index:45;pointer-events:auto}
+body.mobile-ui .brand{top:9px;left:10px}body.mobile-ui .brand .sub{display:none}
+body.mobile-ui .minimapbox{top:10px;right:10px;width:125px;padding:8px}body.mobile-ui .mapcanvas{height:96px}body.mobile-ui .minimapbox .small{display:none}
+body.mobile-ui .mobile-settings{position:absolute;top:65px;left:10px;padding:9px 12px;border-radius:12px;background:rgba(9,39,50,.87);color:#e6fff8;font-size:13px}
+body.mobile-ui .mobile-joystick{position:absolute;left:max(16px,env(safe-area-inset-left));bottom:calc(20px + env(safe-area-inset-bottom));width:134px;display:grid;justify-items:center;gap:4px}
+body.mobile-ui .mobile-joystick-ring{width:122px;height:122px;border-radius:50%;border:2px solid rgba(185,238,234,.52);background:rgba(12,43,52,.44);box-shadow:inset 0 0 20px #06151a66;display:grid;place-items:center}
+body.mobile-ui .mobile-knob{width:54px;height:54px;border-radius:50%;background:rgba(102,225,212,.78);border:2px solid #d3fff5;box-shadow:0 5px 15px #001a1e88;will-change:transform}
+body.mobile-ui .mobile-caption{font-size:11px;color:#e2fcf5;text-shadow:0 1px 4px #000}
+body.mobile-ui .mobile-actions{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));display:grid;grid-template-columns:66px 66px;gap:8px;align-items:end}
+body.mobile-ui .mobile-actions button{width:66px;min-height:55px;padding:5px;border-radius:16px;border:1px solid #abeee0a6;background:rgba(8,42,54,.78);color:#f4fffe;font-size:22px;font-weight:800}
+body.mobile-ui .mobile-actions button small{display:block;font-size:10px;font-weight:600}
+body.mobile-ui #mobile-attack{min-height:75px;background:rgba(114,67,44,.86)}body.mobile-ui #mobile-run.active{background:rgba(13,113,93,.95);border-color:#8effda}
+body.mobile-ui .mobile-zoom{grid-column:1/3;display:flex;gap:8px;justify-content:flex-end}body.mobile-ui .mobile-zoom button{min-height:38px;height:38px}
+@media(max-height:480px){body.mobile-ui .mobile-joystick{bottom:9px}body.mobile-ui .mobile-joystick-ring{width:98px;height:98px}body.mobile-ui .mobile-actions{bottom:9px;gap:5px}body.mobile-ui .mobile-actions button{min-height:42px}body.mobile-ui #mobile-attack{min-height:54px}body.mobile-ui .mobile-zoom button{min-height:32px;height:32px}body.mobile-ui .minimapbox{width:108px}body.mobile-ui .mapcanvas{height:78px}}
