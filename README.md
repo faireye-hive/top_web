@@ -1,1 +1,68 @@
-# top_web
+# TOP Web 0.4 — Garner, personagens e cenário compartilhado
+
+## O que mudou em relação à versão 0.3
+
+A versão 0.3 tinha somente **506 instâncias** de cenário, num raio fixo de 40 metros em Argent City. Agora, `assets/modelos_cenario.glb` é uma **biblioteca compartilhada** de modelos `.lmo` convertidos e texturizados. Os posicionamentos históricos continuam em `assets/objects.json`; o navegador usa `THREE.InstancedMesh` para distribuir e exibir os modelos até uma distância configurável do jogador. Assim não criamos um arquivo 3D gigante para cada casa repetida.
+
+Na versão inicial leve, a área de **1024×1024 tiles** (origem 1728,2240) foi pré-convertida com os arquivos fornecidos: **7.560 instâncias estáticas**, **169 modelos**, **200 texturas recuperadas**, **523 registros não estáticos mantidos no JSON** e um GLB de biblioteca de aproximadamente 15 MB. A interface usa um controle **Distância de objetos (40–350 m)**. Se o mundo ficar pesado, diminua essa distância.
+
+A câmera é a clássica do cliente: alta, entre cerca de 53° e 67°, distância de 4,5 m a 22 m. O botão direito (ou o arrasto no toque), **Q**/**E** e as setas giram e inclinam; a roda aproxima. **W** anda para onde a câmera olha e **D** anda para a direita da tela. O Lance usa a frente medida do GLB (a cara histórica +Y, já convertida para −Z) e vira o corpo para o passo, sem a barra de compensação de 180°.
+
+## Rodar imediatamente
+
+Dentro desta pasta:
+
+```bash
+python3 -m http.server 8000
+```
+
+Abra http://localhost:8000. A página utiliza Three.js do CDN e precisa de internet para carregar a biblioteca; o conteúdo 3D fica todo local.
+
+## Gerar a área completa de Garner com seus arquivos originais
+
+Instale os requisitos em seu Python (de preferência em ambiente virtual):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install numpy pillow
+```
+
+É necessário `g++` (normalmente instalado junto com `build-essential` no Ubuntu). Não precisa do cliente C++ inteiro: os arquivos `tools/cpp` do parser estão incluídos.
+
+Com os ZIPs originais de cada etapa (`garner.zip`, `terraininfo.zip`, `scene.zip`), execute:
+
+```bash
+python3 montar_mundo.py \
+  --mapa /caminho/garner.zip \
+  --modelos /caminho/terraininfo.zip \
+  --texturas /caminho/scene.zip \
+  --completo
+```
+
+O comando sobrescreve `assets/region.gmap.gz`, `assets/objects.json`, `assets/objects_catalog.json` e `assets/modelos_cenario.glb` com os dados de **Garner inteiro: 4096 × 4096**. Também gera `assets/montagem_relatorio.json` com a lista de ausências. O navegador precisa descompactar cerca de **117 MiB de dados do terreno** ao usar Garner completo. Para computadores mais lentos e celulares, prefira um recorte menor.
+
+Para refazer só Argent City com todas as instâncias estáticas do recorte (modo incluído no pacote):
+
+```bash
+python3 montar_mundo.py \
+  --mapa /caminho/garner.zip \
+  --modelos /caminho/terraininfo.zip \
+  --texturas /caminho/scene.zip \
+  --ox 1728 --oz 2240 --tamanho 1024
+```
+
+Você também pode usar diretamente um `.map` + `.obj` separados, uma pasta com os `.lmo` no argumento `--modelos` e uma pasta de texturas no argumento `--texturas`. A tabela de modelos é extraída de `referencias/sceneobjinfo.txt`. Para outros mapas, será necessário o par `.map` e `.obj`, os modelos correspondentes e a tabela de referência apropriada; o atlas de terreno também poderá precisar de outras texturas.
+
+## O que ainda NÃO está 100% migrado
+
+- Efeitos e entidades de `garner.obj` com tipo diferente de 0 (inclusive algumas animações e objetos especiais).
+- Animações próprias dos modelos `.lmo` (por enquanto são malhas estáticas).
+- Texturas secundárias, transições alpha e luzes históricas do terreno.
+- Alguns recursos do mapa fora das tabelas de objetos, além de NPCs, monstros, teleporte e skills.
+- Colisão detalhada de cada construção (o protótipo usa o mapa de bloqueio original).
+- Este pacote INTEIRO já contém o mapa 4096×4096. O pacote LEVE usa um recorte de 1024×1024 tiles.
+
+**Este pacote INTEIRO já traz os 4096×4096 tiles e 46.980 instâncias estáticas, com 305 malhas e 393 texturas (GLB de 30,56 MB).**
+
+O arquivo `assets/montagem_relatorio.json` mostra os modelos/texturas ausentes ou com problemas; não confunda o número de registros `.obj` com modelos 3D realmente reproduzidos. Esta versão foi validada estruturalmente, mas a aparência final de todos os objetos e o FPS devem ser confirmados no seu navegador.
