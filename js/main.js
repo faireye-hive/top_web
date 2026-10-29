@@ -1668,7 +1668,7 @@ function orderMove(x,z,pose){
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
   if(typing||rpgHud?.isOpen())return;
-  if(['Digit1','Digit2','Digit3'].includes(e.code)){
+  if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
     return;
