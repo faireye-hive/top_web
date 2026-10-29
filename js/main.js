@@ -5,6 +5,7 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=1';
+import { initRpgHud } from './rpg-hud.mjs';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
@@ -54,6 +55,7 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
+let rpgHud=null;
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -1317,6 +1319,7 @@ async function boot(){
     avatar.position.copy(playerPos);
     avatar.rotation.y=0;
     animations=gltf.animations;
+    rpgHud?.setClips(animations);
     if(animations.length){
       mixer=new THREE.AnimationMixer(avatar);
       mixer.addEventListener('finished',()=>{
@@ -1567,6 +1570,24 @@ window.__selfTestControls=async function(){
   attackPlaying=false;playClip('Parado');placeCamera();updateChunks();
   return results;
 };
+rpgHud=initRpgHud({
+  onOpen:()=>{
+    keys.clear();touchMove.forward=0;touchMove.sideways=0;
+    moverTarget=null;pendingPose=null;waypoint.hide();
+    document.dispatchEvent(new Event('topweb:menu-open'));
+    if(!seated){attackPlaying=false;playClip('Parado');}
+  },
+  onPlayClip:clip=>{
+    if(seated){toast('Levante antes de executar uma skill.');return false;}
+    if(attackPlaying)return false;
+    const played=playClip(clip,true);
+    if(played)attackPlaying=true;
+    else toast('A animação não está disponível no personagem atual.');
+    return played;
+  },
+  onMessage:toast
+});
+rpgHud.setStats({name:'Lance'});
 $('colormode').addEventListener('change',e=>{colorMode=e.target.value;landMat.map=colorMode==='textured'?terrainAtlas:null;landMat.needsUpdate=true;clearChunks();updateChunks();generateMinimap();drawMinimap();});
 $('water').addEventListener('change',e=>{showWater=e.target.checked;for(const c of chunkMap.values())if(c.water)c.water.visible=showWater;});
 $('wire').addEventListener('change',e=>{wireframe=e.target.checked;landMat.wireframe=wireframe;});
@@ -1646,7 +1667,12 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing)return;
+  if(typing||rpgHud?.isOpen())return;
+  if(['Digit1','Digit2','Digit3'].includes(e.code)){
+    e.preventDefault();
+    if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
+    return;
+  }
   if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
   if(e.repeat&&(e.code==='Space'||e.code==='Insert'))return;
   if(e.code==='Insert'){e.preventDefault();tryPose();return;}
