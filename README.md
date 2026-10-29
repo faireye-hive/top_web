@@ -1,3 +1,18 @@
+# TOP Web 0.10 — Velocidade unificada e preparação dos NPCs de Argent City
+
+**Movimento por clique = mesma velocidade dos controles**: o clique utiliza
+caminhada de 4,8 unidades/s, ou 7,2 em modo corrida. O joystick continua com
+intensidade analógica. Há testes de regressão em
+`tests/movement-speed.test.mjs`.
+
+**NPCs históricos:** adicionados loader opcional, manifesto em
+`assets/npcs/manifest.json`, scripts de conversão e pasta separada para GLBs.
+A pasta ainda está sem modelos reais porque os LGOs/LABs dos NPCs não
+estavam nos arquivos recebidos. Consulte [a lista exata dos arquivos e como
+gerar os NPCs](docs/NPCS_ARGENT.md).
+
+---
+
 # TOP Web 0.9 — HUD fantasia mobile em código
 
 A versão 0.9 substitui visualmente os controles antigos do celular por
