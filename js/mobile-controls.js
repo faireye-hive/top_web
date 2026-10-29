@@ -20,5 +20,6 @@ export function initMobileControls({onMove,onRun,onAttack,onInteract,onZoom}){
  const close=()=>{document.body.classList.remove('mobile-settings-open');settings?.setAttribute('aria-expanded','false')};
  settings?.addEventListener('click',()=>{const open=document.body.classList.toggle('mobile-settings-open');settings.setAttribute('aria-expanded',String(open))});
  const clear=()=>{reset();if(running){running=false;run?.classList.remove('active');run?.setAttribute('aria-pressed','false');onRun(false)}close()};
+ document.addEventListener('topweb:menu-open',clear);
  window.addEventListener('blur',clear);document.addEventListener('visibilitychange',()=>{if(document.hidden)clear()});
 }
