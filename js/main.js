@@ -30,6 +30,7 @@ const getPref=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}ca
 const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
 let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
 let cameraManualUntil=0;
+let cameraFollowTarget=null;
 let seatFacingReversed=getPref('topweb_seat_reverse','1')!=='0';
 let visualMode=getPref('topweb_visual_mode','classic');
 function manualCamera(){cameraManualUntil=performance.now()+2500}
@@ -1412,6 +1413,7 @@ function update(dt){
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
     faceTravel(dx,dz,dt);
+    cameraFollowTarget=Math.atan2(dx,dz);
     // O rumo do avatar guia a câmera quando caminha para a frente.
     // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
     if(autoCameraEnabled && performance.now()>cameraManualUntil &&
@@ -1425,6 +1427,12 @@ function update(dt){
       }else if(currentClip.toLowerCase().includes('correr'))playClip('Parado');
     }
   }else if(!seated && !attackPlaying&&currentClip.toLowerCase().includes('correr'))playClip('Parado');
+  // No movimento puramente lateral, espera soltar o controle antes de girar
+  // atrás do personagem: evita transformar A/D em uma órbita infinita.
+  if(wish<=.01 && autoCameraEnabled && !seated && cameraFollowTarget!==null &&
+     performance.now()>cameraManualUntil){
+    CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
+  }
   playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
