@@ -41,8 +41,8 @@ python3 scripts/build_argent_npcs.py \
 ```
 
 Isso usa o conversor existente `Lance/criar_personagens.py` com as animações
-`1-3` (principalmente repouso/pose), buscando os NPCs em um raio inicial de
-140 m do centro de Argent e gravando:
+`1-3` (principalmente repouso/pose), escolhendo inicialmente **cinco modelos**
+e seus registros em um raio de 140 m do centro de Argent (até 20 NPCs), e gravando:
 
 ```text
 assets/npcs/
@@ -59,8 +59,9 @@ Se `garnernpc.txt` não estiver disponível, os GLBs de IDs 11,13,17,18,20
 serão gerados mas **nenhum personagem será posicionado no mapa**. Informe o
 arquivo via `--npc-table /caminho/garnernpc.txt`.
 
-Para testar todos os NPCs históricos na região, execute sem `--ids` e com
-`garnernpc.txt`. O script converte os IDs encontrados dentro do raio.
+Para converter **todos os tipos de NPC** existentes no raio, use a opção
+`--all-city` junto do `garnernpc.txt`. O padrão limita a cinco tipos para
+reduzir o tamanho do download no celular.
 Modelos e texturas só são carregados no Three.js quando os NPCs estão
 próximos; o limite atual é 20 entidades em um raio de 70 m.
 
