@@ -1,3 +1,20 @@
+# TOP Web 0.11 — NPCs originais de Argent City
+
+Os dados históricos de 14 NPCs (cinco modelos originais: IDs 11, 13, 17,
+18 e 20) já estão em `assets/npcs/manifest.json`. O conversor em
+`Lance/converter.py` agora entende LAB `keyType=1/2/3`.
+
+**Atenção:** a entrega dos GLBs é feita no ZIP
+`TOP_Web_NPCs_Argent_5_GLBS.zip`, disponibilizado na conversa.
+**Antes do merge, copie os cinco arquivos `.glb` desse ZIP** para
+`assets/npcs/models/` e execute
+`python3 scripts/verify_npc_assets.py`. Sem os binários, os NPCs do
+manifesto não conseguem aparecer no navegador.
+
+Veja [instruções de instalação e validação](docs/NPCS_ARGENT.md).
+
+---
+
 # TOP Web 0.10 — Velocidade unificada e preparação dos NPCs de Argent City
 
 **Movimento por clique = mesma velocidade dos controles**: o clique utiliza
