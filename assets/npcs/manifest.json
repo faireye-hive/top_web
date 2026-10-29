@@ -110,7 +110,7 @@
       "model": "models/npc_0011.glb"
     },
     {
-      "serial": null,
+      "serial": 52,
       "name": "Arena Administrator",
       "characterId": 11,
       "x": 2210.82,
@@ -120,7 +120,7 @@
       "model": "models/npc_0011.glb"
     },
     {
-      "serial": null,
+      "serial": 122,
       "name": "Island Teleporter - Silvius",
       "characterId": 11,
       "x": 2248.68,
@@ -130,7 +130,7 @@
       "model": "models/npc_0011.glb"
     },
     {
-      "serial": null,
+      "serial": 138,
       "name": "Redemption - Bingo",
       "characterId": 11,
       "x": 2231.45,
@@ -140,7 +140,7 @@
       "model": "models/npc_0011.glb"
     },
     {
-      "serial": null,
+      "serial": 143,
       "name": "Mysterious Granny",
       "characterId": 18,
       "x": 2158,
