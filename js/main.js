@@ -7,6 +7,7 @@ import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=1';
 import { initRpgHud } from './rpg-hud.mjs';
 import { calculateMovementSpeed } from './movement-speed.mjs';
+import { createNpcManager } from './npc-manager.mjs';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
@@ -56,7 +57,7 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
-let rpgHud=null;
+let rpgHud=null, npcManager=null;
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -425,7 +426,9 @@ function tryPose(){
   if(seated){if(standUp())toast('Em pé.');return true;}
   const mark=poseHere(playerPos.x, playerPos.z);
   if(mark){sitDown(mark);return true;}
-  toast('Chegue perto de um banco ou de uma parede. O cursor muda em cima do ponto.');
+  const npc=npcManager?.nearest(playerPos.x,playerPos.z);
+  if(npc){toast(npc.name+' · diálogo em desenvolvimento');return true;}
+  toast('Chegue perto de um banco, parede ou NPC.');
   return false;
 }
 function playClip(match,once=false){
@@ -1343,6 +1346,12 @@ async function boot(){
       $('scene3d').disabled=true;
       toast('Biblioteca de cenário ausente: use montar_mundo.py para gerar o GLB.');
     }
+    // Carrega NPCs apenas quando manifest.json tiver GLBs convertidos e posições.
+    // Sem NPCs, o módulo não cria nenhum mesh / draw call adicional.
+    try{
+      npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight});
+      if(npcManager.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
+    }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
@@ -1458,6 +1467,7 @@ function update(dt){
   tickEffects(dt);
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt);
+  if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
   if(performance.now()-hudTime>250){updateHUD();drawMinimap();hudTime=performance.now();}
   if($('toast').classList.contains('show')&&performance.now()-lastToast>4100)$('toast').classList.remove('show');
