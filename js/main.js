@@ -4,6 +4,7 @@ import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
+import { initMobileControls } from './mobile-controls.js?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -15,6 +16,8 @@ import { createArgentFountain } from './fountain.js?v=3';
 // yaw 0 olha para +Z; yaw π olha para −Z e o olho fica no +Z (o lado do rosto).
 // W anda nesse olhar. D anda na direita da tela (no yaw π, isso é +X).
 const $ = id => document.getElementById(id);
+const MOBILE_UI = window.matchMedia('(pointer: coarse), (max-width: 780px)').matches;
+document.body.classList.toggle('mobile-ui', MOBILE_UI);
 const ORIGIN = { x: 2218.5, z: 2776.5 };
 const CHUNK=64, RADIUS=3, STRIDE=7;
 const LOOK_H=1.15;
@@ -35,6 +38,8 @@ function cameraBasis(){
   return {fwd:_fwd,right:_right};
 }
 const keys=new Set();
+const touchMove={sideways:0,forward:0};
+let touchRunning=false;
 let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, objectCatalog={};
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
@@ -45,8 +50,10 @@ const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0062);
-const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,1.65));
+const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
+const maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
+let renderPixelRatio=maxPixelRatio;
+renderer.setPixelRatio(renderPixelRatio);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.12;
@@ -109,7 +116,7 @@ const objGroup=new THREE.Group();scene.add(objGroup);
 let sceneObjs3D=null;
 let modelInstances=[]; // instancing dinâmico: geometria única por modelo
 let modelGroups=new Map(), spatialGroups=new Map();
-let sceneVisibilityRadius=180, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
+let sceneVisibilityRadius=MOBILE_UI?100:180, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
 let sceneStats={loaded:0,missing:0,active:0};
 const instanceTemp=new THREE.Object3D();
 
@@ -774,7 +781,7 @@ function updateSceneInstances(force=false){
 // Efeitos de cena (.par/.eff). O yaw do tipo 1 já está em radianos.
 // RectPlane deitado: setGroundMatrix. Rect em pé (feixe): setRectMatrix.
 // O deslocamento do emissor é rotation.y = -yaw, via offsetByEffectYaw.
-const FX_CAP=1200;
+const FX_CAP=MOBILE_UI?450:1200;
 let effectCatalog=null, effectGroup=null, effectBatches=[], effectCells=new Map();
 let effectStats={active:0}, lastEffectPos=new THREE.Vector3(Infinity,Infinity,Infinity);
 const _fxObj=new THREE.Object3D(), _fxM=new THREE.Matrix4(), _fxV=new THREE.Vector3();
@@ -1243,7 +1250,7 @@ async function boot(){
       terrainAtlas.flipY=true; // PNG/JPEG possui origem superior; UVs usam origem inferior.
       terrainAtlas.magFilter=THREE.LinearFilter;
       terrainAtlas.minFilter=THREE.LinearMipmapLinearFilter;
-      terrainAtlas.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      terrainAtlas.anisotropy=Math.min(MOBILE_UI?2:8,renderer.capabilities.getMaxAnisotropy());
       landMat.map=terrainAtlas;landMat.needsUpdate=true;
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
@@ -1330,8 +1337,10 @@ function update(dt){
   if(keys.has('ArrowUp'))CAM.lift+=dt*.55;
   clampCam();
   const {fwd,right}=cameraBasis();
-  const fw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);
-  const sideways=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
+  const keyFw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);
+  const keySide=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
+  const fw=keyFw+touchMove.forward;
+  const sideways=keySide+touchMove.sideways;
   let dx=fwd.x*fw+right.x*sideways;
   let dz=fwd.z*fw+right.z*sideways;
   if(dx||dz){moverTarget=null;pendingPose=null;waypoint.hide();}
@@ -1351,8 +1360,9 @@ function update(dt){
   if(seated && (wish>.01 || moverTarget))standUp();
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
-    const running=keys.has('ShiftLeft')||keys.has('ShiftRight');
-    const speed=running?7.2:4.8;
+    const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
+    const analogStrength=(keyFw||keySide)?1:Math.max(0.35,Math.min(1,Math.hypot(touchMove.sideways,touchMove.forward)));
+    const speed=(running?7.2:4.8)*analogStrength;
     const travel=speed*dt;
     const sub=Math.max(1,Math.ceil(travel/.2));
     const sx=dx*travel/sub,sz=dz*travel/sub;
@@ -1397,11 +1407,28 @@ function update(dt){
   if(performance.now()-hudTime>250){updateHUD();drawMinimap();hudTime=performance.now();}
   if($('toast').classList.contains('show')&&performance.now()-lastToast>4100)$('toast').classList.remove('show');
 }
-function animate(){
+let qualitySampleTime=0, qualityFrameCount=0, qualityFrameMs=0, lastFrameTime=0;
+function adaptMobileResolution(time){
+  if(!MOBILE_UI||testing)return;
+  if(lastFrameTime){qualityFrameMs+=Math.min(100,time-lastFrameTime);qualityFrameCount++;}
+  lastFrameTime=time;
+  if(!qualitySampleTime)qualitySampleTime=time;
+  if(time-qualitySampleTime<4000)return;
+  if(qualityFrameCount>40){
+    const avg=qualityFrameMs/qualityFrameCount;
+    const next=avg>26?Math.max(0.65,renderPixelRatio-0.1):
+      avg<18?Math.min(maxPixelRatio,renderPixelRatio+0.05):renderPixelRatio;
+    if(Math.abs(next-renderPixelRatio)>0.02){renderPixelRatio=next;renderer.setPixelRatio(renderPixelRatio);resize();}
+  }
+  qualitySampleTime=time;qualityFrameCount=0;qualityFrameMs=0;
+}
+function animate(time=performance.now()){
   requestAnimationFrame(animate);
   const dt=Math.min(.045,clock.getDelta());
+  if(document.hidden){lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
   if(!testing)update(dt);
   renderer.render(scene,camera);
+  adaptMobileResolution(time);
 }
 window.__selfTestControls=async function(){
   const results=[];
@@ -1561,6 +1588,17 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('blur',()=>keys.clear());
+if(MOBILE_UI){
+  const visibility=$('visrange');
+  if(visibility){visibility.value=String(sceneVisibilityRadius);$('visvalue').textContent=sceneVisibilityRadius+' m';}
+  initMobileControls({
+    onMove:(sideways,forward)=>{touchMove.sideways=sideways;touchMove.forward=forward;},
+    onRun:enabled=>{touchRunning=enabled;},
+    onAttack:attack,
+    onInteract:tryPose,
+    onZoom:delta=>{CAM.dist+=delta;clampCam();}
+  });
+}
 for(const b of document.querySelectorAll('[data-key]')){
   const code=b.dataset.key;
   b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(code)});
