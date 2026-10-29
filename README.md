@@ -1,3 +1,17 @@
+# TOP Web 0.8 — HUD compacto para exploração mobile
+
+A versão 0.8 adiciona o menu único **Herói** (Status, Bolsa e Skills), três
+atalhos circulares com animações históricas e controles de teclado 1/2/3,
+sem alterar modelos ou mapas. As telas de atributos e inventário **ainda não
+possuem gameplay real**: exibem valores indisponíveis e espaços vazios.
+Os atalhos disparam clipes GLB existentes, sem dano ou efeitos novos.
+
+Veja [a documentação da interface](docs/UI_MOBILE_RPG.md). Teste a lógica com
+`node --test tests/*.test.mjs` e inicie o servidor local com
+`python3 -m http.server 8000`.
+
+---
+
 # TOP Web 0.7 — Garner + controles móveis + câmera inteligente
 
 A página principal é `index.html`, e **o JavaScript efetivamente carregado é
