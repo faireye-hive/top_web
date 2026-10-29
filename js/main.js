@@ -396,6 +396,8 @@ function teleport(x,z){
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
+  // Teleporte também deve soltar a pose; serve como saída de emergência.
+  if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
