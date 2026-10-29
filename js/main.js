@@ -7,7 +7,7 @@ import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=1';
 import { initRpgHud } from './rpg-hud.mjs';
 import { calculateMovementSpeed } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs';
+import { createNpcManager } from './npc-manager.mjs?v=3';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance } from './camera-behavior.mjs';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
