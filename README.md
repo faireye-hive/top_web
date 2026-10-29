@@ -1,3 +1,27 @@
+# TOP Web 0.7 — Garner + controles móveis + câmera inteligente
+
+A página principal é `index.html`, e **o JavaScript efetivamente carregado é
+`js/main.js`**. O `main.js` da raiz é um arquivo histórico e não deve ser
+usado como ponto de entrada para novos recursos.
+
+## Melhorias recentes
+
+- Câmera de acompanhamento automática; ao girar com Q/E ou arrasto, o
+  acompanhamento fica suspenso temporariamente.
+- Zoom próximo com ângulo reduzido, para uma visão 3D de terceira pessoa.
+- Modo **Clássico (cores vivas)** como padrão, com alternativa cinematográfica.
+- Bancos: senta no centro do marcador, guarda a posição de aproximação e
+  procura um local seguro ao levantar. Caso a orientação do marcador varie,
+  existe uma opção no painel para inverter o sentido do personagem.
+- Interface com tema náutico, mantendo desktop e controles touch da versão 0.6.
+- Testes de câmera e pose: `node --test tests/*.test.mjs`.
+- Plano de código e multiplayer: `docs/ARQUITETURA_MULTIPLAYER.md`.
+
+No momento **não existe conexão ativa com Supabase**. O jogo continua local;
+a documentação descreve a separação necessária para uma implementação segura.
+
+---
+
 # TOP Web 0.4 — Garner, personagens e cenário compartilhado
 
 ## O que mudou em relação à versão 0.3
