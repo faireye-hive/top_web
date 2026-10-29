@@ -6,7 +6,7 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
   if(!overlay||!trigger||!close||!content)return {
     isOpen:()=>false,setClips:()=>{},setStats:()=>{},setItems:()=>{},triggerSkill:()=>false
   };
-  let available=[],slots=[null,null,null],isOpen=false,lastFocused=null;
+  let available=[],slots=[null,null,null,null],isOpen=false,lastFocused=null;
   const KEY='topweb_rpg_skill_slots_v1';
   let saved=null;
   try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch{}
@@ -15,6 +15,7 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
   const tabs=[...overlay.querySelectorAll('[data-rpg-tab]')];
   const nameOf=name=>(name||'').split('·').pop().trim();
   const iconFor=name=>/ataque/i.test(name)?'⚔':/magia|skill/i.test(name)?'✦':'✧';
+  const hotbarIcons=['#ui-blade','#ui-flame','#ui-ice','#ui-vortex'];
   const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(slots))}catch{}};
   function setTab(tab){
     for(const b of tabs){
@@ -53,7 +54,9 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
       button.setAttribute('aria-label',name?`Atalho ${i+1}: ${nameOf(name)}`:`Atalho ${i+1} vazio`);
       const ic=button.querySelector('.rpg-hotbar-symbol');
       const label=button.querySelector('.rpg-hotbar-number');
-      if(ic)ic.textContent=name?iconFor(name):'+';
+      const iconUse=ic?.querySelector('use');
+      if(iconUse)iconUse.setAttribute('href',hotbarIcons[i]||hotbarIcons[0]);
+      else if(ic)ic.textContent=name?iconFor(name):'+';
       if(label)label.textContent=String(i+1);
       button.title=name?nameOf(name):'Selecione uma animação no menu Skills';
     }
@@ -73,14 +76,14 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
       const desc=document.createElement('small');desc.textContent='Animação do modelo · sem dano/efeito ainda';
       text.append(title,desc);
       const actions=document.createElement('div');actions.className='rpg-assign-actions';
-      for(let i=0;i<3;i++){
+      for(let i=0;i<4;i++){
         const b=document.createElement('button');b.type='button';b.textContent=String(i+1);
         b.title=`Usar ${nameOf(clip)} no atalho ${i+1}`;
         b.setAttribute('aria-label',b.title);
         b.classList.toggle('selected',slots[i]===clip);
         b.addEventListener('click',()=>{
           const other=slots.indexOf(clip);if(other>=0&&other!==i)slots[other]=null;
-          slots[i]=clip;slots=resolveSlots(slots,available);persist();drawSkills();drawHotbar();
+          slots[i]=clip;slots=resolveSlots(slots,available,4);persist();drawSkills();drawHotbar();
           onMessage?.(`Atalho ${i+1}: ${nameOf(clip)}`);
         });
         actions.append(b);
@@ -90,7 +93,7 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
   }
   function setClips(clips){
     available=availableSkillClips(clips);
-    slots=resolveSlots(saved,available);
+    slots=resolveSlots(saved,available,4);
     saved=slots.slice();persist();drawHotbar();drawSkills();
   }
   function triggerSkill(n){
@@ -105,6 +108,16 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
     }
     const display=$('rpg-character-name');
     if(display)display.textContent=String(stats.name||'Lance');
+    const hp=$('mobile-hp'),mp=$('mobile-mp');
+    const hpFill=$('mobile-hp-fill'),mpFill=$('mobile-mp-fill');
+    const applyBar=(label,fill,current,max)=>{
+      const valid=typeof current==='number'&&Number.isFinite(current) &&
+        typeof max==='number'&&Number.isFinite(max)&&max>0;
+      if(label)label.textContent=valid?`${statText(current)} / ${statText(max)}`:'—';
+      if(fill)fill.style.width=valid?`${Math.round(Math.max(0,Math.min(1,current/max))*100)}%`:'0%';
+    };
+    applyBar(hp,hpFill,stats.hp,stats.maxHp);
+    applyBar(mp,mpFill,stats.mp,stats.maxMp);
     const info=$('rpg-stats-pending');
     if(info)info.hidden=Object.keys(stats).some(k=>k!=='name'&&stats[k]!=null);
   }
@@ -129,6 +142,9 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
     const empty=$('rpg-inventory-empty');if(empty)empty.hidden=valid.some(Boolean);
   }
   trigger.addEventListener('click',()=>isOpen?dismiss():open());
+  for(const nav of document.querySelectorAll('[data-open-rpg]')){
+    nav.addEventListener('click',()=>open(nav.dataset.openRpg));
+  }
   close.addEventListener('click',dismiss);
   overlay.querySelector('.rpg-backdrop')?.addEventListener('click',dismiss);
   for(const tab of tabs)tab.addEventListener('click',()=>setTab(tab.dataset.rpgTab));

@@ -1,3 +1,13 @@
+# TOP Web 0.9 — HUD fantasia mobile em código
+
+A versão 0.9 substitui visualmente os controles antigos do celular por
+um HUD inspirado no RPG da imagem de referência: dourado/azul, mini mapa
+circular, joystick, botões grandes de combate e quatro skills. O jogo
+continua usando as mesmas animações e controles. Leia
+[HUD mobile 0.9](docs/HUD_FANTASIA_MOBILE_09.md).
+
+---
+
 # TOP Web 0.8 — HUD compacto para exploração mobile
 
 A versão 0.8 adiciona o menu único **Herói** (Status, Bolsa e Skills), três

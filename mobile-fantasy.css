@@ -1,0 +1,220 @@
+/* TOP Web 0.9 — HUD fantasia mobile feito 100% em HTML/CSS/SVG.
+   Design responsivo: nenhuma textura nova ou efeito WebGL adicionado. */
+body.mobile-ui{--hud-gold:#f7d58c;--hud-gold-deep:#9e6229;--hud-ink:#061f34;--hud-rim:clamp(1px,.18vw,2px)}
+body.mobile-ui .brand{display:none!important}
+body.mobile-ui .mobilecontrols{display:block!important;z-index:36}
+body.mobile-ui .mobilecontrols button{font-family:inherit}
+body.mobile-ui .mobile-top-nav{
+  position:absolute;top:10px;right:calc(149px + env(safe-area-inset-right));
+  display:flex;gap:clamp(3px,.6vw,9px);align-items:flex-start;pointer-events:auto;z-index:3}
+body.mobile-ui .mobile-nav-button{
+  border:none!important;background:none!important;display:flex;flex-direction:column;align-items:center;
+  gap:3px;padding:0;min-width:clamp(42px,6.5vw,59px);color:white;cursor:pointer;
+  font-weight:800;font-size:clamp(9px,1.1vw,12px);text-shadow:0 2px 5px #00111b,0 0 5px #000;
+}
+body.mobile-ui .mobile-nav-button svg{
+  display:block;width:clamp(39px,5.6vw,55px);height:clamp(39px,5.6vw,55px);padding:10px;
+  border-radius:50%;overflow:visible;color:#f7dfa6;
+  border:2px solid var(--hud-gold);outline:2px solid #0d2941;
+  background:radial-gradient(circle at 28% 15%,#355979,#132b44 60%,#071b2c);
+  box-shadow:0 3px 10px #000b,inset 0 2px 6px #a6d6f055;
+}
+body.mobile-ui .mobile-nav-button:not(:disabled):active svg{transform:scale(.94);filter:brightness(1.18)}
+body.mobile-ui .mobile-nav-button:disabled{opacity:.58}
+body.mobile-ui .mobile-nav-button span{white-space:nowrap}
+body.mobile-ui .mobile-settings{position:static;top:auto;left:auto;width:auto;height:auto;min-height:0;border:0;box-shadow:none;padding:0;border-radius:0;background:none;color:#fff;font-size:inherit}
+body.mobile-ui .mobile-player-card{
+  position:absolute;top:9px;left:calc(13px + env(safe-area-inset-left));
+  width:clamp(174px,29vw,272px);height:clamp(65px,9.2vw,83px);
+  border:2px solid #cda960b3;border-radius:19px 24px 24px 19px;
+  background:linear-gradient(130deg,rgba(1,24,39,.92),rgba(11,45,63,.86) 68%,rgba(18,41,60,.66));
+  box-shadow:0 5px 16px #001521b8,inset 0 1px #fff5d74c;
+  display:flex;align-items:center;gap:10px;padding:8px 10px 8px 4px;pointer-events:none;
+}
+body.mobile-ui .mobile-player-portrait{
+  position:relative;flex:0 0 auto;width:clamp(52px,7.9vw,72px);height:clamp(52px,7.9vw,72px);
+  border-radius:50%;border:3px solid #dfba6e;outline:2px solid #0c2840;
+  background:radial-gradient(circle at 30% 25%,#92c9d9,#1d4763 63%,#09253b);
+  display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 10px #03203e,0 2px 7px #0009;
+}
+body.mobile-ui .mobile-player-portrait svg{width:100%;height:100%}
+body.mobile-ui .mobile-player-data{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+body.mobile-ui .mobile-player-title{display:flex;align-items:baseline;gap:7px;justify-content:space-between;min-width:0}
+body.mobile-ui .mobile-player-title strong{font-size:clamp(12px,1.7vw,18px);font-weight:900;color:#fff5da;text-shadow:0 2px 3px #000;white-space:nowrap}
+body.mobile-ui .mobile-player-title span{font-size:clamp(8px,1.1vw,11px);color:#f4d18b;font-weight:800}
+body.mobile-ui .mobile-stat-track{
+ height:clamp(10px,1.45vw,13px);position:relative;overflow:hidden;border:1px solid #86bdc9;
+ border-radius:50px;background:linear-gradient(#092334,#234757);box-shadow:inset 0 2px 3px #0009,0 1px 3px #051421;
+}
+body.mobile-ui .mobile-stat-track i{display:block;position:absolute;inset:0 auto 0 0;width:0;transition:width .2s ease}
+body.mobile-ui .mobile-stat-track.hp i{background:linear-gradient(#ff9c7a,#f64140 60%,#c02229)}
+body.mobile-ui .mobile-stat-track.mp i{background:linear-gradient(#80f9ff,#16bdf2 60%,#0079d2)}
+body.mobile-ui .mobile-stat-track span{position:absolute;z-index:1;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;font-size:9px;font-weight:900;color:#fff7dc;text-shadow:0 1px 3px #000,0 1px 2px #000}
+body.mobile-ui .mobile-stat-track b{font-weight:900}
+body.mobile-ui .rpg-toggle{
+ top:calc(82px + env(safe-area-inset-top));left:calc(17px + env(safe-area-inset-left));right:auto;
+ width:clamp(86px,11vw,124px);min-height:37px;padding:7px 10px;border-radius:12px;
+ background:linear-gradient(135deg,#24455ae8,#081b2fe8);
+ border:1.5px solid #f0cd80;box-shadow:0 3px 10px #0007,inset 0 1px #fceab54d;
+ color:#fff4d2;font-size:12px;font-weight:900;text-shadow:0 1px 3px #000;
+}
+body.mobile-ui .rpg-toggle::before{content:'♜';color:#fbd692;margin-right:6px;font-size:17px}
+body.mobile-ui .minimapbox{
+ position:fixed;top:9px;right:calc(10px + env(safe-area-inset-right));
+ width:clamp(102px,14.8vw,139px);height:clamp(102px,14.8vw,139px);
+ padding:6px;border:2px solid #f4d491;border-radius:50%;
+ box-shadow:0 0 0 3px #0b2b43,0 7px 20px #0009,inset 0 0 7px #f8e4b588;
+ background:radial-gradient(circle,#346b84,#06253e 77%);overflow:visible;z-index:38;
+}
+body.mobile-ui .minimapbox::after{
+ content:'Garner';position:absolute;bottom:-10px;left:17%;right:17%;background:#0d2c43;
+ border:1px solid #e8c47e;border-radius:14px;font-size:10px;font-weight:900;text-align:center;
+ padding:2px;color:#fff1c9;text-shadow:0 1px 2px #000;pointer-events:none
+}
+body.mobile-ui .minimapbox .maptitle{display:none}
+body.mobile-ui .minimapbox .mapcanvas{
+ width:100%;height:100%;border-radius:50%;border:0;object-fit:cover;cursor:pointer;
+ box-shadow:inset 0 0 8px #123a54
+}
+body.mobile-ui .minimapbox .small{display:none!important}
+body.mobile-ui .mobile-joystick{
+ left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));
+ width:clamp(115px,17vw,161px);gap:0
+}
+body.mobile-ui .mobile-joystick-ring{
+ position:relative;width:clamp(110px,16vw,156px);height:clamp(110px,16vw,156px);
+ border-radius:50%;border:2px solid #59d8ff;
+ background:radial-gradient(circle at 50% 45%,#0a375b66 7%,#153c5e7d 52%,#061b31bb);
+ box-shadow:0 0 0 3px #05263b88,0 0 17px #21b5ff66,inset 0 0 23px #022139dd;display:grid;place-items:center;
+}
+body.mobile-ui .mobile-joystick-ring::after{
+ content:'';position:absolute;inset:24%;border:1px solid #c6efff4f;border-radius:50%;pointer-events:none
+}
+body.mobile-ui .joystick-directions{position:absolute;inset:0;pointer-events:none}
+body.mobile-ui .joystick-directions i{position:absolute;width:12px;height:8px;background:#acebffb3;clip-path:polygon(50% 0,100% 100%,0 100%);left:calc(50% - 6px);top:9px}
+body.mobile-ui .joystick-directions i:nth-child(2){transform:rotate(90deg);left:auto;right:8px;top:calc(50% - 4px)}
+body.mobile-ui .joystick-directions i:nth-child(3){transform:rotate(180deg);top:auto;bottom:9px}
+body.mobile-ui .joystick-directions i:nth-child(4){transform:rotate(-90deg);left:8px;top:calc(50% - 4px)}
+body.mobile-ui .mobile-knob{
+ z-index:1;width:clamp(48px,7.2vw,70px);height:clamp(48px,7.2vw,70px);
+ border:3px solid #b9f8ff;border-radius:50%;
+ background:radial-gradient(circle at 32% 26%,#6bfaff,#02b9fc 60%,#1264a5);
+ box-shadow:0 0 14px #39c7ffac,inset 0 0 15px #cfffff9c,0 3px 12px #0008;will-change:transform
+}
+body.mobile-ui .mobile-caption{display:none}
+body.mobile-ui .mobile-actions{
+ position:fixed;right:calc(13px + env(safe-area-inset-right));bottom:calc(13px + env(safe-area-inset-bottom));
+ display:block;width:245px;height:115px;z-index:37;pointer-events:none
+}
+body.mobile-ui .mobile-actions button{position:absolute;display:grid;place-items:center;align-content:center;pointer-events:auto;touch-action:manipulation;
+ border:2px solid #eac878;border-radius:50%;padding:0;line-height:1;transition:transform .09s,color .09s;
+ background:radial-gradient(circle at 33% 18%,#284e67,#09273e 67%,#061927);
+ box-shadow:0 0 0 2px #092842,0 4px 14px #000c,inset 0 2px 9px #b6e0e344}
+body.mobile-ui .mobile-actions button:active{transform:scale(.92)}
+body.mobile-ui .mobile-actions button svg{width:48%;height:48%;color:#ffe6ae}
+body.mobile-ui .mobile-actions button small{font-size:10px;font-weight:850;color:#fff2d2;line-height:1.1;text-shadow:0 1px 2px #000}
+body.mobile-ui #mobile-attack{
+ bottom:0;right:0;width:clamp(88px,12vw,120px);height:clamp(88px,12vw,120px);min-height:0;
+ border:3px solid #ffe6a0;background:radial-gradient(circle at 32% 18%,#bd8b30,#785019 55%,#39200d 91%);
+ box-shadow:0 0 0 3px #172a35,0 0 17px #f8ab2b8c,0 7px 18px #000d,inset 0 3px 15px #ffe9a288
+}
+body.mobile-ui #mobile-attack::before{content:'';position:absolute;inset:7px;border:1px solid #f6d7939f;border-radius:50%;pointer-events:none}
+body.mobile-ui #mobile-attack svg{width:52%;height:52%;filter:drop-shadow(0 2px 4px #3d270e)}
+body.mobile-ui #mobile-attack small{font-size:9px;line-height:1;margin-top:-4px}
+body.mobile-ui #mobile-interact{right:calc(clamp(88px,12vw,120px) + 13px);bottom:6px;width:54px;height:54px;min-height:0}
+body.mobile-ui #mobile-run{right:calc(clamp(88px,12vw,120px) + 75px);bottom:6px;width:54px;height:54px;min-height:0}
+body.mobile-ui #mobile-run.active{background:radial-gradient(circle at 35% 20%,#2b997b,#0b5b56);border-color:#e3c47d}
+body.mobile-ui .mobile-zoom{
+ position:fixed;top:clamp(91px,12.4vw,113px);right:calc(3px + env(safe-area-inset-right));display:flex;
+ flex-direction:column;gap:5px;width:32px;z-index:40;pointer-events:none
+}
+body.mobile-ui .mobile-zoom button{
+ position:static;pointer-events:auto;width:32px;height:32px;min-height:0;min-width:0;
+ background:linear-gradient(140deg,#28516c,#081c33);color:#fff1c9;
+ font-weight:900;font-size:21px;border:2px solid #f8d792;border-radius:50%;line-height:1
+}
+body.mobile-ui .rpg-skill-hotbar{
+ position:fixed;z-index:34;bottom:calc(141px + env(safe-area-inset-bottom));right:calc(14px + env(safe-area-inset-right));
+ display:flex;gap:clamp(4px,.7vw,9px);align-items:center;pointer-events:auto
+}
+body.mobile-ui .rpg-skill-hotbar button{
+ width:clamp(47px,7.3vw,67px);height:clamp(47px,7.3vw,67px);
+ position:relative;flex:none;border:2.5px solid #ffe0a2;border-radius:50%;padding:0;
+ background:radial-gradient(circle at 28% 18%,#69d0ff,#0c4497 40%,#071534 92%);
+ box-shadow:0 0 0 2px #092b40,0 5px 12px #000b,inset 0 0 10px #86dfff5c;
+ opacity:1;color:#fff;overflow:visible
+}
+body.mobile-ui .rpg-skill-hotbar button:nth-child(2){background:radial-gradient(circle at 28% 20%,#ffdf53,#a52417 55%,#310f1c)}
+body.mobile-ui .rpg-skill-hotbar button:nth-child(3){background:radial-gradient(circle at 28% 16%,#b8faff,#0565ce 52%,#132963)}
+body.mobile-ui .rpg-skill-hotbar button:nth-child(4){background:radial-gradient(circle at 28% 16%,#ed93ff,#8427b4 51%,#2d0d63)}
+body.mobile-ui .rpg-skill-hotbar button:disabled{opacity:.55;filter:saturate(.55)}
+body.mobile-ui .rpg-skill-hotbar button:not(:disabled):active{transform:scale(.93)}
+body.mobile-ui .rpg-hotbar-symbol{display:grid;place-items:center;width:100%;height:100%;pointer-events:none}
+body.mobile-ui .rpg-hotbar-symbol svg{width:73%;height:73%;filter:drop-shadow(0 2px 3px #0008)}
+body.mobile-ui .rpg-hotbar-number{
+ position:absolute;bottom:-4px;right:-4px;width:23px;height:23px;border:2px solid #e7c37b;border-radius:50%;
+ display:grid;place-items:center;color:#fff4ca;background:linear-gradient(#0d324f,#051527);
+ font-size:12px;line-height:1;text-shadow:0 1px 3px #000
+}
+body.mobile-ui.rpg-open .rpg-skill-hotbar,
+body.mobile-ui.rpg-open .mobilecontrols{filter:brightness(.8)}
+body.mobile-ui.mobile-settings-open .side{top:calc(112px + env(safe-area-inset-top));left:8px;z-index:60}
+@media(max-height:500px) and (orientation:landscape){
+ body.mobile-ui .mobile-player-card{top:6px;width:clamp(164px,27vw,215px);height:64px}
+ body.mobile-ui .mobile-player-portrait{width:54px;height:54px}
+ body.mobile-ui .mobile-player-title strong{font-size:13px}
+ body.mobile-ui .mobile-player-title span{font-size:9px}
+ body.mobile-ui .rpg-toggle{top:80px;min-height:31px}
+ body.mobile-ui .minimapbox{width:108px;height:108px;top:8px}
+ body.mobile-ui .mobile-top-nav{top:9px;right:calc(130px + env(safe-area-inset-right))}
+ body.mobile-ui .mobile-nav-button svg{width:40px;height:40px;padding:9px}
+ body.mobile-ui .mobile-nav-button{font-size:9px;min-width:42px}
+ body.mobile-ui .mobile-joystick{bottom:calc(9px + env(safe-area-inset-bottom))}
+ body.mobile-ui .mobile-joystick-ring{width:110px;height:110px}
+ body.mobile-ui .mobile-knob{width:50px;height:50px}
+ body.mobile-ui .rpg-skill-hotbar{bottom:calc(127px + env(safe-area-inset-bottom))}
+ body.mobile-ui .rpg-skill-hotbar button{width:48px;height:48px}
+ body.mobile-ui .mobile-actions{bottom:calc(10px + env(safe-area-inset-bottom));height:91px}
+ body.mobile-ui #mobile-attack{width:87px;height:87px}
+ body.mobile-ui #mobile-interact{right:101px;bottom:1px;width:49px;height:49px}
+ body.mobile-ui #mobile-run{right:159px;bottom:1px;width:49px;height:49px}
+ body.mobile-ui .mobile-zoom{top:78px}
+ body.mobile-ui .mobile-zoom button{width:27px;height:27px;min-height:0;font-size:17px}
+}
+@media(max-width:560px) and (orientation:portrait){
+ body.mobile-ui .mobile-player-card{top:8px;width:197px;height:70px}
+ body.mobile-ui .mobile-player-portrait{width:55px;height:55px}
+ body.mobile-ui .mobile-top-nav{top:126px;right:8px;gap:5px}
+ body.mobile-ui .mobile-nav-button{min-width:52px;font-size:9px}
+ body.mobile-ui .mobile-nav-button svg{height:41px;width:41px}
+ body.mobile-ui .rpg-toggle{top:85px;left:12px}
+ body.mobile-ui .minimapbox{top:9px;right:8px;width:110px;height:110px}
+ body.mobile-ui .mobile-zoom{top:83px;right:5px}
+ body.mobile-ui .mobile-joystick-ring{width:128px;height:128px}
+ body.mobile-ui .mobile-knob{width:58px;height:58px}
+ body.mobile-ui .rpg-skill-hotbar{bottom:calc(157px + env(safe-area-inset-bottom));right:9px;gap:5px}
+ body.mobile-ui .rpg-skill-hotbar button{width:44px;height:44px}
+ body.mobile-ui .rpg-hotbar-number{width:20px;height:20px}
+ body.mobile-ui .mobile-actions{bottom:calc(13px + env(safe-area-inset-bottom))}
+ body.mobile-ui #mobile-attack{width:90px;height:90px}
+ body.mobile-ui #mobile-interact{right:102px;width:51px;height:51px}
+ body.mobile-ui #mobile-run{right:159px;width:51px;height:51px}
+}
+@media(max-width:375px) and (orientation:portrait){
+ body.mobile-ui .mobile-top-nav{gap:1px;top:124px}
+ body.mobile-ui .mobile-nav-button{min-width:47px}
+ body.mobile-ui .mobile-player-card{width:175px}
+ body.mobile-ui .mobile-joystick-ring{width:111px;height:111px}
+ body.mobile-ui .mobile-joystick{width:116px}
+ body.mobile-ui .mobile-actions{width:210px}
+ body.mobile-ui .rpg-skill-hotbar{gap:4px}
+ body.mobile-ui .rpg-skill-hotbar button{width:40px;height:40px}
+}
+@media(max-width:680px) and (orientation:landscape){
+ body.mobile-ui .mobile-top-nav{right:119px;gap:1px}
+ body.mobile-ui .mobile-nav-button{min-width:37px;font-size:8px}
+ body.mobile-ui .mobile-nav-button svg{width:35px;height:35px}
+ body.mobile-ui .mobile-player-card{width:159px}
+ body.mobile-ui .mobile-player-title span{display:none}
+}
+@media(prefers-reduced-motion:reduce){body.mobile-ui .mobile-actions button,body.mobile-ui .mobile-stat-track i{transition:none}}

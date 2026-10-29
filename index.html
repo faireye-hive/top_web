@@ -13,11 +13,28 @@
 <link rel="stylesheet" href="./mobile.css?v=1">
 <link rel="stylesheet" href="./game-theme.css?v=1">
 <link rel="stylesheet" href="./rpg-hud.css?v=1">
+<link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div class="hud brand"><div class="logo">TOP</div><div><strong>Garner <span class="tag">WEB 0.8</span></strong><div class="sub">Tales of Pirates · Exploração local do mundo</div></div></div>
+<svg xmlns="http://www.w3.org/2000/svg" class="hud-svg-defs" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" focusable="false">
+ <defs>
+  <symbol id="ui-scroll" viewBox="0 0 32 32"><path d="M9 4h15v21H9a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4Z" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 10h9M12 15h9M12 20h7" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ui-bag" viewBox="0 0 32 32"><path d="M11 10c-2-5 0-7 5-5 5-2 7 0 5 5l5 6-2 10H8L6 16l5-6Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.3"/><path d="M11 10h10m-11 8h12" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ui-book" viewBox="0 0 32 32"><path d="M5 6c5-2 9-1 11 1 3-2 7-3 11-1v21c-5-2-8-1-11 1-3-2-6-3-11-1Z" stroke="currentColor" fill="none" stroke-width="2.4"/><path d="M16 7v21m-7-14h4m6 0h4" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ui-shop" viewBox="0 0 32 32"><path d="M6 14h20v14H6Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M4 14 7 5h18l3 9-4 3-4-3-4 3-4-3-4 3Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M13 28v-9h7v9" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="ui-menu" viewBox="0 0 32 32"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"/><rect x="19" y="3" width="10" height="10" rx="2" fill="currentColor"/><rect x="3" y="19" width="10" height="10" rx="2" fill="currentColor"/><rect x="19" y="19" width="10" height="10" rx="2" fill="currentColor"/></symbol>
+  <symbol id="ui-swords" viewBox="0 0 40 40"><path d="m5 4 19 20 7 8m4-28L16 24l-7 8" fill="none" stroke="currentColor" stroke-width="4.1" stroke-linecap="round"/><path d="m2 1 10 4-6 7Zm36 0L28 5l6 7Z" fill="currentColor"/><path d="m20 20-5 5m5-5 5 5" stroke="currentColor" stroke-width="3"/><path d="m6 28 7 7m21-7-7 7" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+  <symbol id="ui-run" viewBox="0 0 32 32"><circle cx="19" cy="6" r="3" fill="currentColor"/><path d="m15 13-5 3-6-1m11-2 5 6 7 1M15 14l-1 8-7 7m7-7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ui-talk" viewBox="0 0 32 32"><path d="M5 6h22v16H14l-7 5v-5H5Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="11" cy="14" r="1.8" fill="currentColor"/><circle cx="16" cy="14" r="1.8" fill="currentColor"/><circle cx="21" cy="14" r="1.8" fill="currentColor"/></symbol>
+  <symbol id="ui-blade" viewBox="0 0 40 40"><path d="M5 32 30 5l6-1-2 7L10 35Z" fill="#bdeaff" stroke="#f4ffff" stroke-width="2"/><path d="m15 23 9-1-7 8" stroke="#20b8ff" stroke-width="3"/><path d="m6 29 8 8" stroke="#f8e4a0" stroke-width="4"/></symbol>
+  <symbol id="ui-flame" viewBox="0 0 40 40"><path d="M20 3C26 13 33 14 32 26c-1 9-7 12-12 12S8 34 8 26c1-8 7-12 8-20 4 6 2 12 4 14 3-4 2-11 0-17Z" fill="#ff6a1c" stroke="#ffbc2c" stroke-width="2"/><path d="M20 19c2 5 6 7 5 12-1 4-8 7-11 1-2-4 3-8 6-13Z" fill="#ffed8e"/></symbol>
+  <symbol id="ui-ice" viewBox="0 0 40 40"><path d="m20 2 8 11-8 25-8-25Z" fill="#b8f6ff" stroke="#f5ffff" stroke-width="2"/><path d="m2 24 10-12 8 26ZM38 24 28 12l-8 26Z" fill="#298fff" stroke="#8ae2ff" stroke-width="1.8"/><path d="m20 2-2 23" stroke="#4bc8ff" stroke-width="2"/></symbol>
+  <symbol id="ui-vortex" viewBox="0 0 40 40"><path d="M34 10c-6-12-28-6-28 8 0 10 12 16 21 9 7-6 0-16-8-11-7 5 1 11 5 5" fill="none" stroke="#db93ff" stroke-width="5" stroke-linecap="round"/><path d="M34 10c-2 6-5 9-9 13" fill="none" stroke="#7133e9" stroke-width="3"/></symbol>
+ </defs>
+</svg>
+<div class="hud brand"><div class="logo">TOP</div><div><strong>Garner <span class="tag">WEB 0.9</span></strong><div class="sub">Tales of Pirates · Exploração local do mundo</div></div></div>
 <div class="hud side panel" id="settings">
   <div class="section">EXPLORADOR</div>
   <div class="kv"><span>Personagem</span><strong>Lance</strong></div>
@@ -59,23 +76,38 @@
 <div class="hud notice panel">Garner original: Objetos 3D carregados sob demanda em toda a área exportada. Modelos LMO convertidos para GLB. A extensão de cenário ainda é experimental.</div>
 <div class="hud toast" id="toast"></div>
 <div class="mobilecontrols" id="mobile-ui" aria-label="Controles para celular">
-  <button class="mobile-settings" id="mobile-settings" type="button" aria-label="Configurações" aria-controls="settings" aria-expanded="false">⚙</button>
+  <div class="mobile-top-nav" role="navigation" aria-label="Menus do jogo">
+   <button class="mobile-nav-button" id="mobile-missions" type="button" disabled title="Missões — em desenvolvimento"><svg aria-hidden="true"><use href="#ui-scroll"></use></svg><span>Missões</span></button>
+   <button class="mobile-nav-button" type="button" data-open-rpg="inventory"><svg aria-hidden="true"><use href="#ui-bag"></use></svg><span>Bolsa</span></button>
+   <button class="mobile-nav-button" type="button" data-open-rpg="skills"><svg aria-hidden="true"><use href="#ui-book"></use></svg><span>Skills</span></button>
+   <button class="mobile-nav-button" id="mobile-shop" type="button" disabled title="Loja — em desenvolvimento"><svg aria-hidden="true"><use href="#ui-shop"></use></svg><span>Loja</span></button>
+   <button class="mobile-nav-button mobile-settings" id="mobile-settings" type="button" aria-label="Configurações" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#ui-menu"></use></svg><span>Menu</span></button>
+  </div>
+  <div class="mobile-player-card" aria-label="Informações do personagem">
+   <div class="mobile-player-portrait"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M4 64c2-23 12-25 28-25s26 2 28 25Z" fill="#426d85"/><ellipse cx="32" cy="29" rx="17" ry="20" fill="#f4c694"/><path d="M13 29C4 13 14 4 26 7c15-11 33 3 28 19L48 17 40 9l-8 14-8-7-11 13Z" fill="#a55d27" stroke="#6c381b" stroke-width="1.5"/><path d="M18 26c4-2 8-2 12 0m5 0c4-2 8-2 12 0" fill="none" stroke="#6b321d" stroke-width="2"/><circle cx="25" cy="30" r="2" fill="#17434a"/><circle cx="40" cy="30" r="2" fill="#17434a"/><path d="M28 41q5 4 10 0" stroke="#8f4f3c" stroke-width="2" fill="none"/></svg></div>
+   <div class="mobile-player-data">
+    <div class="mobile-player-title"><strong>Lance</strong><span>Garner</span></div>
+    <div class="mobile-stat-track hp"><span>HP <b id="mobile-hp">—</b></span><i id="mobile-hp-fill"></i></div>
+    <div class="mobile-stat-track mp"><span>MP <b id="mobile-mp">—</b></span><i id="mobile-mp-fill"></i></div>
+   </div>
+  </div>
   <div class="mobile-joystick" id="mobile-joystick" aria-label="Joystick para caminhar">
-    <div class="mobile-joystick-ring" id="mobile-joystick-ring"><div class="mobile-knob" id="mobile-knob"></div></div>
-    <span class="mobile-caption">Mover · Arraste para caminhar</span>
+    <div class="mobile-joystick-ring" id="mobile-joystick-ring"><div class="joystick-directions" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="mobile-knob" id="mobile-knob"></div></div>
+
   </div>
   <div class="mobile-actions">
-    <div class="mobile-zoom"><button id="mobile-zoom-out" type="button" aria-label="Afastar câmera">−</button><button id="mobile-zoom-in" type="button" aria-label="Aproximar câmera">+</button></div>
-    <button id="mobile-interact" type="button" aria-label="Sentar ou interagir">◎<small>Interagir</small></button>
-    <button id="mobile-run" type="button" aria-label="Alternar corrida" aria-pressed="false">⇧<small>Correr</small></button>
-    <button id="mobile-attack" type="button" aria-label="Atacar">⚔<small>Atacar</small></button>
+    <div class="mobile-zoom"><button id="mobile-zoom-in" type="button" aria-label="Aproximar câmera">+</button><button id="mobile-zoom-out" type="button" aria-label="Afastar câmera">−</button></div>
+    <button id="mobile-interact" type="button" aria-label="Sentar ou interagir"><svg aria-hidden="true"><use href="#ui-talk"></use></svg><small>Interagir</small></button>
+    <button id="mobile-run" type="button" aria-label="Alternar corrida" aria-pressed="false"><svg aria-hidden="true"><use href="#ui-run"></use></svg><small>Correr</small></button>
+    <button id="mobile-attack" type="button" aria-label="Atacar"><svg aria-hidden="true"><use href="#ui-swords"></use></svg><small>Atacar</small></button>
   </div>
 </div>
 <button type="button" class="rpg-toggle" id="rpg-open" aria-haspopup="dialog" aria-controls="rpg-panel" aria-expanded="false">☷ Herói</button>
 <div class="rpg-skill-hotbar" id="rpg-hotbar" aria-label="Atalhos de skills">
- <button type="button" data-hotbar-slot="1" disabled><span class="rpg-hotbar-symbol">+</span><span class="rpg-hotbar-number">1</span></button>
- <button type="button" data-hotbar-slot="2" disabled><span class="rpg-hotbar-symbol">+</span><span class="rpg-hotbar-number">2</span></button>
- <button type="button" data-hotbar-slot="3" disabled><span class="rpg-hotbar-symbol">+</span><span class="rpg-hotbar-number">3</span></button>
+ <button type="button" data-hotbar-slot="1" disabled><span class="rpg-hotbar-symbol"><svg aria-hidden="true"><use href="#ui-blade"></use></svg></span><span class="rpg-hotbar-number">1</span></button>
+ <button type="button" data-hotbar-slot="2" disabled><span class="rpg-hotbar-symbol"><svg aria-hidden="true"><use href="#ui-flame"></use></svg></span><span class="rpg-hotbar-number">2</span></button>
+ <button type="button" data-hotbar-slot="3" disabled><span class="rpg-hotbar-symbol"><svg aria-hidden="true"><use href="#ui-ice"></use></svg></span><span class="rpg-hotbar-number">3</span></button>
+ <button type="button" data-hotbar-slot="4" disabled><span class="rpg-hotbar-symbol"><svg aria-hidden="true"><use href="#ui-vortex"></use></svg></span><span class="rpg-hotbar-number">4</span></button>
 </div>
 <div class="rpg-overlay" id="rpg-overlay" hidden>
  <div class="rpg-backdrop" aria-hidden="true"></div>
@@ -112,7 +144,7 @@
    </section>
    <section class="rpg-view" id="rpg-view-skills" role="tabpanel" data-rpg-panel="skills" hidden>
     <h3>Skills e ataques disponíveis</h3>
-    <p class="rpg-empty">Os atalhos 1, 2 e 3 executam animações existentes no GLB. Ainda não consomem MP nem causam dano.</p>
+    <p class="rpg-empty">Os atalhos 1, 2, 3 e 4 executam animações existentes no GLB. Ainda não consomem MP nem causam dano.</p>
     <div class="rpg-skill-list" id="rpg-skill-list"></div>
    </section>
   </div>
@@ -120,6 +152,6 @@
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Garner</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=20"></script>
+<script type="module" src="./js/main.js?v=21"></script>
 </body>
 </html>
