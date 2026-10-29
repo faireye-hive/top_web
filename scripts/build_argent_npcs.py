@@ -52,9 +52,10 @@ def find_npc_table(client):
 def main():
     parser = argparse.ArgumentParser(description="Gerar assets/npcs/models/*.glb e manifest.json")
     parser.add_argument("client", type=Path, help="Pasta Client histórica")
-    parser.add_argument("--ids", type=int, nargs="*", help="IDs extras ou exclusivos quando não há garnernpc.txt")
+    parser.add_argument("--ids", type=int, nargs="+", default=list(DEFAULT_IDS), help="IDs selecionados (padrão: 11 13 17 18 20)")
     parser.add_argument("--npc-table", type=Path, help="Caminho explícito de garnernpc.txt")
     parser.add_argument("--radius", type=float, default=140.0, help="Raio em metros do centro de Argent (padrão: 140)")
+    parser.add_argument("--all-city", action="store_true", help="Converter todos os tipos de NPCs encontrados no raio, não apenas os 5 iniciais")
     parser.add_argument("--out", type=Path, default=ROOT / "assets/npcs", help="Pasta de saída")
     parser.add_argument("--acoes", default="1-3", help="Animações leves para NPCs (1-3 por padrão)")
     args = parser.parse_args()
@@ -69,7 +70,7 @@ def main():
     models.mkdir(parents=True, exist_ok=True)
     npc_table = args.npc_table.expanduser().resolve() if args.npc_table else find_npc_table(client)
     entries = parse_npc_table(npc_table, args.radius) if npc_table and npc_table.is_file() else []
-    ids = sorted(set(args.ids if args.ids else (record["characterId"] for record in entries) if entries else DEFAULT_IDS))
+    ids = sorted(set((record["characterId"] for record in entries) if args.all_city and entries else args.ids))
     if not ids:
         parser.error("Nenhum NPC encontrado com esses filtros")
     print(f"NPCs para converter: {ids}; posicionamentos: {len(entries)}")
@@ -97,7 +98,7 @@ def main():
         "npcs": [
             {**entry, "model": built[str(entry["characterId"])]}
             for entry in entries if str(entry["characterId"]) in built
-        ],
+        ][:20],
     }
     out.mkdir(parents=True, exist_ok=True)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
