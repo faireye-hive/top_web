@@ -172,7 +172,9 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     get rendererMode(){return 'shared FxPlayer / PAR + EFF + strip + keyframes';},
     diagnostics(){return {mode:this.rendererMode,active:active.length,
       loaded:!!manifest,loadedResources:Object.keys(manifest?.resources||{}).length,
-      editorDraftsApplied:!!manifest&&!String(manifest.source||'').includes('editado no Skill FX Studio'),
+      editorDraftsApplied:!!manifest&&!String(manifest.source||'').includes('editado no Skill FX Studio')&&
+        Object.keys(editorEdits(manifest).res).length>0,
+      source:manifest?.source||null,
       activeSkills:active.map(r=>({id:r.skillId,time:r.elapsed,duration:r.duration,
         timelineLayers:r.timeline.tracks.length}))};}
   };
