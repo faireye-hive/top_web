@@ -59,7 +59,7 @@ function itemCallback(raw, fallback) {
   const parts=String(raw??'').split(',');
   return Number(parts[0])>0 ? callbackIndex(parts[1]) : fallback;
 }
-function resolveCallback(raw, label, clipDuration, impactTime, warnings) {
+function resolveCallback(raw, label, clipDuration, impactTime, warnings, pose=null, manualKeyframes=null) {
   const key=callbackIndex(raw);
   if(key===-1)return {time:0,verified:true,source:'SkillInfo: início de ação (-1)',label};
   if(key===-2){
@@ -69,8 +69,15 @@ function resolveCallback(raw, label, clipDuration, impactTime, warnings) {
     return {time:0,verified:false,source:'Pose ausente',label};
   }
   if(key>=0){
-    // Jamais tratar qualquer chave de movimento GLB como impacto. O valor
-    // verificado deve ser extraído da tabela de poses do personagem e arma.
+    // Índices de callback do DX9 são índices de eventos da pose, não frames GLB.
+    if(manualKeyframes && Object.hasOwn(manualKeyframes,key) &&
+      Number.isFinite(Number(manualKeyframes[key])) && Number(manualKeyframes[key])>=0)
+      return {time:precision(positive(manualKeyframes[key])),verified:true,manual:true,
+        source:'Ajuste manual do evento DX9 #'+key+' (não é tempo original)',label};
+    const poseKey=pose?.keyframes?.find(k=>k.index===key);
+    if(poseKey)return {time:precision(poseKey.time),verified:true,
+      source:poseKey.source+' · frame '+poseKey.frame+' (evento #'+key+')',label};
+    // Compatibilidade com overrides explícitos do porte OpenGL.
     if(impactTime!=null && Number.isFinite(Number(impactTime)) && Number(impactTime)>=0){
       const t=positive(impactTime);
       return {time:precision(clipDuration>0?Math.min(t,clipDuration):t),verified:true,
@@ -83,7 +90,7 @@ function resolveCallback(raw, label, clipDuration, impactTime, warnings) {
 }
 
 export function stageTimes({layers=[],resources,historical,distance=3.8,
-  flightSpeed=0,clipDuration=0,overrides=null}={}) {
+  flightSpeed=0,clipDuration=0,overrides=null,pose=null}={}) {
   const actors=layers.filter(l=>l.channel==='actor'||l.channel==='item'||l.channel==='itemExtra');
   const flight=layers.filter(l=>l.channel==='flight');
   const speed=positive(flightSpeed)||positive(flight.find(l=>positive(l.vis?.speed))?.vis?.speed)||
@@ -100,9 +107,9 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
       starts[channel]=0;known[channel]=false;continue;
     }
     const label={actor:'Personagem',item:'Item',itemExtra:'Item extra',flight:'Voo'}[channel];
-    const resolved=resolveCallback(callbacks[channel],label,clipDuration,impactTime,warnings);
+    const resolved=resolveCallback(callbacks[channel],label,clipDuration,impactTime,warnings,pose,overrides?.manualKeyframes);
     starts[channel]=resolved.time;known[channel]=resolved.verified;
-    if(resolved.verified)events.push({channel,time:resolved.time,label,source:resolved.source,kind:'callback'});
+    if(resolved.verified)events.push({channel,time:resolved.time,label,source:resolved.source,kind:resolved.manual?'edited':'callback'});
   }
   // Um instante medido de lançamento só altera o canal de voo.
   if(overrides?.verifiedRelease!=null && Number.isFinite(Number(overrides.verifiedRelease))){
@@ -120,11 +127,11 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
       source:'Distância/velocidade do voo: estimativa, não callback original',kind:'estimated'});
   }else{
     const hit=layers.some(l=>['target','ground','water'].includes(l.channel))
-      ? resolveCallback(visual.durationPoint,'Impacto sem voo',clipDuration,impactTime,warnings)
+      ? resolveCallback(visual.durationPoint,'Impacto sem voo',clipDuration,impactTime,warnings,pose,overrides?.manualKeyframes)
       : {time:0,verified:false,source:'Sem efeito de alvo'};
     for(const c of ['target','ground','water'])starts[c]=hit.time;
     if(hit.verified&&layers.some(l=>['target','ground','water'].includes(l.channel)))
-      events.push({channel:'target',time:hit.time,label:'Impacto sem voo',source:hit.source,kind:'callback'});
+      events.push({channel:'target',time:hit.time,label:'Impacto sem voo',source:hit.source,kind:hit.manual?'edited':'callback'});
   }
   if(flight.length && speed<=0)warnings.push('Projétil sem velocidade verificável: não é possível estimar chegada.');
   if(flight.length && speed>0)warnings.push('Chegada estimada por distância/velocidade (não é colisão DX9).');
@@ -132,14 +139,14 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
   if(!historical)warnings.push('SkillInfo histórico indisponível para esta skill.');
   return {release:precision(release),impact:precision(impact),flightTime:precision(flightTime),
     speed:precision(speed),starts,warnings,actors:actors.length,flight:flight.length,
-    releaseVerified:known.flight,events};
+    releaseVerified:known.flight,events,pose:pose?{actor:pose.actor,action:pose.action,source:pose.source}:null};
 }
 
 // As informações de resources precisam ser os valores EFETIVOS, inclusive edições
 // locais. O callback `resolve(layer)` entrega .par/.eff resolvido de cada camada.
 export function buildTimeline({layers=[],resolve,resolveEff,historical=null,distance=3.8,
-  flightSpeed=0,clipDuration=0,clip=null,overrides=null}={}){
-  const stage=stageTimes({layers,historical,distance,flightSpeed,clipDuration,overrides});
+  flightSpeed=0,clipDuration=0,clip=null,overrides=null,pose=null}={}){
+  const stage=stageTimes({layers,historical,distance,flightSpeed,clipDuration,overrides,pose});
   const tracks=[];let end=Math.max(0,positive(clipDuration)),continuous=0,visibleKeyCount=0;
   // Keyframes dos GLB têm timestamps explícitos (em segundos) nos AnimationTracks.
   // Mostramos a temporização real do movimento, mas NÃO afirmamos que um
@@ -155,6 +162,23 @@ export function buildTimeline({layers=[],resolve,resolveEff,historical=null,dist
     visibleKeyCount+=keys.length;
   }
 
+  // Marcadores de eventos DX9 originais, separados das curvas do GLB.
+  // Valores individuais podem ser substituídos sem modificar a tabela.
+  if(pose?.keyframes?.length){
+    const keys=pose.keyframes.map(k=>{
+      const v=overrides?.manualKeyframes?.[k.index];
+      const edited=v!==undefined && Number.isFinite(Number(v)) && Number(v)>=0;
+      return {...k,time:edited?precision(Number(v)):k.time,
+        kind:edited?'edited':'dx9',
+        source:edited?'Ajuste manual (original '+k.time.toFixed(3)+'s)':k.source};
+    });
+    tracks.push({key:'__pose',label:'Chaves DX9',file:'CharacterAction · '+pose.actor+' / ação '+pose.action,
+      channel:'pose',start:0,end:positive(pose.duration),open:false,keys,
+      timing:pose.source+' · frames '+pose.startFrame+'–'+pose.endFrame+
+        ' · índices 0..'+(keys.length-1)});
+    visibleKeyCount+=keys.length;
+    end=Math.max(end,...keys.map(k=>k.time));
+  }
   if(stage.events?.length){
     const keys=stage.events.map((e,index)=>({...e,index,time:precision(e.time)}));
     tracks.push({key:'__callbacks',label:'Callbacks históricos',file:'Eventos OpenGL / SkillInfo',
