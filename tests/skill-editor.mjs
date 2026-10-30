@@ -35,7 +35,7 @@ const RAD=180/Math.PI;
 /* ------------------------------------------------------------------ estado */
 let catalog=null,manifest=null,historical=null,store=readStore(),usage={};
 let historicalLevel=1;
-const TIMING_MODE_KEY='top-vfx-timing-mode-v5';
+const TIMING_MODE_KEY='top-vfx-timing-mode-v6'; // primeira abertura da v6 = automático
 let timingMode=localStorage.getItem(TIMING_MODE_KEY)==='manual'?'manual':'historical';
 let timelineCache=null;
 let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNames=[],lgoNames=[];
@@ -104,7 +104,17 @@ function drawTimeline(){
   }
   if(!info?.tracks.length)root.append(h('p',{class:'hint',text:'Nenhum arquivo PAR/EFF vinculado a esta skill.'}));
 }
-function updateTimeline(){invalidateTimeline();drawTimeline();preview(phase);}
+function updateTimeline(){invalidateTimeline();drawTimeline();syncAutoDuration();preview(phase);}
+function syncAutoDuration(){
+  if(timingMode!=='historical')return;
+  const control=$('global-controls')?.querySelector('[data-field="duration"]');
+  if(!control)return;
+  for(const input of control.querySelectorAll('input')){
+    const duration=playbackGlobals().duration;
+    input.value=String(duration);
+    if(input.type==='range')input.max=String(Math.max(30,Math.ceil(duration)));
+  }
+}
 
 /* ------------------------------------------------------------------- cena */
 const renderer=new THREE.WebGLRenderer({canvas:$('preview'),antialias:true,alpha:false,preserveDrawingBuffer:true});
@@ -189,6 +199,9 @@ function drawGlobals(){
           updateTimeline();});
       if(autoDuration)control.querySelectorAll('input').forEach(input=>{
         input.disabled=true;input.title='Calculada automaticamente pelos tempos DX9/GLB/PAR/EFF. Altere para Manual para editar.';});
+      control.dataset.field=name;
+      if(autoDuration){const slider=control.querySelector('input[type="range"]');
+        if(slider)slider.max=String(Math.max(30,Math.ceil(playbackGlobals().duration)));}
       root.append(control);
     }
   root.append(checkControl('Alcance (range) centralizado',g.centerRange>=.5,v=>{skillRec(store,skillId()).global.centerRange=v?1:0;persist();preview(phase);}));
