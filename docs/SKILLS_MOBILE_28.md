@@ -66,3 +66,19 @@ anterior ou desabilita a skill, sem inventar uma ação.
 **Próximo passo:** extrair as texturas usadas pelos 55 efeitos `.par/.eff`
 e portar apenas os efeitos visuais necessários com orçamento de partículas
 compatível com mobile. Não é necessária a versão C++ no navegador.
+
+## Ami — sem GLB suplementar obrigatório
+
+Ami tem 26 clipes em `assets/characters/ami.glb`, incluindo as ações
+`011`, `012`, `013`, `065` e `066`. As quatro skills escolhidas para
+Cleric e Seal Master usam `065` ou `066`, que já estão embarcadas. Para
+Voyager, Lightning Bolt, Tornado e Super Consciousness usam `066`.
+
+**Conch Ray (skill 216)** pede a ação de adaga `067` no catálogo, mas
+`CharacterAction.tx` não contém quadros dessa ação para Ami ou Phyllis.
+O jogo agora usa **a ação base original `013`**, que está presente nos
+GLBs dessas duas personagens. É uma alternativa visual intencional, não
+uma animação de adaga inventada. Outros tipos de arma não usam fallback.
+
+Portanto, **não crie nem baixe `animations/ami.glb`**: o modelo existente é
+suficiente para as quatro habilidades escolhidas das classes permitidas.
