@@ -1,0 +1,1491 @@
+{
+  "version": 1,
+  "note": "28 skill positions, 26 unique IDs; visual animations only, no historical damage, cooldown or status effects",
+  "classes": {
+    "crusader": {
+      "name": "Crusader",
+      "weapon": "duas espadas",
+      "jobId": 9,
+      "skills": [
+        {
+          "id": 81,
+          "name": "Illusion Slash",
+          "originalName": "Illusion Slash",
+          "icon": "icons/s0081.png",
+          "baseActions": [
+            14
+          ],
+          "equippedActions": [
+            176
+          ],
+          "effects": [
+            "01000014.par",
+            "swordlight02.par",
+            "01020028.par",
+            "04000009.eff"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 176,
+                "frames": [
+                  3063,
+                  3097
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 176,
+                "frames": [
+                  1568,
+                  1611
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 176,
+                "frames": [
+                  3063,
+                  3097
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 84,
+          "name": "Berseker",
+          "originalName": "Berserk",
+          "icon": "icons/s0084.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            174
+          ],
+          "effects": [
+            "spire01.par",
+            "firegush.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 174,
+                "frames": [
+                  2658,
+                  2704
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 174,
+                "frames": [
+                  1568,
+                  1624
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 174,
+                "frames": [
+                  2658,
+                  2704
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 123,
+          "name": "Steath",
+          "originalName": "Stealth",
+          "icon": "icons/s0123.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            174
+          ],
+          "effects": [
+            "hide01.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 174,
+                "frames": [
+                  2658,
+                  2704
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 174,
+                "frames": [
+                  1568,
+                  1624
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 174,
+                "frames": [
+                  2658,
+                  2704
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 86,
+          "name": "Shadow Slash",
+          "originalName": "Shadow Slash",
+          "icon": "icons/s0086.png",
+          "baseActions": [
+            41
+          ],
+          "equippedActions": [
+            203
+          ],
+          "effects": [
+            "dancef.par",
+            "swordlight02.par",
+            "dancet.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 203,
+                "frames": [
+                  2851,
+                  2911
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 203,
+                "frames": [
+                  2467,
+                  2538
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 203,
+                "frames": [
+                  2851,
+                  2911
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        }
+      ]
+    },
+    "cleric": {
+      "name": "Cleric",
+      "weapon": "cajado / magia",
+      "jobId": 13,
+      "skills": [
+        {
+          "id": 99,
+          "name": "Bolt",
+          "originalName": "Spiritual Bolt",
+          "icon": "icons/s0099.png",
+          "baseActions": [
+            11
+          ],
+          "equippedActions": [
+            65
+          ],
+          "effects": [
+            "hpushf.par",
+            "hpushf02.eff",
+            "hpushf03.eff",
+            "hpushf04.eff"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 65,
+                "frames": [
+                  2530,
+                  2579
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 65,
+                "frames": [
+                  319,
+                  370
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 65,
+                "frames": [
+                  5977,
+                  6017
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 65,
+                "frames": [
+                  1415,
+                  1449
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 97,
+          "name": "Heal",
+          "originalName": "Heal",
+          "icon": "icons/s0097.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "01020007.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 106,
+          "name": "Energy",
+          "originalName": "Energy Shield",
+          "icon": "icons/s0106.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "barrierf.par",
+            "barrieri.par",
+            "barriert.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 255,
+          "name": "Crystalline Blessing",
+          "originalName": "Crystalline Blessing",
+          "icon": "icons/s0225.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "stoneshieldi.par",
+            "stoneshieldt.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "sharpshooter": {
+      "name": "Sharpshooter",
+      "weapon": "pistola",
+      "jobId": 12,
+      "skills": [
+        {
+          "id": 94,
+          "name": "Cripple",
+          "originalName": "Cripple",
+          "icon": "icons/s0094.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            223
+          ],
+          "effects": [
+            "01000016.par",
+            "01020013.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 223,
+                "frames": [
+                  1587,
+                  1619
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 223,
+                "frames": [
+                  4193,
+                  4223
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 95,
+          "name": "Enfeeble",
+          "originalName": "Enfeeble",
+          "icon": "icons/s0095.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            223
+          ],
+          "effects": [
+            "01000016.par",
+            "01020013(b).par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 223,
+                "frames": [
+                  1587,
+                  1619
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 223,
+                "frames": [
+                  4193,
+                  4223
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 96,
+          "name": "Headshot",
+          "originalName": "Headshot",
+          "icon": "icons/s0096.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            223
+          ],
+          "effects": [
+            "01000016.par",
+            "01020013(a).par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 223,
+                "frames": [
+                  1587,
+                  1619
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 223,
+                "frames": [
+                  4193,
+                  4223
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 456,
+          "name": "Red Thunder Cannon",
+          "originalName": "Red Thunder Cannon",
+          "icon": "icons/s0456.png",
+          "baseActions": [
+            7,
+            8,
+            9
+          ],
+          "equippedActions": [
+            223,
+            224,
+            225
+          ],
+          "effects": [
+            "hamhamha.par",
+            "cowtarget.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 223,
+                "frames": [
+                  1587,
+                  1619
+                ],
+                "originallyInGLB": false
+              },
+              {
+                "id": 224,
+                "frames": [
+                  2247,
+                  2284
+                ],
+                "originallyInGLB": false
+              },
+              {
+                "id": 225,
+                "frames": [
+                  2286,
+                  2320
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 223,
+                "frames": [
+                  4193,
+                  4223
+                ],
+                "originallyInGLB": false
+              },
+              {
+                "id": 224,
+                "frames": [
+                  5827,
+                  5851
+                ],
+                "originallyInGLB": false
+              },
+              {
+                "id": 225,
+                "frames": [
+                  5852,
+                  5877
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        }
+      ]
+    },
+    "hunter": {
+      "name": "Hunter",
+      "weapon": "arco",
+      "jobId": 2,
+      "skills": [
+        {
+          "id": 90,
+          "name": "Dual Shot",
+          "originalName": "Dual Shot",
+          "icon": "icons/s0090.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            277
+          ],
+          "effects": [
+            "yfire.par",
+            "runatktarget.par",
+            "runningattack.eff",
+            "runningattack2.eff",
+            "runningattack3.eff"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 277,
+                "frames": [
+                  1747,
+                  1771
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 277,
+                "frames": [
+                  5357,
+                  5386
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 93,
+          "name": "Frozen Arrow",
+          "originalName": "Frozen Arrow",
+          "icon": "icons/s0093.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            277
+          ],
+          "effects": [
+            "icearrow.par",
+            "icearrowf.eff",
+            "icearrowf(a).eff",
+            "icearrowf.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 277,
+                "frames": [
+                  1747,
+                  1771
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 277,
+                "frames": [
+                  5357,
+                  5386
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 224,
+          "name": "Venom Arrow",
+          "originalName": "Venom Arrow",
+          "icon": "icons/s0224.png",
+          "baseActions": [
+            7
+          ],
+          "equippedActions": [
+            277
+          ],
+          "effects": [
+            "parrow.par",
+            "parrowf.eff"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 277,
+                "frames": [
+                  1747,
+                  1771
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 277,
+                "frames": [
+                  5357,
+                  5386
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 112,
+          "name": "Meteor Shower",
+          "originalName": "Meteor Shower",
+          "icon": "icons/s0112.png",
+          "baseActions": [
+            13
+          ],
+          "equippedActions": [
+            283
+          ],
+          "effects": [
+            "fallstar01.par",
+            "fallstar02.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 283,
+                "frames": [
+                  2585,
+                  2612
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [],
+            "phyllis": [
+              {
+                "id": 283,
+                "frames": [
+                  6108,
+                  6142
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        }
+      ]
+    },
+    "voyager": {
+      "name": "Voyager",
+      "weapon": "coral / magia (modo de animação ainda a validar)",
+      "jobId": 16,
+      "skills": [
+        {
+          "id": 216,
+          "name": "Conch Ray",
+          "originalName": "Conch Ray",
+          "icon": "icons/s0216.png",
+          "baseActions": [
+            13
+          ],
+          "equippedActions": [
+            67
+          ],
+          "effects": [
+            "cowfire.par",
+            "cowdust.par",
+            "cowtarget.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 67,
+                "frames": [
+                  2500,
+                  2527
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 67,
+                "frames": [
+                  2326,
+                  2352
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [],
+            "ami": []
+          }
+        },
+        {
+          "id": 214,
+          "name": "Lightning Bolt",
+          "originalName": "Lightning Bolt",
+          "icon": "icons/s0214.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "strik.par",
+            "strhurt.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 213,
+          "name": "Tornado",
+          "originalName": "Tornado",
+          "icon": "icons/s0213.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "wind.par",
+            "whurt.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 454,
+          "name": "Super consciousness",
+          "originalName": "Super Consciousness",
+          "icon": "icons/s0454.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "01030006.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "seal-master": {
+      "name": "Seal Master",
+      "weapon": "cajado / magia",
+      "jobId": 14,
+      "skills": [
+        {
+          "id": 99,
+          "name": "Spiritual Bolt",
+          "originalName": "Spiritual Bolt",
+          "icon": "icons/s0099.png",
+          "baseActions": [
+            11
+          ],
+          "equippedActions": [
+            65
+          ],
+          "effects": [
+            "hpushf.par",
+            "hpushf02.eff",
+            "hpushf03.eff",
+            "hpushf04.eff"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 65,
+                "frames": [
+                  2530,
+                  2579
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 65,
+                "frames": [
+                  319,
+                  370
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 65,
+                "frames": [
+                  5977,
+                  6017
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 65,
+                "frames": [
+                  1415,
+                  1449
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 97,
+          "name": "Heal",
+          "originalName": "Heal",
+          "icon": "icons/s0097.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "01020007.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 256,
+          "name": "Intense Magic",
+          "originalName": "Intense Magic",
+          "icon": "icons/s0225.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "mfbdb.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        },
+        {
+          "id": 105,
+          "name": "Shadow Insignia",
+          "originalName": "Shadow Insignia",
+          "icon": "icons/s0105.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            66
+          ],
+          "effects": [
+            "shadowf01.par",
+            "shadowi.par",
+            "shadow01.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 66,
+                "frames": [
+                  757,
+                  801
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "carsise": [
+              {
+                "id": 66,
+                "frames": [
+                  388,
+                  445
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 66,
+                "frames": [
+                  5267,
+                  5308
+                ],
+                "originallyInGLB": true
+              }
+            ],
+            "ami": [
+              {
+                "id": 66,
+                "frames": [
+                  977,
+                  1010
+                ],
+                "originallyInGLB": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "champion": {
+      "name": "Champion",
+      "weapon": "arma pesada de duas mãos",
+      "jobId": 8,
+      "skills": [
+        {
+          "id": 107,
+          "name": "Howl",
+          "originalName": "Howl",
+          "icon": "icons/s0107.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            120
+          ],
+          "effects": [
+            "wolf.par",
+            "01030006.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 120,
+                "frames": [
+                  1772,
+                  1826
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 243,
+          "name": "Roar",
+          "originalName": "Roar",
+          "icon": "icons/s0129.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            120
+          ],
+          "effects": [
+            "pxsf.par",
+            "cfsj.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 120,
+                "frames": [
+                  1772,
+                  1826
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 83,
+          "name": "Primal Rage",
+          "originalName": "Primal Rage",
+          "icon": "icons/s0083.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            120
+          ],
+          "effects": [
+            "foot02.par",
+            "foot.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 120,
+                "frames": [
+                  1772,
+                  1826
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        },
+        {
+          "id": 455,
+          "name": "Beast Legion Smash",
+          "originalName": "Beast Legion Smash",
+          "icon": "icons/s0455.png",
+          "baseActions": [
+            12
+          ],
+          "equippedActions": [
+            120
+          ],
+          "effects": [
+            "foot02.par",
+            "bsj.par"
+          ],
+          "actions": {
+            "lance": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "carsise": [
+              {
+                "id": 120,
+                "frames": [
+                  1772,
+                  1826
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "phyllis": [
+              {
+                "id": 120,
+                "frames": [
+                  1274,
+                  1344
+                ],
+                "originallyInGLB": false
+              }
+            ],
+            "ami": []
+          }
+        }
+      ]
+    }
+  }
+}
