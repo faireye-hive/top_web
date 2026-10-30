@@ -90,7 +90,8 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     const dist=Math.max(.15,world.distance);
     const preset=defaultSettings(skill,overrides);
     const g={...GLOBAL_DEFAULTS,
-      scale:preset.scale,opacity:preset.opacity,speed:1,
+      scale:preset.scale,opacity:preset.opacity,
+      speed:Math.max(.1,Math.min(4,Number(preset.speed)||1)),
       particles:Math.min(maxSprites,isMobile?48:150,Math.max(1,preset.particles||100)),
       height:preset.height, distance:dist,castDelay:0};
     const edits=editorEdits(manifest);
@@ -105,7 +106,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
       resolveEff:file=>resolveEff(manifest,edits,file),
       historical:source,clip,clipDuration:clip?.duration||0,
       pose,distance:dist,flightSpeed:flight>0&&dist>0?dist/flight:0});
-    const duration=skillPlaybackLimit(timeline.duration,isMobile);
+    const duration=skillPlaybackLimit(timeline.duration/g.speed,isMobile);
     const entry={player,skillId:Number(skill.id),elapsed:0,duration,
       settings:{...g,flightSpeed:flight>0&&dist>0?dist/flight:0,
         timelineMode:'historical',timelineStarts:timeline.stage.starts},
