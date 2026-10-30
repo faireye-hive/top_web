@@ -89,14 +89,14 @@ function drawTimeline(){
       if(playing)playToggle();preview(t);});
     tr.keys.slice(0,72).forEach(k=>{
       if(k.time>duration) return;
-      const title=k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
+      const title=k.kind==='callback'||k.kind==='estimated'?`${k.label} · ${k.time.toFixed(3)}s · ${k.source}`:k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
         `${tr.file} · ${k.field}, chave ${k.index+1} · ${k.time.toFixed(3)}s · posição interpolada na vida PAR`;
       const b=h('button',{type:'button',class:'time-key '+k.kind,title,'aria-label':title,
         style:`left:${Math.max(0,Math.min(100,k.time/duration*100))}%`});
-      b.addEventListener('click',e=>{e.stopPropagation();if(playing)playToggle();if(tr.key!=='__animation'){selectedKey=tr.key;redrawLayers();drawLayerPanel();drawTimeline();}preview(k.time);});
+      b.addEventListener('click',e=>{e.stopPropagation();if(playing)playToggle();if(tr.key!=='__animation'&&tr.key!=='__callbacks'){selectedKey=tr.key;redrawLayers();drawLayerPanel();drawTimeline();}preview(k.time);});
       lane.append(b);});
     row.append(label,lane);row.addEventListener('click',e=>{if(e.target.closest('button'))return;
-      if(tr.key!=='__animation'){selectedKey=tr.key;redrawLayers();drawLayerPanel();}});root.append(row);
+      if(tr.key!=='__animation'&&tr.key!=='__callbacks'){selectedKey=tr.key;redrawLayers();drawLayerPanel();}});root.append(row);
   }
   if(!info?.tracks.length)root.append(h('p',{class:'hint',text:'Nenhum arquivo PAR/EFF vinculado a esta skill.'}));
 }
@@ -517,7 +517,7 @@ function exportMerged(){
   toast('visuals.json editado exportado: substitua assets/skills/visuals.json');}
 function exportEdits(){download('vfx-edits.json',new Blob([JSON.stringify(ED.exportEdits(store),null,2)+'\n'],{type:'application/json'}));toast('Edições exportadas');}
 function exportTiming(){const t=timelineInfo();if(!t)return;const out={skill:currentSkill.id,mode:timingMode,
-  original:historicalSkill(),timeline:t,limitations:'SkillInfo keyframes sem timestamps DX9; impacto estimado por distância/velocidade visual; gráficos PAR normalizados; GLB presente apenas quando carregado.'};
+  original:historicalSkill(),timeline:t,limitations:'Callbacks -1/-2 do OpenGL identificam início/fim; callback >=0 requer impact frame da tabela de poses por personagem/arma, ainda não fornecido. Chegada do voo é estimada; curvas PAR normalizadas.'};
   download('TOP_skill_'+currentSkill.id+'_tempos.json',new Blob([JSON.stringify(out,null,2)+'\n'],{type:'application/json'}));toast('Cronologia exportada com fontes e advertências');}
 async function importFile(file){
   if(!file)return;
