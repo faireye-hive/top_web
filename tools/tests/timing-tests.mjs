@@ -21,6 +21,8 @@ const plan=buildTimeline({layers,resolve:l=>l.kind==='eff'?vis.resources[l.file]
   resolveEff:f=>vis.resources[f],historical:hist.skills['81'],distance:3.8});
 assert.ok(plan.tracks.length>0);
 assert.equal(plan.stage.release,0,'sem timestamp DX9 verificável não inventar atraso');
+assert.equal(plan.stage.releaseVerified,false,'callback 0 não é um instante verificado');
+assert.ok(plan.stage.warnings.some(w=>w.includes('frame impact')));
 assert.equal(plan.stage.impact,.2533,'impacto estimado pela velocidade visual do canal');
 assert.ok(plan.duration>=3.6);
 assert.ok(plan.visibleKeyCount>0);
@@ -31,10 +33,11 @@ assert.equal(targetTrack.start,plan.stage.impact);
 const noTimestamp={animation:{keyframe:'7'},visual:{flightKeyframe:'0'}};
 const plan2=stageTimes({layers,historical:noTimestamp,distance:3.8});
 assert.equal(plan2.release,0);
-assert.ok(plan2.warnings.some(x=>x.includes('keyframe=7')));
+assert.ok(plan2.warnings.some(x=>x.includes('callback 7')));
 const explicit=stageTimes({layers,overrides:{verifiedRelease:0.6},distance:3.8});
 assert.equal(explicit.release,.6);
 assert.equal(explicit.impact,.8533);
+assert.equal(explicit.releaseVerified,true);
 const clip={duration:2, name:'attack14', tracks:[{times:Float32Array.from([0,.1,.4,2])},{times:Float32Array.from([0,.2,1.4,2])}]};
 const withGlb=buildTimeline({layers:[],resolve:()=>null,resolveEff:()=>null,clip,clipDuration:2});
 assert.equal(withGlb.tracks[0].channel,'animation');
@@ -42,3 +45,25 @@ assert.deepEqual(withGlb.tracks[0].keys.map(k=>k.time),[0,.1,.2,.4,1.4,2]);
 const contin=parDuration({life:1,play:0,type:2});
 assert.equal(contin.open,true);
 console.log('OK: 16 grupos de verificações: EFF/PAR, canais, voo, GLB, dados incompletos, zero/fallback.');
+
+// Regras de PlayCombat.cpp: -1 início, -2 fim, 0 impacto mapeável por pose.
+const channels=['actor','item','itemExtra','flight','target','ground','water'].map(channel=>({channel}));
+const cbSkill={animation:{keyframe:'-2'},visual:{itemEffect:'218,-1',itemEffect2:'220,-2',
+  flightKeyframe:'-1',durationPoint:'-2'}};
+const atEnd=stageTimes({layers:channels,historical:cbSkill,clipDuration:1.2,flightSpeed:4,distance:4});
+assert.equal(atEnd.starts.actor,1.2,'-2 = fim de pose');
+assert.equal(atEnd.starts.item,0,'item pode ter evento -1 independente do ator');
+assert.equal(atEnd.starts.itemExtra,1.2,'item extra em -2');
+assert.equal(atEnd.starts.flight,0,'voo em -1, independentemente do corpo');
+assert.equal(atEnd.starts.target,1,'chegada = disparo + tempo de voo');
+assert.ok(atEnd.events.some(e=>e.channel==='actor'&&e.time===1.2));
+const missingPose=stageTimes({layers:channels,historical:cbSkill,clipDuration:0,flightSpeed:4,distance:4});
+assert.equal(missingPose.starts.actor,0);
+assert.ok(missingPose.warnings.some(w=>w.includes('callback -2')));
+const onImpact=stageTimes({layers:channels,historical:{animation:{keyframe:'0'},visual:{
+  itemEffect:'218,0',flightKeyframe:'0'}},clipDuration:2,flightSpeed:4,distance:4,
+  overrides:{verifiedImpactTime:.35}});
+assert.equal(onImpact.starts.actor,.35,'timestamp de impacto só quando fornecido explicitamente');
+assert.equal(onImpact.starts.flight,.35);
+assert.equal(onImpact.starts.target,1.35);
+assert.ok(onImpact.releaseVerified);
