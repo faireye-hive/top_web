@@ -1,6 +1,6 @@
 // TOP Web: referências reais de skills da seleção mobile.
 // O catálogo é gerado do skillinfo.txt e fica em assets/skills/catalog.json.
-// Não inventa dano/cooldown e não traduz .par/.eff como efeitos Three.js.
+// Regras novas ficam em skill-rules; visuais convertidos em skill-visuals.
 let catalogPromise;
 export function loadMobileSkillCatalog(){
   if(!catalogPromise)catalogPromise=fetch('assets/skills/catalog.json?v=1').then(r=>{
@@ -12,7 +12,7 @@ export function loadMobileSkillCatalog(){
   }).catch(err=>{console.info('Skills originais opcionais:',err.message);return null;});
   return catalogPromise;
 }
-export const SKILL_ANIMATION_ACTORS=['lance','carsise','phyllis'];
+export const SKILL_ANIMATION_ACTORS=['lance','carsise','phyllis','ami'];
 export function getActionId(clip){
   const m=/^\s*(\d{1,3})\s*[·\-]/.exec(clip?.name||'');
   return m?Number(m[1]):null;

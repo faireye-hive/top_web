@@ -89,7 +89,7 @@ def parse_lab(data:bytes):
     parents=[u32(data,20+i*72+68) for i in range(bones)]
     names=[]
     for i in range(bones):
-        raw=data[20+i*72:20+i*72+64].split(b'\\0',1)[0]
+        raw=data[20+i*72:20+i*72+64].split(b'\0',1)[0]
         names.append(raw.decode('latin1',errors='replace').strip() or f'osso_{i}')
     offset=20+bones*72
     inverse=np.frombuffer(data,dtype='<f4',count=bones*16,offset=offset).copy().reshape(bones,4,4)

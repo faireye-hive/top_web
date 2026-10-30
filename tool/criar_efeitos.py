@@ -156,7 +156,7 @@ def decode_eff(data):
         if uv_vertices == 4 and uv_count > 0:
             part['uv'] = [[r.vec(2) for _ in range(4)] for _ in range(uv_count)]
         elif 3 <= uv_vertices <= 128 and uv_count > 0:
-            r.skip(uv_count * uv_vertices * 8)
+            part['meshUV'] = [[r.vec(2) for _ in range(uv_vertices)] for _ in range(uv_count)]
         else:
             r.skip(uv_vertices * uv_count * 8)
         tex_count = r.u16()
@@ -167,7 +167,7 @@ def decode_eff(data):
         if uv_vertices == 4 and tex_count > 0:
             part['regions'] = [[r.vec(2) for _ in range(4)] for _ in range(tex_count)]
         elif 3 <= uv_vertices <= 128 and tex_count > 0:
-            r.skip(tex_count * uv_vertices * 8)
+            part['meshRegions'] = [[r.vec(2) for _ in range(uv_vertices)] for _ in range(tex_count)]
         else:
             r.skip(tex_count * uv_vertices * 8)
         part['model'] = r.name32()
@@ -186,14 +186,14 @@ def decode_eff(data):
         else:
             part['frames'] = []
             part['textureFrameTime'] = 0
+        part['animatedParams'] = []
         if version > 3:
             use_param = r.i32()
             if use_param < 0 or use_param > 1:
                 raise ValueError('useParam')
             if use_param:
                 for _ in range(frames):
-                    r.i32()
-                    r.vec(3)
+                    part['animatedParams'].append({'segments':r.i32(),'params':r.vec(3)})
         if version > 4:
             r.flag()
             r.vec(4)
@@ -270,13 +270,17 @@ def decode_par(data):
         if version > 5:
             sys['delay'] = r.f32()
             sys['play'] = r.f32()
+        sys['path'] = None
         if version > 8:
             if r.u8():
-                skip_path(r)
+                count=r.i32();speed=r.f32()
+                points=[r.vec(3) for _ in range(count)]
+                segments=[{'dir':r.vec(3),'distance':r.vec(3)[0]} for _ in range(max(0,count-1))]
+                sys['path']={'speed':speed,'points':points,'segments':segments}
         if version > 9:
             r.u8()
         if version > 10:
-            r.name32()
+            sys['hitEffect']=r.name32()
         if version > 11 and model_range:
             points = r.u16()
             if points > 4096:
@@ -285,16 +289,17 @@ def decode_par(data):
         if version > 12:
             sys['roadom'] = r.i32()
         if version > 13:
-            r.u8()
+            sys['modelDirection']=bool(r.u8())
         if version > 14:
-            r.u8()
+            sys['mediayEff']=bool(r.u8())
         systems.append(sys)
-    extra = ''
+    extra = '';strip_defs=[]
     if version >= 7 and r.pos + 4 <= len(data):
         strips = r.i32()
         if strips:
-            extra = f'{strips} faixas não lidas'
-    return {'version': version, 'name': name, 'length': length, 'systems': systems, 'extra': extra, 'at': r.pos, 'size': len(data)}
+            for _ in range(strips):
+                strip_defs.append({'maxLength':r.i32(),'dummyA':r.i32(),'dummyB':r.i32(),'color':r.vec(4),'life':r.f32(),'step':r.f32(),'texture':r.name32(),'src':r.i32(),'dst':r.i32()})
+    return {'version': version, 'name': name, 'length': length, 'systems': systems, 'strips':strip_defs,'extra': extra, 'at': r.pos, 'size': len(data)}
 
 
 def sample_track(values, stride, channel, t):

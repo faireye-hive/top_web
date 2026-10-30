@@ -64,5 +64,12 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     if(event.type==='hurt')play(event.monster,'Ataque 1',true,1/event.monster.attackSpeed);
     if(event.type==='respawn'||event.type==='reset')play(event.monster,'Parado');
   }
-  return {monsters,update,onEvent};
+  function pick(raycaster){
+    const candidates=monsters.filter(m=>m.object?.visible&&m.hp>0);
+    const hits=raycaster.intersectObjects(candidates.map(m=>m.object),true);
+    if(!hits.length)return null;
+    for(const m of candidates){let object=hits[0].object;while(object){if(object===m.object)return m;object=object.parent;}}
+    return null;
+  }
+  return {monsters,update,onEvent,pick};
 }

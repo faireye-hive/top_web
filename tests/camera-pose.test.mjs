@@ -21,3 +21,13 @@ test('ao levantar, usa posição anterior válida ou encontra outra próxima', (
   assert.ok(exit && exit[0]>1.5 && Math.abs(exit[1])<.8);
   assert.equal(findSafeExit({x:0,z:0},()=>false,1),null);
 });
+
+test('órbita mobile limita velocidade angular e respeita proporção da tela',async()=>{
+  const {gentleOrbit,dragOrbitDelta}=await import('../js/camera-behavior.mjs');
+  assert.ok(Math.abs(gentleOrbit(0,Math.PI,.016))<=1.1*.016);
+  assert.ok(gentleOrbit(Math.PI-.1,-Math.PI+.1,.1)>Math.PI-.1);
+  assert.equal(dragOrbitDelta(85.2,852),dragOrbitDelta(66.7,667));
+  let yaw=0;
+  for(let i=0;i<240;i++)yaw=gentleOrbit(yaw,1,1/60);
+  assert.ok(Math.abs(yaw-1)<.001);
+});

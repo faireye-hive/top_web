@@ -43,7 +43,7 @@ body.mobile-ui .toast{pointer-events:none;max-width:calc(100vw - 32px)}
  body.mobile-ui .mobile-nav-button{width:44px;min-width:44px;min-height:52px;font-size:9px}
  body.mobile-ui .mobile-nav-button svg{width:40px;height:40px;padding:9px}
  body.mobile-ui .rpg-toggle{left:var(--safe-left);top:calc(var(--safe-top) + 69px);min-width:84px;min-height:44px;padding:8px 12px;font-size:12px}
- body.mobile-ui .combat-panel{left:50%;top:calc(var(--safe-top) + 65px);transform:translateX(-50%);width:214px;max-width:calc(100vw - 240px);padding:6px 10px;border-radius:9px;font-size:11px;pointer-events:none}
+ body.mobile-ui .combat-panel{left:var(--safe-left);top:calc(var(--safe-top) + 120px);transform:none;width:184px;max-width:184px;padding:6px 10px;border-radius:9px;font-size:11px;pointer-events:none}
  body.mobile-ui .combat-panel strong{font-size:11px}
  body.mobile-ui .combat-panel small{display:none}
  body.mobile-ui .combat-health{margin:4px 0 0;height:4px}
@@ -51,6 +51,9 @@ body.mobile-ui .toast{pointer-events:none;max-width:calc(100vw - 32px)}
  body.mobile-ui .mobile-joystick-ring{width:112px;height:112px}
  body.mobile-ui .mobile-knob{width:50px;height:50px}
  body.mobile-ui .mobile-actions{right:var(--safe-right);bottom:var(--safe-bottom);width:208px;height:88px}
+ body.mobile-ui #mobile-target{position:absolute;right:90px;bottom:2px;width:46px;height:46px;border-radius:50%;padding:0;background:radial-gradient(circle at 30% 20%,#42677c,#122c40);color:#ead89e;border:2px solid #b9a16b;pointer-events:auto}
+ body.mobile-ui #mobile-target svg{width:21px;height:21px;top:37%}
+ body.mobile-ui #mobile-target small{font-size:8px;bottom:3px}
  body.mobile-ui #mobile-attack{width:82px;height:82px;right:0;bottom:0}
  body.mobile-ui #mobile-run{position:fixed;left:calc(var(--safe-left) + 124px);right:auto;bottom:var(--safe-bottom);width:48px;height:48px}
  body.mobile-ui .rpg-skill-hotbar{right:var(--safe-right);bottom:var(--safe-bottom);width:208px;height:190px;display:block;pointer-events:none}
@@ -77,15 +80,15 @@ body.mobile-ui .toast{pointer-events:none;max-width:calc(100vw - 32px)}
  body.mobile-ui .rpg-info-note{font-size:11px;padding:7px 9px;margin-top:8px}
  body.mobile-ui .rpg-assign-actions button{width:44px;height:44px}
  body.mobile-ui.mobile-settings-open .side{top:var(--safe-top);left:var(--safe-left);width:min(320px,calc(100vw - 24px));max-height:calc(100dvh - 20px)}
- body.mobile-ui .toast{left:50%;top:auto;bottom:calc(var(--safe-bottom) + 10px);transform:translateX(-50%);width:max-content;max-width:calc(100vw - 460px);font-size:11px}
+ body.mobile-ui .toast{left:calc(var(--safe-left) + 124px);top:auto;bottom:calc(var(--safe-bottom) + 58px);transform:none;width:180px;max-width:180px;padding:7px 9px;text-align:left;font-size:10px;line-height:1.3}
 }
 @media(orientation:landscape) and (max-width:700px){
  body.mobile-ui .mobile-player-card{width:165px}
  body.mobile-ui .mobile-top-nav{gap:3px;right:calc(var(--safe-right) + 100px)}
  body.mobile-ui .mobile-zoom{top:calc(var(--safe-top) + 64px)}
  body.mobile-ui .rpg-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
- body.mobile-ui .combat-panel{width:190px;max-width:calc(100vw - 400px);top:calc(var(--safe-top) + 64px)}
- body.mobile-ui .toast{max-width:calc(100vw - 300px)}
+ body.mobile-ui .combat-panel{width:165px;max-width:165px}
+ body.mobile-ui .toast{width:150px;max-width:150px}
 }
 @media(orientation:portrait){
  body.mobile-ui .orientation-hint{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center;color:#f4e9cf;background:#081923f5;font:15px/1.5 system-ui;touch-action:none}

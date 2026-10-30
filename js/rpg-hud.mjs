@@ -1,15 +1,16 @@
 import { availableSkillClips, resolveSlots, statText } from './rpg-state.mjs';
-import { classSkillEntries } from './class-skills.mjs';
+import { classSkillEntries } from './class-skills.mjs?v=3';
+import {skillWithRules} from './skill-rules.mjs';
 
 export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={}){
   const $=id=>document.getElementById(id);
   const overlay=$('rpg-overlay'),trigger=$('rpg-open'),close=$('rpg-close'),content=$('rpg-skill-list');
   if(!overlay||!trigger||!close||!content)return {
-    isOpen:()=>false,setClips:()=>{},setStats:()=>{},setItems:()=>{},triggerSkill:()=>false
+    isOpen:()=>false,setClips:()=>{},setStats:()=>{},setItems:()=>{},setCombatState:()=>{},triggerSkill:()=>false
   };
   let available=[],slots=[null,null,null,null],classSkills=null,isOpen=false,lastFocused=null;
   const KEY='topweb_rpg_skill_slots_v1';
-  let saved=null;
+  let saved=null,combatState={cooldowns:{},mp:Infinity};
   try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch{}
   const hotbar=[...document.querySelectorAll('[data-hotbar-slot]')];
   const panels=[...overlay.querySelectorAll('[data-rpg-panel]')];
@@ -47,6 +48,22 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     if(lastFocused&&lastFocused.isConnected)lastFocused.focus({preventScroll:true});
     else trigger.focus({preventScroll:true});
   }
+  function setCombatState(state){
+    combatState=state;
+    for(const button of hotbar){
+      const skill=skillWithRules(classSkills?.[Number(button.dataset.hotbarSlot)-1]);
+      if(!skill)continue;
+      const remaining=combatState.cooldowns[skill.id]||0;
+      button.disabled=!skill.available||remaining>0||combatState.mp<skill.mana;
+      button.classList.toggle('is-cooling',remaining>0);
+      let timer=button.querySelector('.skill-cooldown');
+      if(!timer){timer=document.createElement('span');timer.className='skill-cooldown';button.append(timer);}
+      const value=remaining>0?String(Math.ceil(remaining)):'';
+      if(timer.textContent!==value)timer.textContent=value;
+      timer.hidden=!value;
+      button.title=`${skill.name} · ${skill.mana} MP · ${skill.range?skill.range+' m':'em você'} · recarga ${skill.cooldown}s`;
+    }
+  }
   function drawHotbar(){
     for(const button of hotbar){
       const i=Number(button.dataset.hotbarSlot)-1;
@@ -78,12 +95,13 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
       button.title=skill?(labelText+(ready?'':' · ação de arma ausente neste GLB')):
         (name?nameOf(name):'Selecione uma animação no menu Skills');
     }
+    setCombatState(combatState);
   }
   function drawSkills(){
     content.replaceChildren();
     if(classSkills){
       const title=document.createElement('p');title.className='rpg-empty';
-      title.textContent='Quatro skills originais da classe. A ação será executada somente se existir animação compatível com a arma e o personagem.';
+      title.textContent='Toque em um monstro ou use Alvo. Aproxime-se automaticamente até o alcance da skill. Mover cancela a ação.';
       content.append(title);
       classSkills.forEach((skill,i)=>{
         const row=document.createElement('div');row.className='rpg-skill-entry';
@@ -93,12 +111,13 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
         const label=document.createElement('div');label.className='rpg-skill-entry-label';
         const name=document.createElement('strong');name.textContent=(i+1)+'. '+skill.name;
         const detail=document.createElement('small');
-        detail.textContent=skill.available?'Animação original disponível · sem efeito/dano ainda':
+        const rule=skillWithRules(skill);
+        detail.textContent=skill.available?`${rule.mana} MP · ${rule.range?rule.range+' m':'em você'} · recarga ${rule.cooldown}s`:
           'Ação de arma ainda indisponível para este personagem';
         label.append(name,detail);
         const btn=document.createElement('button');btn.type='button';
         btn.textContent=skill.available?'▶':'—';btn.disabled=!skill.available;
-        btn.title='Executar animação';btn.setAttribute('aria-label','Executar '+skill.name);
+        btn.title='Usar habilidade';btn.setAttribute('aria-label','Executar '+skill.name);
         btn.addEventListener('click',()=>triggerSkill(i+1));
         row.append(image,label,btn);content.append(row);
       });
@@ -214,5 +233,5 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     }
   });
   setItems([]);setStats({name:'Lance'});drawHotbar();setTab('stats');
-  return {isOpen:()=>isOpen,open,dismiss,setClips,setClassSkills,setStats,setItems,triggerSkill};
+  return {isOpen:()=>isOpen,open,dismiss,setClips,setClassSkills,setStats,setItems,setCombatState,triggerSkill};
 }

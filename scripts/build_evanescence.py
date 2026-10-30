@@ -23,6 +23,7 @@ SETS={
  'crusader': {'characters':[1,3], 'items':{2:768,3:807,4:808,6:775,9:775}, 'pose':3},
  'champion': {'characters':[2], 'items':{2:765,9:772}, 'pose':2},
  'sharpshooter': {'characters':[1,3], 'items':{2:779,3:809,4:810,9:783}, 'pose':4},
+ 'hunter': {'characters':[1,3], 'items':{2:779,3:809,4:810,6:6090}, 'pose':5},
  'cleric': {'characters':[3,4], 'items':{2:791,3:812,4:814,9:787}, 'pose':1},
  'seal-master': {'characters':[3,4], 'items':{2:797,3:811,4:813,9:794}, 'pose':1},
  'voyager': {'characters':[1,3,4], 'items':{2:805,3:815,4:877,9:801}, 'pose':6}
@@ -68,13 +69,16 @@ def weapon_geometry(raw,lab,slot):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('client',type=Path)
+    parser.add_argument('--classes',nargs='+',choices=list(SETS))
     args=parser.parse_args();client=args.client.expanduser().resolve()
     items=parse_table(client/'scripts/table/iteminfo.txt')
     characters=parse_table(client/'scripts/table/characterinfo.txt')
     out=ROOT/'assets/equipment';(out/'models').mkdir(parents=True,exist_ok=True)
     manifest={'version':1,'minimumLevel':1,'originalTier':55,'sets':{}}
+    if args.classes and (out/'manifest.json').exists():manifest=json.loads((out/'manifest.json').read_text())
     with tempfile.TemporaryDirectory(prefix='top-gear-') as tmp:
         for job,spec in SETS.items():
+            if args.classes and job not in args.classes:continue
             entries=[]
             for slot,item in spec['items'].items():
                 row=items[item]

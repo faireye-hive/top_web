@@ -106,6 +106,43 @@
         "phyllis": "models/phyllis-sharpshooter.glb"
       }
     },
+    "hunter": {
+      "items": [
+        {
+          "slot": 2,
+          "id": 779,
+          "name": "Coat of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 3,
+          "id": 809,
+          "name": "Gloves of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 4,
+          "id": 810,
+          "name": "Shoes of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        },
+        {
+          "slot": 6,
+          "id": 6090,
+          "name": "Bow of Evanescence",
+          "originalLevel": 55,
+          "minimumLevel": 1
+        }
+      ],
+      "pose": 5,
+      "models": {
+        "lance": "models/lance-hunter.glb",
+        "phyllis": "models/phyllis-hunter.glb"
+      }
+    },
     "cleric": {
       "items": [
         {

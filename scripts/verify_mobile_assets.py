@@ -67,8 +67,8 @@ def main():
             codes={int(a['name'].split(' · ')[0]) for a in asset['animations']}
             assert {1+record['pose']*54,5+record['pose']*54,7+record['pose']*54} <= codes
             count+=1
-    assert count==12
-    print(f'OK: 6 classes; {count} visuais Evanescence; poses de arma e nível mínimo 1.')
+    assert count==14
+    print(f'OK: 7 classes; {count} visuais Evanescence; poses de arma e nível mínimo 1.')
     print(f'OK: Argent {width}×{height}; {len(terrain):,} bytes de terreno; '
           f'{len(gltf["nodes"][0]["children"])} modelos de cenário; '
           f'3 monstros / {total:,} bytes; 4 personagens.')

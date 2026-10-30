@@ -16,3 +16,7 @@
 .rpg-skill-entry>button{flex:none;min-width:32px;min-height:34px;padding:5px;border-radius:9px}
 .rpg-skill-entry>button:disabled{opacity:.45;cursor:not-allowed}
 body.mobile-ui .rpg-hotbar-symbol .skill-original-icon{inset:12%;width:76%;height:76%}
+
+.skill-cooldown{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;background:#06111dbb;color:#fff;font:bold 18px system-ui;text-shadow:0 2px 3px #000;pointer-events:none}
+.skill-cooldown[hidden]{display:none}
+.rpg-skill-hotbar button.is-cooling{opacity:.85}

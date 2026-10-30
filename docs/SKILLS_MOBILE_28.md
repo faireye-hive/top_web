@@ -1,84 +1,105 @@
-# TOP Web 0.14 — as 28 skills escolhidas
+# Skills e combate mobile em Argent
 
-O pacote `TOP_Web_028_Skills_Originais_Assets.zip` foi produzido a partir
-de `TOP_Web_Skills_28_assets.zip` enviado pelo usuário.
+Sete classes, quatro slots fixos por classe, 28 slots e 26 habilidades únicas.
+Os ícones, poses, cores e texturas vêm do cliente antigo; os atributos,
+alcances, custos, recargas e estados são regras novas do protótipo.
 
-## O que é funcional nesta etapa
+## Controles em tela deitada
 
-- São **sete classes com quatro slots fixos** no HUD: Crusader, Cleric,
-  Sharpshooter (pistola), Hunter (arco), Voyager, Seal Master e Champion.
-- São **28 slots e 26 skills únicas** (Bolt/Heal compartilhadas).
-- **25 ícones PNG originais** aparecem na hotbar e no menu de Skills.
-- Animações de ação dos `.lab` foram extraídas sem duplicar os personagens:
-  `assets/skills/animations/lance.glb` (9 ações extras),
-  `carsise.glb` (4 ações) e `phyllis.glb` (9 ações).
-  Ami usa as ações já presentes no próprio GLB.
-- Ao trocar de classe ou personagem, os quatro botões mudam automaticamente.
-- Usa os IDs da ação de arma do catálogo, e não o rótulo `Skill 1`.
-  **Ação ausente = skill desativada**, nunca animação de arma incorreta.
-- Red Thunder Cannon pode executar a sequência 223/224/225.
-- Hunter foi adicionado à seleção e à prática de arco, preservando saves
-  antigos de personagens sem `practice.bow`.
+- O joystick mantém a orientação da câmera. Arrastar o cenário gira com
+  sensibilidade proporcional à largura da tela, suavização e limite de
+  1,1 rad/s. O acompanhamento automático anterior fica no computador.
+- Informações de combate ficam à esquerda, abaixo de Herói. Avisos breves
+  ficam junto aos controles esquerdos, liberando o centro do personagem.
+- Toque diretamente num monstro ou pressione **Alvo** para percorrer os
+  monstros visíveis por distância, até 30 m. A seleção fica marcada no chão.
+- **Auto** encontra o alvo mais próximo e ataca no alcance da arma. O mesmo
+  botão continua virando interação perto de um NPC.
+- Uma skill ofensiva usa o alvo selecionado; sem seleção, procura o visível
+  mais próximo. Se necessário, anda até o alcance e lança. Mover manualmente
+  ou abrir um menu interrompe a ação. Mana e recarga já consumidas permanecem.
+- Os atalhos mostram a recarga e ficam indisponíveis sem mana suficiente.
+  Cura e buffs funcionam no próprio personagem, sem exigir alvo.
 
-**Importante:** estes botões executam **animações reais**, mas ainda **não**
-implementam dano, consumo de mana, cooldown, estados de combate, efeitos de
-partículas históricos ou aplicação de buffs. O projeto já tem combate local
-separado; futuras skills precisam ser implementadas com regras próprias.
-Os efeitos `.par`/`.eff` foram preservados em `legacy/` para a próxima fase,
-porém o Three.js não renderiza esses formatos diretamente.
+| Classe equipada | Arma | Alcance básico |
+| --- | --- | --- |
+| Crusader | Duas espadas | 2,2 m |
+| Champion | Espada grande | 2,8 m |
+| Sharpshooter | Pistola | 18 m |
+| Hunter | Arco | 20 m |
+| Cleric / Seal Master | Cajado | 14 m |
+| Voyager | Adaga | 2,2 m |
 
-As classes Sharpshooter e Hunter receberam suas ações de arma corretas, mas
-**os modelos 3D da pistola e do arco ainda não vieram neste ZIP**; não afirmamos
-que foram equipados. Armas precisarão de seus modelos próprios.
+Sem conjunto, o ataque básico usa punhos a 2,2 m. As skills têm alcance
+próprio em `js/skill-rules.mjs`; os valores aparecem em Herói → Skills.
+A linha de visão verifica terreno e objetos; a aproximação conserva colisão.
+Somente golpes básicos válidos treinam a prática da arma.
 
-## Instalação do ZIP na branch
+## Poses e armas
 
-1. Na raiz do repositório, após `git fetch origin`:
+Os 14 visuais equipados usam roupas/armas do tier 55 liberados no nível 1,
+incluindo Lance/Phyllis Hunter com arco. A conversão prende a arma ao dummy
+da mão e remove o conteúdo após o terminador NUL dos nomes de ossos LAB.
+Esse reparo permite que as poses suplementares encontrem o esqueleto equipado.
+
+As ações extras são carregadas somente para o personagem atual:
+
+| Personagem | Ações extras | Tamanho |
+| --- | --- | --- |
+| Lance | 10 | 852.888 bytes |
+| Carsise | 1 | 90.644 bytes |
+| Phyllis | 11 | 1.057.716 bytes |
+| Ami | 3 | 392.184 bytes |
+
+Ami também precisa do suplemento: o GLB equipado possui um banco de arma
+menor que o modelo base. Conch Ray em Ami/Phyllis usa a ação base real 013,
+pois a ação de adaga 067 não tem quadros para essas personagens. Nenhuma
+skill de arco/pistola usa um golpe de arma incompatível como alternativa.
+Red Thunder Cannon encadeia 223 → 224 → 225.
+
+## Efeitos leves e limites de fidelidade
+
+`build_skill_visuals.py` lê PAR/EFF e recupera camadas, cores, escalas,
+offsets e quadros UV. O runtime usa 93 texturas PNG originais, limitadas a
+256 px, somando 2.054.258 bytes; só aquece as texturas da classe atual.
+Até oito camadas por skill e 64 elementos ativos evitam picos sem limite.
+Seis malhas originais (flechas, pé e volumes de vento) compartilham um GLB de
+23.344 bytes. Geometrias pequenas compartilhadas representam cilindros, cones e esferas.
+
+As trajetórias, distribuição de partículas, posicionamento de impactos e
+algumas malhas especiais são **aproximados**. `visuals.json` identifica três
+formas que ainda não têm reprodução exata (Cylinder, Cone e sphere02.lgo). Isto não é uma migração
+integral do renderizador OpenGL: permanecem diferenças de volume, mistura,
+tempo e densidade dos efeitos. Silêncio fica registrado nos monstros, mas
+os três monstros de treino ainda não possuem habilidades mágicas para interromper.
+
+## Reconstrução e validação
 
 ```bash
-git switch feat/skills-28-class-assets
-unzip -o TOP_Web_028_Skills_Originais_Assets.zip 'assets/skills/*'
+python3 scripts/build_evanescence.py /caminho/Client
+python3 scripts/build_skill_visuals.py /caminho/Client
+python3 scripts/verify_mobile_assets.py
 python3 scripts/verify_skill_assets.py
-node --test tests/*.test.mjs
-git add assets/skills/
-git commit -m "assets(skills): adicionar 28 skills originais e animacoes extras"
-git push origin feat/skills-28-class-assets
+node --test --test-isolation=none tests/*.test.mjs
 ```
 
-2. Verifique que foram enviados `assets/skills/catalog.json`,
-`assets/skills/icons/`, `assets/skills/animations/` e
-`assets/skills/legacy/`.
-3. Faça merge **depois** de verificar os arquivos binários na branch.
-4. No GitHub Pages, atualize a página sem cache e abra **Herói → Skills**.
-   Troque a classe na aba **Status** e verifique os quatro ícones.
+São 38 testes de regras e controles. O verificador de assets confere os
+14 GLBs equipados, quatro suplementos, referências de texturas, limites e
+compatibilidade dos nomes de todos os ossos usados pelas ações extras.
 
-O pacote tem aproximadamente 1,1 MiB comprimido e inclui os três GLBs de
-animações suplementares. Não instale os arquivos `.lab` gigantes no frontend.
+A página `tests/skill-gallery.html` usa os mesmos modelos, resolução de ações
+e renderizador de efeitos do jogo. Permite trocar classe/personagem,
+reproduzir ou escolher um instante para comparar as quatro skills juntas.
+Ela não altera o save do jogador. Use também o jogo para conferir a seleção,
+o alcance real e a recarga; a galeria não simula dano ou colisão.
 
-### Limites técnicos atuais
+## Conferência realizada nesta atualização
 
-Não houve teste visual em navegador real das ações adicionadas, especialmente
-as transições de arma e os ossos. Animações suplementares reutilizam nomes de
-ossos do próprio GLB do personagem e são carregadas somente quando necessário.
-Se um GLB/ícone suplementar não estiver publicado, o módulo mantém o HUD
-anterior ou desabilita a skill, sem inventar uma ação.
-
-**Próximo passo:** extrair as texturas usadas pelos 55 efeitos `.par/.eff`
-e portar apenas os efeitos visuais necessários com orçamento de partículas
-compatível com mobile. Não é necessária a versão C++ no navegador.
-
-## Ami — sem GLB suplementar obrigatório
-
-Ami tem 26 clipes em `assets/characters/ami.glb`, incluindo as ações
-`011`, `012`, `013`, `065` e `066`. As quatro skills escolhidas para
-Cleric e Seal Master usam `065` ou `066`, que já estão embarcadas. Para
-Voyager, Lightning Bolt, Tornado e Super Consciousness usam `066`.
-
-**Conch Ray (skill 216)** pede a ação de adaga `067` no catálogo, mas
-`CharacterAction.tx` não contém quadros dessa ação para Ami ou Phyllis.
-O jogo agora usa **a ação base original `013`**, que está presente nos
-GLBs dessas duas personagens. É uma alternativa visual intencional, não
-uma animação de adaga inventada. Outros tipos de arma não usam fallback.
-
-Portanto, **não crie nem baixe `animations/ami.glb`**: o modelo existente é
-suficiente para as quatro habilidades escolhidas das classes permitidas.
+- Navegador em 852 × 393: quatro poses de cada uma das sete classes e
+  Ami Voyager/Cleric; capturas dos efeitos em 1,00 s.
+- Após regenerar equipamentos: nenhum aviso de osso ausente na galeria.
+- No jogo: Hunter equipado com Bow of Evanescence, botão Alvo selecionando
+  monstro, ataque básico à distância e Meteor Shower consumindo 20 MP
+  e exibindo 10 s de recarga. Personagem visível no centro.
+- A fidelidade é parcial conforme os limites acima; não foi medido FPS
+  num aparelho físico nem comparado vídeo a vídeo com o cliente antigo.
