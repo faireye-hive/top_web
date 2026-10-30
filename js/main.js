@@ -65,6 +65,7 @@ let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
 let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
+let skillActionQueue=[];
 // Pacote binário opcional: até ser instalado, o jogo conserva o HUD anterior.
 const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
   mobileSkillCatalog=catalog;
@@ -527,7 +528,12 @@ async function loadCharacter(id){
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;
     mixer=new THREE.AnimationMixer(avatar);
+    skillActionQueue=[];
     mixer.addEventListener('finished',()=>{
+      if(skillActionQueue.length&&!seated){
+        const next=skillActionQueue.shift();
+        if(playClip(next,true))return;
+      }
       if(seated){if(seated.role==='sit'&&!currentClip.toLowerCase().includes('sentado'))playClip('Sentado');return;}
       attackPlaying=false;playClip('Parado');
     });
@@ -1746,8 +1752,13 @@ rpgHud=initRpgHud({
     if(hero.hp<=0||changingCharacter||seated||attackPlaying)return false;
     const clip=resolveSkillClip(skill,hero.character,animations);
     if(!clip){toast('Animação original ainda indisponível: '+skill.name);return false;}
+    // Algumas habilidades possuem uma sequência real de animações (ex.: Red Thunder Cannon).
+    const chain=(skill.actions?.[hero.character]||[])
+      .map(item=>animations.find(a=>/^\\s*(\\d{1,3})\\s*[·-]/.exec(a.name)?.[1]==String(item.id)))
+      .filter(Boolean);
+    skillActionQueue=chain.slice(1).map(action=>action.name);
     const played=playClip(clip.name,true);
-    if(played)attackPlaying=true;
+    if(played)attackPlaying=true;else skillActionQueue=[];
     return played;
   },
   onMessage:toast
