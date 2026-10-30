@@ -5,8 +5,9 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=2';
-import { initRpgHud } from './rpg-hud.mjs?v=3';
-import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=2';
+import { initRpgHud } from './rpg-hud.mjs?v=4';
+import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip } from './class-skills.mjs?v=1';
+import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=3';
 import { resolvePrimaryAction } from './context-action.mjs';
 import { createCombat, COMBAT } from './combat-state.mjs?v=2';
 import { createMonsterManager } from './monster-manager.mjs';
@@ -63,6 +64,13 @@ let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
 let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
+let mobileSkillCatalog=null;
+// Pacote binário opcional: até ser instalado, o jogo conserva o HUD anterior.
+const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
+  mobileSkillCatalog=catalog;
+  if(rpgHud&&catalog)rpgHud.setClassSkills(catalog,hero.job,hero.character,animations);
+  return catalog;
+});
 const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
 let equipmentManifest=null,changingLoadout=false;
 const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
@@ -500,6 +508,13 @@ async function loadCharacter(id){
     if(hero.equipped&&!relative)throw new Error('Conjunto indisponível para esse personagem.');
     const model=relative?'assets/equipment/'+relative:CHARACTERS[id].model;
     const gltf=await new GLTFLoader().loadAsync(model+'?v=3');
+    let extraClips=[];
+    if(await skillCatalogReady && SKILL_ANIMATION_ACTORS.includes(id)){
+      try{
+        const extra=await new GLTFLoader().loadAsync('assets/skills/animations/'+id+'.glb?v=1');
+        extraClips=extra.animations||[];
+      }catch(err){console.info('Ações extras ausentes para '+id,err);}
+    }
     const yaw=avatar?.rotation.y||0;clearAvatar();
     hero.character=id;setPref('topweb_character',id);
     avatar=gltf.scene;avatar.name=CHARACTERS[id].name;scene.add(avatar);
@@ -510,13 +525,15 @@ async function loadCharacter(id){
       else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
-    animations=gltf.animations;runningAction=null;currentClip='';attackPlaying=false;
+    animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;
     mixer=new THREE.AnimationMixer(avatar);
     mixer.addEventListener('finished',()=>{
       if(seated){if(seated.role==='sit'&&!currentClip.toLowerCase().includes('sentado'))playClip('Sentado');return;}
       attackPlaying=false;playClip('Parado');
     });
-    playClip('Parado');rpgHud?.setClips(animations);rpgHud?.setStats(heroSnapshot(hero));
+    playClip('Parado');rpgHud?.setClips(animations);
+    if(mobileSkillCatalog)rpgHud?.setClassSkills(mobileSkillCatalog,hero.job,id,animations);
+    rpgHud?.setStats(heroSnapshot(hero));
   }finally{
     changingCharacter=false;if(selector){selector.disabled=false;selector.value=hero.character;}
   }
@@ -1724,6 +1741,15 @@ rpgHud=initRpgHud({
     else toast('A animação não está disponível no personagem atual.');
     return played;
   },
+  onPlaySkill:skill=>{
+    stopCombat();
+    if(hero.hp<=0||changingCharacter||seated||attackPlaying)return false;
+    const clip=resolveSkillClip(skill,hero.character,animations);
+    if(!clip){toast('Animação original ainda indisponível: '+skill.name);return false;}
+    const played=playClip(clip.name,true);
+    if(played)attackPlaying=true;
+    return played;
+  },
   onMessage:toast
 });
 rpgHud.setStats(heroSnapshot(hero));
@@ -1731,6 +1757,8 @@ function updateEquipmentUi(){
   $('hero-class').value=hero.job;$('hero-character').value=hero.character;
   for(const option of $('hero-character').options)option.disabled=!CLASSES[hero.job].characters.includes(option.value);
   $('equipment-toggle').textContent=hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1';
+  $('equipment-toggle').disabled=hero.job==='hunter';
+  if(hero.job==='hunter')$('equipment-toggle').textContent='Arco visual ainda não disponível';
   const items=equipmentManifest?.sets?.[hero.job]?.items||[];
   const labels={2:'Corpo',3:'Mãos',4:'Pés',6:'Mão esquerda',9:'Mão direita'};
   const list=$('equipment-list');list.replaceChildren();
@@ -1738,7 +1766,10 @@ function updateEquipmentUi(){
     const row=document.createElement('li');
     row.textContent=`${labels[item.slot]} · ${item.name}${hero.equipped?' · equipado':''}`;list.append(row);
   }
-  $('equipment-note').textContent=hero.job==='champion'?'Tattoo e Roar são do tier 55. As luvas e botas Warrior de nível 50 não foram incluídas.':'Visuais do tier 55 original, liberados no nível 1. Bônus novos: +4 ataque e +4 defesa pelo conjunto.';
+  $('equipment-note').textContent=hero.job==='hunter'?
+    'Hunter: ações originais de arco; o modelo 3D do arco ainda será adicionado.':
+    hero.job==='champion'?'Tattoo e Roar são do tier 55. As luvas e botas Warrior de nível 50 não foram incluídas.':
+    'Visuais do tier 55 original, liberados no nível 1. Bônus novos: +4 ataque e +4 defesa pelo conjunto.';
 }
 async function changeLoadout(change){
   if(changingLoadout||changingCharacter)return;
@@ -1756,7 +1787,10 @@ for(const [key,profile] of Object.entries(CLASSES)){
 }
 updateEquipmentUi();
 $('hero-character').addEventListener('change',e=>{const value=e.target.value;void changeLoadout(()=>{hero.character=value;});});
-$('hero-class').addEventListener('change',e=>{const value=e.target.value;void changeLoadout(()=>selectClass(hero,value));});
+$('hero-class').addEventListener('change',e=>{const value=e.target.value;void changeLoadout(()=>{
+  selectClass(hero,value);
+  if(value==='hunter')hero.equipped=false;
+});});
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
 $('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
 window.addEventListener('blur',()=>{stopCombat();saveHero();});
