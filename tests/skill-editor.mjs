@@ -1,4 +1,4 @@
-// Skill FX Studio v2 — edita os campos REAIS dos .par/.eff (visuals.json).
+// Skill FX Studio v4 — PAR/EFF + metadados históricos SkillInfo/Lua (sem executar Lua).
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -31,7 +31,8 @@ const fmt=(v,step)=>{const n=Number(v);return step>=1?String(Math.round(n)):Stri
 const RAD=180/Math.PI;
 
 /* ------------------------------------------------------------------ estado */
-let catalog=null,manifest=null,store=readStore(),usage={};
+let catalog=null,manifest=null,historical=null,store=readStore(),usage={};
+let historicalLevel=1;
 let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNames=[],lgoNames=[];
 let phase=0,playing=false,loading=false,lastNow=performance.now(),loopPlay=true,token=0,toastTimer;
 let undoStack=[],redoStack=[],lastSnap=0,saveTimer=0;
@@ -121,17 +122,83 @@ function structural(keepPanel=false){// reconstrói objetos 3D + listas
 /* -------------------------------------------------- painel: parâmetros skill */
 const GF=[['scale','Escala geral',.1,4,.05],['opacity','Opacidade geral',0,2,.05],['speed','Velocidade do tempo',.1,4,.05],
   ['particles','Limite global de partículas',1,400,1],['height','Altura global (m)',-5,6,.1],['distance','Distância do alvo (m)',1,12,.1],
-  ['castDelay','Atraso do disparo (s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (s)',1,12,.5]];
+  ['castDelay','Atraso do disparo (s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (s)',1,30,.5]];
 function drawGlobals(){
   const root=$('global-controls');root.replaceChildren();const g=globalsNow();
   for(const[name,label,min,max,step]of GF)
     root.append(numControl(label,g[name],{min,max,step},v=>{
       skillRec(store,skillId()).global[name]=v;persist();
-      if(name==='distance'){targetDummy.position.x=v;}
+      if(name==='distance'){targetDummy.position.x=v;drawHistorical();}
       if(name==='duration')$('time-range').max=String(Math.round(v*1000));
       preview(phase);}));
   root.append(checkControl('Alcance (range) centralizado',g.centerRange>=.5,v=>{skillRec(store,skillId()).global.centerRange=v?1:0;persist();preview(phase);}));
   targetDummy.position.x=g.distance;$('time-range').max=String(Math.round(g.duration*1000));}
+
+/* --------------------------------------------- dados históricos do TOP */
+function historicalSkill(){return historical?.skills?.[skillId()]||null;}
+function valueAtLevel(field,scale=1,unit=''){
+  if(!field)return {text:'—',kind:'sem_valor'};
+  if(Array.isArray(field.values)){
+    const value=field.values[historicalLevel-1];
+    if(Number.isFinite(value)){
+      const n=value*scale;
+      return {text:(Math.round(n*100)/100).toLocaleString('pt-BR',{maximumFractionDigits:2})+(unit?' '+unit:''),kind:field.kind};
+    }
+  }
+  return {text:field.function?'Depende do Lua':(field.raw&&field.raw!=='0'&&field.raw!=='-1'?'Não calculado':'—'),kind:field.kind};
+}
+function historicalCard(label,value,meta=''){
+  return h('div',{class:'hist-card'},h('small',{text:label}),h('strong',{text:value}),meta?h('span',{class:'hint',text:meta}):null);
+}
+function drawHistorical(){
+  const root=$('historical-info');if(!root)return;
+  root.replaceChildren();
+  const sk=historicalSkill();
+  $('historical-source').textContent=sk?'Tabelas históricas carregadas · Skill #'+sk.id:'Dados históricos indisponíveis';
+  $('historical-sync').disabled=!clipFor();
+  if(!sk){
+    root.append(h('p',{class:'hint',text:historical?'Esta skill não foi encontrada no skillinfo.txt.':'Não foi possível carregar historical.json. A prévia visual continua disponível.'}));
+    return;
+  }
+  const cd=valueAtLevel(sk.cooldown,.001,'s');
+  const sp=valueAtLevel(sk.spLua?.values?.length?sk.spLua:sk.sp,1,'SP');
+  const discharge=valueAtLevel(sk.discharge,.001,'s');
+  const clip=clipFor();
+  const g=globalsNow();
+  const v=manifest?.skills?.[skillId()]?.channels?.flatMap(c=>c.visual||[]).find(v=>v.kind==='flight');
+  const flightSpeed=v?.speed||(manifest?.skills?.[skillId()]?.speed||0);
+  const flightDuration=flightSpeed>0?g.distance/flightSpeed:null;
+  const stats=h('div',{class:'hist-grid'},
+    historicalCard('Cooldown (nível '+historicalLevel+')',cd.text,sk.cooldown.function||('SkillInfo: '+sk.cooldown.raw)),
+    historicalCard('Consumo SP',sp.text,sk.spLua?.function||sk.sp?.function||'SkillInfo'),
+    historicalCard('Animação 3D',clip?clip.duration.toFixed(2)+' s':'Indisponível',clip?'Duração do clipe GLB':'Carregue as animações do personagem'),
+    historicalCard('Duração de descarga',discharge.text,'Coluna 43 do SkillInfo'),
+    historicalCard('Voo (estimativa)',flightDuration!=null?flightDuration.toFixed(2)+' s':'—',flightDuration!=null?'Distância / velocidade visual':'Sem projétil identificado')
+  );
+  root.append(stats);
+  if(sk.cooldown.kind!=='lua_estatico'&&sk.cooldown.kind!=='constante'&&sk.cooldown.kind!=='sem_valor')
+    root.append(h('p',{class:'hist-warning',text:'Cooldown não resolvido automaticamente: '+sk.cooldown.raw+' (Lua complexo ou função ausente).'}));
+  if(sk.spLua?.kind==='lua_complexo')
+    root.append(h('p',{class:'hist-warning',text:'Custo SP em Lua requer simulação do servidor: '+sk.spLua.raw}));
+  root.append(h('div',{class:'hist-meta'},
+    h('div',{},h('b',{text:'Ação: '}),sk.animation.baseAction,' · frame-chave: ',sk.animation.keyframe),
+    h('div',{},h('b',{text:'FX ator: '}),sk.visual.actorEffect,' · item: ',sk.visual.itemEffect),
+    h('div',{},h('b',{text:'FX voo: '}),sk.visual.flightEffect,' · alvo: ',sk.visual.targetEffect),
+    h('div',{},h('b',{text:'Velocidade do voo (bruta): '}),sk.visual.flightSpeedRaw),
+    h('div',{},h('b',{text:'Status (valores brutos): '}),'próprio ',sk.statusDuration.self,' · alvo ',sk.statusDuration.target)));
+  root.append(h('p',{class:'hint',text:'Dados originais preservados. Cooldown e consumo são regras de jogo, não duração do vídeo. O voo é apenas uma estimativa geométrica; sem eventos históricos por frame, não assumimos o instante real de disparo.'}));
+}
+function setHistoricalLevel(n){
+  historicalLevel=Math.min(10,Math.max(1,Number(n)||1));
+  $('historical-level').value=String(historicalLevel);
+  drawHistorical();
+}
+function useClipDuration(){
+  const clip=clipFor();if(!clip){toast('Sem clipe 3D para esta skill/personagem');return;}
+  const seconds=Math.max(1,Math.min(30,Math.ceil((clip.duration+.5)*2)/2));
+  touch();skillRec(store,skillId()).global.duration=seconds;persist();drawGlobals();preview(phase);
+  toast('Prévia ajustada para '+seconds.toFixed(1)+'s com base no clipe 3D (não no cooldown)');
+}
 
 /* ------------------------------------------------------- lista de camadas */
 function redrawLayers(){
@@ -345,7 +412,7 @@ async function loadActor(){
     if(current!==token)return;console.warn(err);if(avatar){scene.remove(avatar);avatar=null;}clips=[];
     toast('Sem modelo 3D do personagem: a edição dos efeitos continua normal.');
   }finally{if(current===token)loading=false;}
-  await pickSkill();}
+  await pickSkill();drawHistorical();}
 function clipFor(){
   if(!currentSkill)return null;
   if(classMods.cls?.resolveSkillClip){try{const c=classMods.cls.resolveSkillClip(currentSkill,$('actor').value,clips);if(c)return c;}catch{}}
@@ -377,6 +444,7 @@ async function pickSkill(){
   layers=player.setSkill(manifest,store,String(id),$('actor').value);selectedKey=layers[0]?.key||null;
   const clip=clipFor();$('stage-label').textContent=(clip?'ANIMAÇÃO '+clip.name:'SEM ANIMAÇÃO').toUpperCase();
   $('skill-meta').textContent='#'+id+' · '+layers.length+' camadas';
+  drawHistorical();
   redrawLayers();drawGlobals();drawLayerPanel();phase=0;preview(0);
   status(currentSkill.name+' · '+layers.length+' camadas');}
 
@@ -410,6 +478,8 @@ function resetSkill(){
 
 /* ------------------------------------------------------------------ eventos */
 function bind(){
+  $('historical-level').onchange=e=>setHistoricalLevel(e.target.value);
+  $('historical-sync').onclick=useClipDuration;
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
   $('actor').onchange=()=>void loadActor();
   $('skill').onchange=()=>{playing=false;$('play').textContent='▶ Reproduzir';void pickSkill();};
@@ -454,6 +524,8 @@ async function start(){
       fetch(assetPrefix+'catalog.json').then(r=>{if(!r.ok)throw Error('catalog.json HTTP '+r.status);return r.json();}),
       fetch(assetPrefix+'visuals.json').then(r=>{if(!r.ok)throw Error('visuals.json HTTP '+r.status);return r.json();})]);
     catalog=cat;manifest=vis;usage=ED.usageMap(manifest);
+    try{const resp=await fetch(assetPrefix+'historical.json');if(resp.ok)historical=await resp.json();}
+    catch(err){console.warn('Sem histórico SkillInfo (prévia sem alteração):',err);}
     texNames=[...new Set(Object.values(manifest.resources).flatMap(r=>[...(r.systems||[]),...(r.strips||[]),...(r.parts||[])].map(x=>x.texture).filter(Boolean)))].sort();
     effNames=Object.entries(manifest.resources).filter(([,r])=>r.kind==='eff').map(([n])=>n).sort();
     lgoNames=[...new Set(effNames.flatMap(n=>manifest.resources[n].parts.map(p=>p.model).filter(m=>/\.lgo$/i.test(m))))].sort();
