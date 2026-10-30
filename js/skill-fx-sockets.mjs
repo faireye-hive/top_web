@@ -20,7 +20,7 @@ export function socketRecord(manifest,actor,job,layer,{equipped=true}={}){
   }else if(equipped && channel==='flight' && Number.isInteger(itemIndex)&&itemIndex>=0){
     record=group.items?.[job]?.[String(itemIndex)]||null;source='item';
   }
-  if(!record && channel!=='target' && channel!=='ground' && channel!=='water'){
+  if(!record && (channel==='actor'||channel==='flight')){
     record=group.actor?.[String(index)]||null;source='actor';
   }
   if(!record?.bone||!Array.isArray(record.matrix)||record.matrix.length!==16)return null;
