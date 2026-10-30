@@ -15,7 +15,7 @@ import { calculateMovementSpeed } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta } from './camera-behavior.mjs?v=2'
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
-import { createSkillVisuals } from './skill-visuals.mjs?v=2';
+import { createSkillVisuals } from './skill-visuals.mjs?v=3';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator

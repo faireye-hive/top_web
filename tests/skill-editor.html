@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#071522">
+<base href="../">
+<title>TOP Web · Laboratório de Efeitos de Skills</title>
+<link rel="stylesheet" href="tests/skill-editor.css?v=1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<header class="topbar">
+ <div class="brand"><span class="brand-mark">✦</span><div><strong>Skill FX <em>Studio</em></strong><small>TOP Web · editor de efeitos 3D</small></div></div>
+ <div class="status"><span class="pulse"></span><span id="status" role="status">Carregando catálogo...</span></div>
+ <nav aria-label="Ações gerais">
+  <button type="button" id="save">💾 Salvar</button>
+  <button type="button" id="export" class="gold">↓ Exportar JSON</button>
+  <button type="button" id="import">↑ Importar</button>
+  <input id="import-file" type="file" accept=".json,application/json" hidden>
+  <a href="index.html" title="Voltar ao jogo">↗ Jogo</a>
+ </nav>
+</header>
+<main>
+ <aside class="left panel">
+   <div class="section-header"><span>01</span><h2>Habilidade</h2></div>
+   <label class="field">Classe<select id="job"></select></label>
+   <label class="field">Personagem<select id="actor"></select></label>
+   <label class="field">Skill<select id="skill"></select></label>
+   <div class="selected-skill"><img id="skill-icon" alt="" width="54" height="54"><div><strong id="skill-name">—</strong><small id="skill-meta">—</small></div></div>
+   <div class="section-header stacked"><span>02</span><h2>Camadas originais <small id="layer-count">0</small></h2></div>
+   <div class="layer-help">Cada camada vem de um arquivo <code>.par</code> ou <code>.eff</code>. Selecione para editar; desligue para comparar.</div>
+   <div id="layers" class="layer-list" role="list" aria-label="Camadas do efeito"></div>
+   <div class="bottom-actions">
+    <button id="all-on" type="button">Ativar todas</button>
+    <button id="reset-skill" type="button">↺ Restaurar skill</button>
+   </div>
+ </aside>
+ <section class="viewport-area">
+   <div class="viewport-toolbar">
+     <span class="scene-title">◈ PRÉVIA 3D <small>Arraste para girar · Roda para zoom</small></span>
+     <div class="toolbar-buttons">
+       <label><input id="show-actor" type="checkbox" checked> Personagem</label>
+       <label><input id="show-target" type="checkbox" checked> Alvo</label>
+       <button id="camera-reset" type="button">⟲ Câmera</button>
+       <button id="snapshot" type="button">📷 Captura</button>
+     </div>
+   </div>
+   <div class="canvas-wrap">
+    <canvas id="preview" aria-label="Visualização 3D da skill"></canvas>
+    <div class="view-badge"><span id="stage-label">ALVO ◌</span><span id="perf">0 / 48 partículas</span></div>
+    <div id="empty-warning" class="warning" hidden></div>
+   </div>
+   <div class="timeline">
+     <button type="button" id="play" class="play">▶ Reproduzir</button>
+     <button type="button" id="restart" title="Reiniciar animação">↺</button>
+     <input id="time-range" type="range" min="0" max="5000" value="0" step="20" aria-label="Linha do tempo">
+     <output id="time-label">0.00 / 5.00 s</output>
+   </div>
+ </section>
+ <aside class="right panel">
+    <div class="section-header"><span>03</span><h2>Parâmetros globais</h2></div>
+    <div id="global-controls" class="control-stack"></div>
+    <div class="separator"></div>
+    <div class="section-header"><span>04</span><h2>Camada selecionada</h2></div>
+    <div id="layer-detail" class="detail-tip">Escolha uma camada na coluna esquerda.</div>
+    <div id="layer-controls" class="control-stack"></div>
+    <div class="editor-note">
+      <strong>Como funciona</strong>
+      <p>Os ajustes são aplicados ao <code>js/skill-visuals.mjs</code>, o mesmo renderizador do jogo. Salvar grava no navegador. Exportar gera <code>vfx-presets.json</code> para publicar a mesma configuração em qualquer dispositivo.</p>
+      <p>Os efeitos históricos são aproximados: este editor não é um conversor completo de partículas DirectX.</p>
+    </div>
+ </aside>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="tests/skill-editor.mjs?v=1"></script>
+</body></html>
