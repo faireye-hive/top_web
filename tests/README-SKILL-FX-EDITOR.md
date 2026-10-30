@@ -61,3 +61,37 @@ node --test tests/*.test.mjs
 A estrutura de dados foi validada para as 28 skills. Falta confirmar
 visualmente no navegador as animações e os efeitos em contexto de combate.
 Use servidor HTTP, não abra o HTML via `file://`.
+
+
+## Efeitos editados dentro do jogo
+
+O jogo `index.html` usa o mesmo `FxPlayer` de `tests/skill-editor.html`
+via `js/skill-visuals-runtime.mjs`. Ambos entendem os sistemas PAR, modelos
+EFF, as trilhas `strips` (inclusive `swing.rotation`) e os keyframes do
+`visuals.json`. O jogo agora posiciona a cena da skill no personagem e gira
+o eixo +X em direção ao alvo; o motor de combate continua independente.
+
+**Duas formas de testar alterações:**
+
+1. No mesmo navegador e origem, clique **Salvar** no Studio e atualize a página
+   do jogo. Os patches locais `top-vfx-edits-v2` serão aplicados na próxima
+   skill executada; não é necessário exportar a cada mudança.
+2. Para publicar alterações para todos, clique **↓ visuals.json** no Studio,
+   substitua `assets/skills/visuals.json` e faça commit/push desse arquivo.
+   A versão publicada no GitHub não muda somente ao clicar em Salvar ou
+   baixar o JSON. O jogo solicita o manifesto com revalidação de cache.
+
+Se o arquivo já tiver `source: "... + editado no Skill FX Studio"`, o jogo
+usa os recursos já editados e ignora os patches locais para não duplicar
+camadas acrescentadas. Para testar novos patches locais sobre um JSON já
+exportado, trabalhe a partir de uma cópia original não incorporada.
+
+**Diagnóstico:** no Console (F12) da página do jogo, rode
+`window.__skillVfxInfo()`. A propriedade `mode` deve mostrar
+`shared FxPlayer / PAR + EFF + strip + keyframes`, `loaded` deve
+ser `true` e `activeSkills` mostra efeitos durante a execução.
+
+A geometria das trilhas ainda é uma aproximação do DX9: segue um arco
+configurável, não os dummies da arma a cada frame. O multiplayer, a física
+de colisão e os tempos de impacto do GameServer não são reproduzidos
+automaticamente pelo renderer.

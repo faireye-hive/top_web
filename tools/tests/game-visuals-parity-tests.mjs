@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {skillWorldTransform,skillPlaybackLimit} from '../../js/skill-fx-world.mjs';
+import {stripSwing} from '../../js/skill-fx-strip.mjs';
+const source=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+
+const direct=skillWorldTransform({x:10,z:20},{x:13,z:20});
+assert.equal(direct.distance,3);
+assert.equal(direct.yaw,0);
+const north=skillWorldTransform({x:10,z:20},{x:10,z:24});
+assert.equal(north.distance,4);
+assert.ok(Math.abs(north.yaw+Math.PI/2)<1e-8);
+const south=skillWorldTransform({x:10,z:20},{x:10,z:16});
+assert.ok(Math.abs(south.yaw-Math.PI/2)<1e-8);
+assert.equal(skillWorldTransform({x:10,z:20},{x:10,z:20},1.2).yaw,1.2);
+assert.equal(skillPlaybackLimit(600,false),20);
+assert.equal(skillPlaybackLimit(600,true),12);
+assert.equal(skillPlaybackLimit(NaN),1);
+
+const strip=stripSwing({rotation:[-90,0,0]});
+assert.deepEqual(strip.rotation,[-90,0,0],'Não perder inclinação ao interpretar a camada');
+const manifest=JSON.parse(source('assets/skills/visuals.json'));
+assert.ok(manifest.skills['81'],'Illusion Slash deve existir no catálogo visual');
+assert.ok(manifest.resources['swordlight02.par'].strips?.length,'Trilha original precisa existir');
+const runtime=source('js/skill-visuals-runtime.mjs');
+const game=source('js/main.js');
+const editor=source('tests/skill-editor.mjs');
+const core=source('js/skill-fx-core.mjs');
+assert.match(game,/skill-visuals-runtime\.mjs/,'Jogo deve usar runtime compartilhado');
+assert.match(runtime,/new FxPlayer\(/,'Jogo deve usar FxPlayer do Studio');
+assert.match(runtime,/loadJson\('visuals\.json'\)/,'Jogo deve carregar visuals.json');
+assert.match(runtime,/editorStorageKey='top-vfx-edits-v2'/,'Edições locais devem ser reconhecidas');
+assert.match(runtime,/layerData\(manifest,edits,L\)/,'Parâmetros efetivos devem incluir edição');
+assert.match(runtime,/resolveEff\(manifest,edits,file\)/,'EFF deve usar chave editada');
+assert.match(runtime,/poseForSkill\(/,'Sincronização de ações DX9 preservada');
+assert.match(core,/stripRotationRadians\(swing\)/,'Rotação da trilha deve ser renderizada');
+assert.match(editor,/ED\.bakeMerged\(manifest,store\)/,'Exportação do Studio deve ser preservada');
+console.log('OK: jogo e editor compartilham FxPlayer e dados de visuals.json.');

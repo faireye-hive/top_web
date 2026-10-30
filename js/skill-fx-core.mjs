@@ -218,7 +218,14 @@ class ParticleLayer{
         m.position.set(anchor[0]+gl[0],anchor[1]+gl[1]+g.height,anchor[2]+gl[2]);
         const sz=curve1(s.sizes,k,1)*g.scale*(s.type===13&&s.billboard===false?1:1);
         const col=curveN(s.colors,k,4);const rot=curveN(s.angles,k,3,[0,0,0])[2];
-        if(s.billboard){m.quaternion.copy(this.p.camera.quaternion);m.rotateZ(rot);}
+        if(s.billboard){
+          // Os FX de combate usam uma raiz girada para apontar ao alvo.
+          // Compensar essa rotação para o billboard olhar para a câmera no MUNDO,
+          // exatamente como no editor (onde a raiz fica em identidade).
+          this.group.getWorldQuaternion(_q).invert();
+          m.quaternion.copy(_q).multiply(this.p.camera.getWorldQuaternion(_q2));
+          m.rotateZ(rot);
+        }
         else{m.quaternion.copy(Q_FLAT);m.rotateZ(rot);}
         m.scale.set(sz,sz,sz);tintMaterial(m.material,col,col[3]*g.opacity,s.src);m.visible=sz>1e-4;
       }}
