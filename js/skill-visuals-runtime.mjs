@@ -152,6 +152,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     models.clear();
   }
   function setActor(value,actorClips=[],options={}){
+    if(actorModel && actorModel!==options.avatar)clear();
     actor=value||actor;clips=actorClips||[];
     actorModel=options.avatar||null;
     actorJob=options.job||null;
