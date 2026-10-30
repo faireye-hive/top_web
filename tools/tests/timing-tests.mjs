@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {buildTimeline,effSegments,effDuration,parCurveKeys,parDuration,stageTimes} from '../../js/skill-fx-timing.mjs';
+const root = new URL('../../assets/skills/', import.meta.url);
+const load=file=>JSON.parse(readFileSync(new URL(file,root),'utf8'));
+const vis=load('visuals.json'), hist=load('historical.json');
+const eff=vis.resources['04000009.eff'];
+assert.deepEqual(effSegments(eff).map(k=>[k.start,k.end]),[[0,.9],[.9,2.7],[2.7,3.6]],'EFF 81 tempos cumulativos');
+assert.equal(effDuration(eff),3.6,'somar os tempos EFF é diferente do cooldown de 5s');
+const sys=vis.resources['01000014.par'].systems[0];
+assert.equal(parDuration(sys).duration,1.5,'sistemas PAR: play + life');
+assert.ok(parCurveKeys(sys).length>=3,'distribuição das chaves PAR');
+assert.equal(parCurveKeys({life:2,delay:.5,sizes:[1,2,3]})[1].start,1.1667,'chaves PAR não são segundos explícitos');
+const sk=vis.skills['81'];
+const layers=sk.channels.flatMap((c,i)=>c.visual.flatMap(v=>(v.files||[]).flatMap(file=>{
+  const r=vis.resources[file];if(!r)return [];
+  return r.kind==='eff'?[{key:`${i}:${file}:e`,file,kind:'eff',channel:c.kind,vis:v,flightSpeed:sk.speed}]:
+    (r.systems||[]).map((_,idx)=>({key:`${i}:${file}:s${idx}`,file,idx,kind:'system',channel:c.kind,vis:v,flightSpeed:sk.speed}));
+})));
+const plan=buildTimeline({layers,resolve:l=>l.kind==='eff'?vis.resources[l.file]:vis.resources[l.file].systems[l.idx],
+  resolveEff:f=>vis.resources[f],historical:hist.skills['81'],distance:3.8});
+assert.ok(plan.tracks.length>0);
+assert.equal(plan.stage.release,0,'sem timestamp DX9 verificável não inventar atraso');
+assert.equal(plan.stage.impact,.2533,'impacto estimado pela velocidade visual do canal');
+assert.ok(plan.duration>=3.6);
+assert.ok(plan.visibleKeyCount>0);
+const flightTrack=plan.tracks.find(t=>t.file==='04000009.eff');
+assert.deepEqual(flightTrack.keys.map(k=>k.time),[0,.9,2.7]);
+const targetTrack=plan.tracks.find(t=>t.channel==='target');
+assert.equal(targetTrack.start,plan.stage.impact);
+const noTimestamp={animation:{keyframe:'7'},visual:{flightKeyframe:'0'}};
+const plan2=stageTimes({layers,historical:noTimestamp,distance:3.8});
+assert.equal(plan2.release,0);
+assert.ok(plan2.warnings.some(x=>x.includes('keyframe=7')));
+const explicit=stageTimes({layers,overrides:{verifiedRelease:0.6},distance:3.8});
+assert.equal(explicit.release,.6);
+assert.equal(explicit.impact,.8533);
+const clip={duration:2, name:'attack14', tracks:[{times:Float32Array.from([0,.1,.4,2])},{times:Float32Array.from([0,.2,1.4,2])}]};
+const withGlb=buildTimeline({layers:[],resolve:()=>null,resolveEff:()=>null,clip,clipDuration:2});
+assert.equal(withGlb.tracks[0].channel,'animation');
+assert.deepEqual(withGlb.tracks[0].keys.map(k=>k.time),[0,.1,.2,.4,1.4,2]);
+const contin=parDuration({life:1,play:0,type:2});
+assert.equal(contin.open,true);
+console.log('OK: 16 grupos de verificações: EFF/PAR, canais, voo, GLB, dados incompletos, zero/fallback.');

@@ -235,7 +235,7 @@ class EffInstance{
       const mesh=new THREE.Mesh(g,makeMaterial(null,part.src,part.dst));mesh.frustumCulled=false;mesh.rotation.order='YXZ';
       this.wrap.add(mesh);this.parts.push({part,mesh,uvGeo:part.model==='Rect'||part.model==='RectPlane'});});}
   setVisible(v){this.group.visible=v;}
-  update(age,{pos,sizeMul,colorMul,alphaMul,scale,quat,loopLen,eff}){
+  update(age,{pos,sizeMul,colorMul,alphaMul,scale,quat,loopLen,eff,stopAtKeysEnd=false}){
     this.eff=eff||this.eff;this.group.position.set(pos[0],pos[1],pos[2]);
     if(quat)this.group.quaternion.copy(quat);else this.group.quaternion.identity();
     this.group.scale.setScalar(scale);
@@ -250,6 +250,7 @@ class EffInstance{
       const tex=this.p.tex.get(part.texture);syncMaterial(mesh.material,tex,part.src,part.dst);
       if(!keys.length){mesh.visible=false;return;}
       const total=keys.reduce((a,k)=>a+Math.max(0,k.d),0)||1;
+      if(stopAtKeysEnd && age>=total && part.loop!==true){mesh.visible=false;return;}
       let ph=age;if(part.loop!==false&&loopLen!==0)ph=age%total;else ph=Math.min(age,total-1e-4);
       let acc=0,ki=0;for(;ki<keys.length-1;ki++){if(ph<acc+keys[ki].d)break;acc+=keys[ki].d;}
       const A=keys[ki],B=keys[Math.min(ki+1,keys.length-1)],f=A.d>1e-6&&ki<keys.length-1?clamp((ph-acc)/A.d,0,1):0;
@@ -285,6 +286,7 @@ class EffLayer{
       const eff=resolveEff(ctx.m,ctx.store,L.file);if(!eff)return hide();
       const age=t-start,dist=g.distance;
       const spd=(g.flightSpeed||L.vis?.speed||L.flightSpeed||10);
+      if(g.timelineMode==='historical'&&age>dist/spd)return hide();
       const travel=Math.min(1,age*spd/Math.max(.1,dist));
       const mode=L.vis?.mode,copies=L.vis?.mode===3?Math.min(16,1+Math.floor(Math.max(0,Math.min(age,9)-1e-6)/.6)):1;
       for(let c=0;c<copies;c++){
@@ -292,7 +294,7 @@ class EffLayer{
         const back=c===0?0:.5*c;const alpha=c===0?1:Math.max(0,1-c/copies);
         const x=dist*travel-back;
         it.update(age,{pos:[Math.max(0,x),1+g.height,0],sizeMul:1,colorMul:[1,1,1,1],alphaMul:alpha*g.opacity,
-          scale:(mode===3&&age>0?1.5:1)*g.scale,quat:null,eff});}
+          scale:(mode===3&&age>0?1.5:1)*g.scale,quat:null,eff,stopAtKeysEnd:g.timelineMode==='historical'});}
       return hide();}
     const s=layerData(ctx.m,ctx.store,L);if(!s)return hide();
     const eff=resolveEff(ctx.m,ctx.store,s.effect||s.model);if(!eff)return hide();
@@ -307,7 +309,7 @@ class EffLayer{
       const gl=d3d2gl(pos[0]*g.scale,pos[1]*g.scale,pos[2]*g.scale);
       const kk=s.type===6?0:k,sizeMul=curve1(s.sizes,kk,1),col=curveN(s.colors,kk,4);
       it.update(itm.age,{pos:[anchor[0]+gl[0],anchor[1]+gl[1]+g.height,anchor[2]+gl[2]],sizeMul,
-        colorMul:[col[0],col[1],col[2],col[3]],alphaMul:g.opacity,scale:g.scale,quat:null,eff});}
+        colorMul:[col[0],col[1],col[2],col[3]],alphaMul:g.opacity,scale:g.scale,quat:null,eff,stopAtKeysEnd:g.timelineMode==='historical'});}
     return hide();}
   dispose(){for(const i of this.insts)i.dispose();}
 }
@@ -378,7 +380,9 @@ export class FxPlayer{
     const spd=g.flightSpeed||this.layers.find(l=>l.flightSpeed)?.flightSpeed||10;
     const ctx={m:this.m,store:this.store,g,
       enabled:L=>{if(this.solo&&this.solo!==L.key)return false;return!(enabledMap?.[L.key]===false)&&!this.hidden.has(L.key);},
-      startFor:L=>{const c=L.channel,base=g.castDelay;
+      startFor:L=>{const c=L.channel;if(g.timelineMode==='historical' && g.timelineStarts)
+        return Math.max(0,Number(g.timelineStarts[c])||0);
+        const base=g.castDelay;
         const late=(c==='target'||c==='ground')?(hasFlight?dist/spd:0):0;
         const own=c==='actor'||c==='item'||c==='itemExtra'?0:base;
         return(c==='actor'||c==='item'||c==='itemExtra'?0:own+late);},

@@ -1,4 +1,4 @@
-// Skill FX Studio v4 — PAR/EFF + metadados históricos SkillInfo/Lua (sem executar Lua).
+// Skill FX Studio v5 — cronologia de keyframes PAR/EFF com fontes históricas rastreáveis.
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -6,6 +6,7 @@ import {clone as skeletonClone} from 'three/addons/utils/SkeletonUtils.js';
 import {FxPlayer,GLOBAL_DEFAULTS,globals,normalizeStore,layerData,resolveEff,skillRec,
   TYPE_NAMES,BLEND_NAMES,BLEND_PRESETS,curve1,clone} from '../js/skill-fx-core.mjs';
 import * as ED from '../js/skill-fx-edit.mjs';
+import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs';
 
 /* ---------------------------------------------------------------- helpers */
 const $=id=>document.getElementById(id);
@@ -33,6 +34,9 @@ const RAD=180/Math.PI;
 /* ------------------------------------------------------------------ estado */
 let catalog=null,manifest=null,historical=null,store=readStore(),usage={};
 let historicalLevel=1;
+const TIMING_MODE_KEY='top-vfx-timing-mode-v5';
+let timingMode=localStorage.getItem(TIMING_MODE_KEY)==='manual'?'manual':'historical';
+let timelineCache=null;
 let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNames=[],lgoNames=[];
 let phase=0,playing=false,loading=false,lastNow=performance.now(),loopPlay=true,token=0,toastTimer;
 let undoStack=[],redoStack=[],lastSnap=0,saveTimer=0;
@@ -45,12 +49,58 @@ function persist(){clearTimeout(saveTimer);saveTimer=setTimeout(writeStoreNow,35
 function touch(){// guarda um ponto de desfazer no início de cada interação
   const now=Date.now();if(now-lastSnap<700)return;lastSnap=now;
   undoStack.push(JSON.stringify(store));if(undoStack.length>100)undoStack.shift();redoStack=[];updateUndo();}
-function restore(json){store=normalizeStore(JSON.parse(json));writeStoreNow();structural();}
+function restore(json){store=normalizeStore(JSON.parse(json));writeStoreNow();invalidateTimeline();structural();}
 function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify(store));restore(undoStack.pop());updateUndo();}
 function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify(store));restore(redoStack.pop());updateUndo();}
 function updateUndo(){$('undo').disabled=!undoStack.length;$('redo').disabled=!redoStack.length;}
 function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);}
 function status(msg){$('status').textContent=msg;}
+function invalidateTimeline(){timelineCache=null;}
+function timelineInfo(){
+  if(!currentSkill||!manifest)return null;
+  if(!timelineCache){const g=globalsNow(),clip=clipFor();
+    timelineCache=buildTimeline({layers,resolve:L=>layerData(manifest,store,L),
+      resolveEff:file=>resolveEff(manifest,store,file),historical:historicalSkill(),
+      distance:g.distance,flightSpeed:g.flightSpeed,clipDuration:clip?.duration||0,clip});}
+  return timelineCache;}
+function playbackGlobals(){
+  const g=globalsNow();if(timingMode==='manual')return g;
+  const t=timelineInfo();return {...g,speed:1,castDelay:0,
+    timelineMode:'historical',timelineStarts:t?.stage?.starts||{},duration:t?.duration||g.duration};
+}
+function drawTimeline(){
+  const root=$('source-events');if(!root||!currentSkill)return;root.replaceChildren();
+  const info=timelineInfo(), duration=timingMode==='historical'?(info?.duration||5):globalsNow().duration;
+  $('time-range').max=String(Math.round(duration*1000));
+  const badge=$('timing-badge');badge.classList.toggle('warn',timingMode==='historical'&&!!info?.stage.warnings.length);
+  badge.textContent=timingMode==='historical'?('AUTO · '+(info?.tracks.length||0)+' camadas · '+(info?.visibleKeyCount||0)+' chaves PAR/EFF'):'MANUAL · valores do painel';
+  $('timeline-summary').textContent=(info?.tracks.length||0)+' camadas · '+duration.toFixed(2)+' s'+(info?.continuous?' · emissão contínua':'');
+  $('source-note').textContent=timingMode==='historical'?(info?.stage.warnings.join(' | ')||'Tempos EFF/PAR originais; GLB quando disponível.'):'Edição manual: atraso e duração da prévia substituem a agenda automática.';
+  for(const tr of info?.tracks||[]){
+    const row=h('div',{class:'time-track'+(selectedKey===tr.key?' active':''),'data-channel':tr.channel,role:'listitem',title:tr.timing+' · '+tr.start.toFixed(3)+'–'+tr.end.toFixed(3)+'s'});
+    const label=h('div',{class:'time-name'},h('b',{text:tr.file}),h('span',{text:tr.channel}));
+    const lane=h('div',{class:'time-lane'});
+    const left=Math.min(100,tr.start/Math.max(.01,duration)*100);
+    const right=Math.min(100,tr.end/Math.max(.01,duration)*100);
+    lane.append(h('div',{class:'time-band',style:`left:${left}%;width:${Math.max(0,right-left)}%`}));
+    // A barra inteira permite buscar o tempo, sem alterar os parâmetros originais.
+    lane.addEventListener('click',e=>{if(e.target.closest('.time-key'))return;
+      const bounds=lane.getBoundingClientRect();const t=clamp((e.clientX-bounds.left)/Math.max(1,bounds.width),0,1)*duration;
+      if(playing)playToggle();preview(t);});
+    tr.keys.slice(0,72).forEach(k=>{
+      if(k.time>duration) return;
+      const title=k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
+        `${tr.file} · ${k.field}, chave ${k.index+1} · ${k.time.toFixed(3)}s · posição interpolada na vida PAR`;
+      const b=h('button',{type:'button',class:'time-key '+k.kind,title,'aria-label':title,
+        style:`left:${Math.max(0,Math.min(100,k.time/duration*100))}%`});
+      b.addEventListener('click',e=>{e.stopPropagation();if(playing)playToggle();if(tr.key!=='__animation'){selectedKey=tr.key;redrawLayers();drawLayerPanel();drawTimeline();}preview(k.time);});
+      lane.append(b);});
+    row.append(label,lane);row.addEventListener('click',e=>{if(e.target.closest('button'))return;
+      if(tr.key!=='__animation'){selectedKey=tr.key;redrawLayers();drawLayerPanel();}});root.append(row);
+  }
+  if(!info?.tracks.length)root.append(h('p',{class:'hint',text:'Nenhum arquivo PAR/EFF vinculado a esta skill.'}));
+}
+function updateTimeline(){invalidateTimeline();drawTimeline();preview(phase);}
 
 /* ------------------------------------------------------------------- cena */
 const renderer=new THREE.WebGLRenderer({canvas:$('preview'),antialias:true,alpha:false,preserveDrawingBuffer:true});
@@ -112,27 +162,26 @@ function globalsNow(){return globals(store,skillId());}
 function enabledMap(){const rec=store.skills[skillId()];const m={};if(rec)for(const[k,v]of Object.entries(rec.off||{}))if(v)m[k]=false;return m;}
 function setField(layer,field,value,needRebuild=false){
   ED.setLayerField(store,layer,field,value);persist();
-  if(needRebuild)structural();else preview(phase);}
+  if(needRebuild)structural();else updateTimeline();}
 function structural(keepPanel=false){// reconstrói objetos 3D + listas
   if(!currentSkill)return;
-  layers=player.setSkill(manifest,store,skillId(),$('actor').value);
+  layers=player.setSkill(manifest,store,skillId(),$('actor').value);invalidateTimeline();
   if(!layers.find(l=>l.key===selectedKey))selectedKey=layers[0]?.key||null;
-  redrawLayers();drawGlobals();if(!keepPanel)drawLayerPanel();preview(phase);}
+  redrawLayers();drawGlobals();if(!keepPanel)drawLayerPanel();drawTimeline();preview(phase);}
 
 /* -------------------------------------------------- painel: parâmetros skill */
-const GF=[['scale','Escala geral',.1,4,.05],['opacity','Opacidade geral',0,2,.05],['speed','Velocidade do tempo',.1,4,.05],
+const GF=[['scale','Escala geral',.1,4,.05],['opacity','Opacidade geral',0,2,.05],['speed','Velocidade do tempo (manual)',.1,4,.05],
   ['particles','Limite global de partículas',1,400,1],['height','Altura global (m)',-5,6,.1],['distance','Distância do alvo (m)',1,12,.1],
-  ['castDelay','Atraso do disparo (s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (s)',1,30,.5]];
+  ['castDelay','Atraso do disparo (manual, s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (manual, s)',1,30,.5]];
 function drawGlobals(){
   const root=$('global-controls');root.replaceChildren();const g=globalsNow();
   for(const[name,label,min,max,step]of GF)
     root.append(numControl(label,g[name],{min,max,step},v=>{
       skillRec(store,skillId()).global[name]=v;persist();
       if(name==='distance'){targetDummy.position.x=v;drawHistorical();}
-      if(name==='duration')$('time-range').max=String(Math.round(v*1000));
-      preview(phase);}));
+      updateTimeline();}));
   root.append(checkControl('Alcance (range) centralizado',g.centerRange>=.5,v=>{skillRec(store,skillId()).global.centerRange=v?1:0;persist();preview(phase);}));
-  targetDummy.position.x=g.distance;$('time-range').max=String(Math.round(g.duration*1000));}
+  targetDummy.position.x=g.distance;$('time-range').max=String(Math.round((timingMode==='historical'?timelineInfo()?.duration:g.duration||5)*1000));}
 
 /* --------------------------------------------- dados históricos do TOP */
 function historicalSkill(){return historical?.skills?.[skillId()]||null;}
@@ -173,7 +222,8 @@ function drawHistorical(){
     historicalCard('Consumo SP',sp.text,sk.spLua?.function||sk.sp?.function||'SkillInfo'),
     historicalCard('Animação 3D',clip?clip.duration.toFixed(2)+' s':'Indisponível',clip?'Duração do clipe GLB':'Carregue as animações do personagem'),
     historicalCard('Duração de descarga',discharge.text,'Coluna 43 do SkillInfo'),
-    historicalCard('Voo (estimativa)',flightDuration!=null?flightDuration.toFixed(2)+' s':'—',flightDuration!=null?'Distância / velocidade visual':'Sem projétil identificado')
+    historicalCard('Voo (estimativa)',flightDuration!=null?flightDuration.toFixed(2)+' s':'—',flightDuration!=null?'Distância / velocidade visual':'Sem projétil identificado'),
+    historicalCard('Tempo automático (.par/.eff/GLB)',(timelineInfo()?.duration||0).toFixed(2)+' s','Janela de reprodução; não cooldown')
   );
   root.append(stats);
   if(sk.cooldown.kind!=='lua_estatico'&&sk.cooldown.kind!=='constante'&&sk.cooldown.kind!=='sem_valor')
@@ -186,7 +236,9 @@ function drawHistorical(){
     h('div',{},h('b',{text:'FX voo: '}),sk.visual.flightEffect,' · alvo: ',sk.visual.targetEffect),
     h('div',{},h('b',{text:'Velocidade do voo (bruta): '}),sk.visual.flightSpeedRaw),
     h('div',{},h('b',{text:'Status (valores brutos): '}),'próprio ',sk.statusDuration.self,' · alvo ',sk.statusDuration.target)));
-  root.append(h('p',{class:'hint',text:'Dados originais preservados. Cooldown e consumo são regras de jogo, não duração do vídeo. O voo é apenas uma estimativa geométrica; sem eventos históricos por frame, não assumimos o instante real de disparo.'}));
+  const issues=timelineInfo()?.stage.warnings||[];
+  issues.forEach(msg=>root.append(h('p',{class:'hist-warning',text:msg})));
+  root.append(h('p',{class:'hint',text:'Chaves amarelas = durações explícitas EFF. Chaves azuis = índices de curvas PAR distribuídos na vida da partícula (não timestamps individuais). Os números keyframe do SkillInfo não determinam segundos sem eventos DX9.'}));
 }
 function setHistoricalLevel(n){
   historicalLevel=Math.min(10,Math.max(1,Number(n)||1));
@@ -196,7 +248,7 @@ function setHistoricalLevel(n){
 function useClipDuration(){
   const clip=clipFor();if(!clip){toast('Sem clipe 3D para esta skill/personagem');return;}
   const seconds=Math.max(1,Math.min(30,Math.ceil((clip.duration+.5)*2)/2));
-  touch();skillRec(store,skillId()).global.duration=seconds;persist();drawGlobals();preview(phase);
+  touch();skillRec(store,skillId()).global.duration=seconds;persist();timingMode='manual';localStorage.setItem(TIMING_MODE_KEY,timingMode);$('timing-mode').value=timingMode;drawGlobals();updateTimeline();
   toast('Prévia ajustada para '+seconds.toFixed(1)+'s com base no clipe 3D (não no cooldown)');
 }
 
@@ -217,7 +269,7 @@ function redrawLayers(){
     const solo=h('button',{type:'button',class:'solo'+(player.solo===L.key?' on':''),title:'Isolar esta camada',text:'◎'});
     solo.addEventListener('click',e=>{e.stopPropagation();player.solo=player.solo===L.key?null:L.key;redrawLayers();preview(phase);});
     item.append(box,icon,content,h('span',{class:'stage-badge',text:(L.channel||'').toUpperCase()}),solo);
-    item.addEventListener('click',()=>{selectedKey=L.key;redrawLayers();drawLayerPanel();});
+    item.addEventListener('click',()=>{selectedKey=L.key;redrawLayers();drawLayerPanel();drawTimeline();});
     list.append(item);}
   if(!layers.length){$('empty-warning').hidden=false;$('empty-warning').textContent='Esta skill não tem camadas PAR/EFF no visuals.json. Use ＋ Partícula para criar.';}
   else $('empty-warning').hidden=true;}
@@ -291,7 +343,7 @@ function effEditor(layer,effFile,{canRename}={}){
   body.push(vecControl('Eixo',eff.rotation||[0,0,1],{step:.1},v=>{ED.setEffTop(store,effFile,'rotation',v);persist();preview(phase);}));
   body.push(numControl('Velocidade de giro (rad/s)',eff.rotationSpeed??1,{min:-20,max:20,step:.1},v=>{ED.setEffTop(store,effFile,'rotationSpeed',v);persist();preview(phase);}));
   eff.parts.forEach((part,pi)=>{
-    const set=(f,v)=>{ED.setEffPart(store,effFile,pi,f,v);persist();preview(phase);};
+    const set=(f,v)=>{ED.setEffPart(store,effFile,pi,f,v);persist();updateTimeline();};
     const sub=[];
     sub.push(selectControl('Modelo',part.model,[['RectPlane','RectPlane (plano no chão)'],['Rect','Rect (plano vertical)'],['Cylinder','Cylinder'],['Cone','Cone'],...lgoNames.map(n=>[n,n])],v=>{set('model',v);structural(true);}));
     sub.push(texturePicker(part.texture,v=>set('texture',v)));
@@ -321,7 +373,7 @@ function effEditor(layer,effFile,{canRename}={}){
       const add=h('button',{type:'button',class:'mini-btn',text:'＋ chave'});
       add.onclick=()=>{touch();keys.push(clone(keys[keys.length-1]||{d:.5,s:[1,1,1],a:[0,0,0],p:[0,0,0],c:[1,1,1,1]}));commit();renderKeys();};
       keyHost.append(add);};
-    renderKeys();sub.push(keyHost);
+    renderKeys();sub.push(h('p',{class:'hint',text:'EFF: campo tempo = duração DESTA chave, não tempo absoluto. As barras amarelas na linha do tempo mostram o início acumulado de cada chave.'}));sub.push(keyHost);
     body.push(section('Peça '+(pi+1)+' · '+part.model,pi===0,sub));});
   return h('div',{class:'sec-body',style:'display:grid;gap:9px'},body);}
 
@@ -340,7 +392,7 @@ function drawLayerPanel(){
   else{const b=h('button',{type:'button',text:'🗑 Excluir camada'});b.onclick=()=>{touch();ED.removeExtra(store,skillId(),L.key);selectedKey=null;persist();structural();};actions.append(b);}
   root.append(actions);
 
-  if(L.kind==='eff'){root.append(section('Modelo EFF (voo)',true,effEditor(L,L.file)));return;}
+  if(L.kind==='eff'){root.append(section('Modelo EFF (voo) · chaves e tempos originais',true,effEditor(L,L.file)));return;}
   if(L.kind==='strip'){
     const set=(f,v)=>setField(L,f,v);
     const sw={a0:-70,a1:110,start:0,dur:.35,r0:.25,r1:1.35,h:1.1,...(data.swing||{})};
@@ -412,7 +464,7 @@ async function loadActor(){
     if(current!==token)return;console.warn(err);if(avatar){scene.remove(avatar);avatar=null;}clips=[];
     toast('Sem modelo 3D do personagem: a edição dos efeitos continua normal.');
   }finally{if(current===token)loading=false;}
-  await pickSkill();drawHistorical();}
+  invalidateTimeline();await pickSkill();drawHistorical();}
 function clipFor(){
   if(!currentSkill)return null;
   if(classMods.cls?.resolveSkillClip){try{const c=classMods.cls.resolveSkillClip(currentSkill,$('actor').value,clips);if(c)return c;}catch{}}
@@ -441,18 +493,18 @@ async function pickSkill(){
   currentSkill=classMods.rules?.skillWithRules?.(raw)||raw;
   $('skill-name').textContent=currentSkill.name;$('skill-icon').src=assetPrefix+currentSkill.icon;
   selectedKey=null;player.solo=null;
-  layers=player.setSkill(manifest,store,String(id),$('actor').value);selectedKey=layers[0]?.key||null;
+  layers=player.setSkill(manifest,store,String(id),$('actor').value);selectedKey=layers[0]?.key||null;invalidateTimeline();
   const clip=clipFor();$('stage-label').textContent=(clip?'ANIMAÇÃO '+clip.name:'SEM ANIMAÇÃO').toUpperCase();
   $('skill-meta').textContent='#'+id+' · '+layers.length+' camadas';
   drawHistorical();
-  redrawLayers();drawGlobals();drawLayerPanel();phase=0;preview(0);
+  redrawLayers();drawGlobals();drawLayerPanel();drawTimeline();phase=0;preview(0);
   status(currentSkill.name+' · '+layers.length+' camadas');}
 
 /* ------------------------------------------------------- prévia/animação */
 function preview(t){
-  if(!currentSkill)return;const g=globalsNow();
+  if(!currentSkill)return;const g=playbackGlobals();
   phase=clamp(Number(t)||0,0,g.duration);
-  const n=player.update(phase,g,enabledMap());updateActorAnimation(phase);
+  const n=player.update(phase,g,enabledMap());updateActorAnimation(phase*g.speed);
   $('time-range').value=String(Math.round(phase*1000));$('time-label').textContent=phase.toFixed(2)+' / '+g.duration.toFixed(2)+' s';
   $('perf').textContent=n+' objetos FX';}
 function playToggle(){playing=!playing;$('play').textContent=playing?'Ⅱ Pausar':'▶ Reproduzir';}
@@ -464,6 +516,9 @@ function exportMerged(){
   download('visuals.json',new Blob([JSON.stringify(out)],{type:'application/json'}));
   toast('visuals.json editado exportado: substitua assets/skills/visuals.json');}
 function exportEdits(){download('vfx-edits.json',new Blob([JSON.stringify(ED.exportEdits(store),null,2)+'\n'],{type:'application/json'}));toast('Edições exportadas');}
+function exportTiming(){const t=timelineInfo();if(!t)return;const out={skill:currentSkill.id,mode:timingMode,
+  original:historicalSkill(),timeline:t,limitations:'SkillInfo keyframes sem timestamps DX9; impacto estimado por distância/velocidade visual; gráficos PAR normalizados; GLB presente apenas quando carregado.'};
+  download('TOP_skill_'+currentSkill.id+'_tempos.json',new Blob([JSON.stringify(out,null,2)+'\n'],{type:'application/json'}));toast('Cronologia exportada com fontes e advertências');}
 async function importFile(file){
   if(!file)return;
   try{const obj=JSON.parse(await file.text());
@@ -479,6 +534,9 @@ function resetSkill(){
 /* ------------------------------------------------------------------ eventos */
 function bind(){
   $('historical-level').onchange=e=>setHistoricalLevel(e.target.value);
+  $('timing-mode').value=timingMode;
+  $('timing-mode').onchange=e=>{timingMode=e.target.value==='manual'?'manual':'historical';
+    localStorage.setItem(TIMING_MODE_KEY,timingMode);drawTimeline();preview(phase);};
   $('historical-sync').onclick=useClipDuration;
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
   $('actor').onchange=()=>void loadActor();
@@ -486,6 +544,7 @@ function bind(){
   $('play').onclick=playToggle;$('restart').onclick=()=>{phase=0;preview(0);};
   $('time-range').oninput=e=>{if(playing)playToggle();preview(Number(e.target.value)/1000);};
   $('save').onclick=()=>{writeStoreNow();toast('Edições salvas no navegador ✓ ('+ED.editedCount(store)+' alterações)');};
+  $('export-timing').onclick=exportTiming;
   $('export').onclick=exportMerged;$('export-edits').onclick=exportEdits;
   $('import').onclick=()=>$('import-file').click();
   $('import-file').onchange=e=>{void importFile(e.target.files?.[0]);e.target.value='';};
@@ -514,7 +573,7 @@ function animate(now){
   if(c.width!==Math.floor(w*renderer.getPixelRatio())||c.height!==Math.floor(hh*renderer.getPixelRatio())){
     renderer.setSize(w,hh,false);camera.aspect=w/hh;camera.updateProjectionMatrix();}
   if(playing&&!loading&&currentSkill){
-    const g=globalsNow();let t=phase+dt;if(t>=g.duration)t=loopPlay?0:g.duration;preview(t);}
+    const g=playbackGlobals();let t=phase+dt;if(t>=g.duration)t=loopPlay?0:g.duration;preview(t);}
   orbit.update();renderer.render(scene,camera);}
 
 async function start(){

@@ -125,3 +125,32 @@ details.sec>.sec-body{padding:4px 10px 10px;display:grid;gap:9px}
 .hist-meta b{color:#e7c990}
 .hist-warning{font-size:10px;padding:8px;border:1px solid #9b7144;border-radius:7px;background:#4e3325;color:#ffe5bc;line-height:1.45;overflow-wrap:anywhere}
 @media(min-width:771px) and (max-width:1400px){.hist-grid{grid-template-columns:1fr}}
+
+/* ---------- v5: timeline com keyframes históricos ---------- */
+.viewport-area{min-height:0}
+.canvas-wrap{min-height:140px}
+.source-timeline{background:#071c29;border-top:1px solid #2d5865;padding:9px 12px 8px;height:226px;min-height:150px;display:flex;flex-direction:column;gap:5px}
+.source-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--gold)}
+.source-title span{font-size:10px;color:#a3bec9;text-align:right}
+.source-events{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:grid;gap:5px;align-content:start;padding-right:5px}
+.time-track{display:grid;grid-template-columns:minmax(96px,31%) minmax(0,1fr);align-items:center;gap:8px;border-radius:6px;padding:2px 4px;cursor:pointer;min-width:0}
+.time-track:hover,.time-track.active{background:#1b4553}
+.time-name{display:flex;gap:5px;align-items:center;min-width:0;font-size:10px;color:#bcd4de}
+.time-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-weight:600}
+.time-name span{font-size:9px;color:#e3c185}
+.time-lane{position:relative;height:17px;overflow:visible;background:repeating-linear-gradient(90deg,#21425277 0 1px,transparent 1px 10%);border-radius:5px}
+.time-band{position:absolute;top:5px;height:8px;border-radius:5px;background:#4ea7bb99;min-width:3px;pointer-events:none}
+.time-track[data-channel="flight"] .time-band{background:#e5b263a8}
+.time-track[data-channel="target"] .time-band,.time-track[data-channel="ground"] .time-band{background:#ca7987a8}
+.time-key{position:absolute;top:1px;width:8px;height:15px;transform:translateX(-50%);border:0;border-radius:4px;background:#f3d082;padding:0;box-shadow:0 0 0 1px #272b30;cursor:pointer}
+.time-key.par{height:8px;top:5px;width:5px;background:#79d0d9}
+.time-key:focus-visible{outline:2px solid white;z-index:5}
+.source-footnote{font-size:10px;color:#98b5bc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+.timing-toolbar{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;margin-bottom:9px;align-items:center;font-size:11px;color:#bdd0d8}
+.timing-toolbar select{min-width:0;width:100%;font-size:10px;padding:7px}
+.timing-badge{grid-column:1/-1;font-size:10px;background:#244d50;color:#aef3d7;border:1px solid #397f75;padding:5px 8px;border-radius:6px}
+.timing-badge.warn{background:#553d25;border-color:#836a35;color:#ffdb9a}
+@media(max-width:770px){.source-timeline{height:210px;flex:none}.viewport-area{height:min(85vh,700px);min-height:510px}.canvas-wrap{flex:1;min-height:170px}}
+
+.time-track[data-channel="animation"] .time-band{background:#8576e5aa}
+.time-key.glb{background:#ac96ff;width:5px;height:12px;top:3px}
