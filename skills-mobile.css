@@ -1,0 +1,18 @@
+/* Ícones originais do TOP (PNG), não placeholders SVG de skills. */
+.rpg-hotbar-symbol{position:relative}
+.rpg-hotbar-symbol .skill-original-icon{
+  position:absolute;inset:10%;width:80%;height:80%;object-fit:contain;
+  image-rendering:auto;pointer-events:none;border-radius:20%;
+  filter:drop-shadow(0 2px 3px #0009);
+}
+.rpg-hotbar-symbol svg[hidden]{display:none!important}
+.rpg-hotbar-symbol .skill-original-icon[hidden]{display:none!important}
+.rpg-skill-hotbar button.skill-unavailable{opacity:.52;filter:grayscale(.28);cursor:not-allowed}
+.rpg-skill-original-icon{
+  flex:none;width:42px;height:42px;border-radius:9px;
+  object-fit:cover;border:1px solid #dabb7b88;background:#173346;
+  box-shadow:0 2px 7px #0006;
+}
+.rpg-skill-entry>button{flex:none;min-width:32px;min-height:34px;padding:5px;border-radius:9px}
+.rpg-skill-entry>button:disabled{opacity:.45;cursor:not-allowed}
+body.mobile-ui .rpg-hotbar-symbol .skill-original-icon{inset:12%;width:76%;height:76%}
