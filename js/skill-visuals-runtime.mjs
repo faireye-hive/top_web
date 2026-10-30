@@ -10,6 +10,14 @@ import {readLocalPresets,mergePresetStores,skillPreset} from './skill-vfx-data.m
 
 const resourcePath='assets/skills/';
 const emptyEdits=normalizeStore(null);
+const editorStorageKey='top-vfx-edits-v2';
+function editorEdits(manifest){
+  // Se visuals.json já foi exportado pelo Studio, as edições estão
+  // incorporadas: não adicionar novamente as camadas "extra".
+  if(String(manifest?.source||'').includes('editado no Skill FX Studio'))return emptyEdits;
+  try{return normalizeStore(JSON.parse(localStorage.getItem(editorStorageKey)||'null'));}
+  catch{return emptyEdits;}
+}
 const mobile=()=>matchMedia('(max-width: 770px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 
 export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
@@ -85,15 +93,16 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
       scale:preset.scale,opacity:preset.opacity,speed:1,
       particles:Math.min(maxSprites,isMobile?48:150,Math.max(1,preset.particles||100)),
       height:preset.height, distance:dist,castDelay:0};
+    const edits=editorEdits(manifest);
     const player=new FxPlayer({scene,camera,models,textureProvider:sharedTexture});
-    const layers=player.setSkill(manifest,emptyEdits,String(skill.id),chosenActor);
+    const layers=player.setSkill(manifest,edits,String(skill.id),chosenActor);
     player.root.position.set(world.x,heightAt(world.x,world.z)||0,world.z);
     player.root.rotation.y=world.yaw;
     const source=historical?.skills?.[String(skill.id)]||null;
     const pose=poseForSkill(mappedSkill,chosenActor,clip);
     const timeline=buildTimeline({layers,
-      resolve:L=>layerData(manifest,emptyEdits,L),
-      resolveEff:file=>resolveEff(manifest,emptyEdits,file),
+      resolve:L=>layerData(manifest,edits,L),
+      resolveEff:file=>resolveEff(manifest,edits,file),
       historical:source,clip,clipDuration:clip?.duration||0,
       pose,distance:dist,flightSpeed:flight>0&&dist>0?dist/flight:0});
     const duration=skillPlaybackLimit(timeline.duration,isMobile);
@@ -163,6 +172,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     get rendererMode(){return 'shared FxPlayer / PAR + EFF + strip + keyframes';},
     diagnostics(){return {mode:this.rendererMode,active:active.length,
       loaded:!!manifest,loadedResources:Object.keys(manifest?.resources||{}).length,
+      editorDraftsApplied:!!manifest&&!String(manifest.source||'').includes('editado no Skill FX Studio'),
       activeSkills:active.map(r=>({id:r.skillId,time:r.elapsed,duration:r.duration,
         timelineLayers:r.timeline.tracks.length}))};}
   };
