@@ -23,7 +23,7 @@ Esta integração **não** afirma equivalência visual ao DirectX 9.
 
 ## O que falta para os timestamps 100% automáticos
 
-O ZIP de código do OpenGL possui o leitor e o cálculo, **mas não todas as tabelas de poses** usadas por `ActorSkin` para cada personagem/grupo de arma. Precisamos da tabela original de ações/poses do Client contendo `start`, `end` e `impact`, ou de uma exportação fiel e identificada por personagem, grupo de arma e ação. Os clipes GLB possuem tempos de **movimento**, mas as suas chaves não são automaticamente eventos de disparo.
+O ZIP de código do OpenGL possui o leitor e o cálculo, **mas não todas as tabelas de poses** usadas por `ActorSkin` para cada personagem/grupo de arma. Precisamos de **`Client/scripts/txt/CharacterAction.tx`** (caminho lido em `ActorSkin.cpp:1201`) com `start`, `end` e `impact`, associado à tabela **`Client/scripts/table/characterinfo.txt`** para localizar o banco de poses de cada personagem e grupo de arma. Alternativamente, é possível usar uma exportação fiel desses mesmos dados. Os clipes GLB possuem tempos de **movimento**, mas as suas chaves não são automaticamente eventos de disparo.
 
 Sem isso, não é possível certificar os instantes de lançamento de Illusion Slash (callback 0) nem de outras skills com o mesmo tipo de evento.
 
