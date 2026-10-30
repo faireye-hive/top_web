@@ -383,8 +383,8 @@ export class FxPlayer{
   clear(){for(const r of this.render)r.dispose();this.render=[];this.layers=[];}
   setSocketResolver(resolver){this.socketResolver=typeof resolver==='function'?resolver:null;}
   anchorFor(L,t,ctx){
-    const resolved=this.socketResolver?.(L,t,this);
-    if(Array.isArray(resolved)&&resolved.length===3&&resolved.every(Number.isFinite))return resolved;
+    const resolved=ctx.socketAt?.(L,t);
+    if(resolved)return resolved;
     const g=ctx.g,dist=g.distance;let x=0,y=0,z=0;
     const dummyH=(()=>{const d=L.dummy;const a=this.m?.attachments?.[this.actor]?.actor?.[String(d)];
       if(a&&d>=0){const mt=a.matrix;return mt?mt[14]:1;}return d>=0?1:0;})();
@@ -399,6 +399,16 @@ export class FxPlayer{
     if(!this.m)return 0;g={...GLOBAL_DEFAULTS,...g};
     const hasFlight=this.layers.some(l=>l.channel==='flight'),dist=g.distance;
     const spd=g.flightSpeed||this.layers.find(l=>l.flightSpeed)?.flightSpeed||10;
+    // Um socket é calculado uma vez por camada por frame, não por partícula.
+    // O cálculo da matriz animada é caro em sistemas com muitas partículas.
+    const socketCache=new Map();
+    const socketAt=(L,tt)=>{
+      if(!this.socketResolver)return null;
+      if(socketCache.has(L.key))return socketCache.get(L.key);
+      const a=this.socketResolver(L,tt,this);
+      const v=Array.isArray(a)&&a.length===3&&a.every(Number.isFinite)?a:null;
+      socketCache.set(L.key,v);return v;
+    };
     const ctx={m:this.m,store:this.store,g,
       enabled:L=>{if(this.solo&&this.solo!==L.key)return false;return!(enabledMap?.[L.key]===false)&&!this.hidden.has(L.key);},
       startFor:L=>{const c=L.channel;if(g.timelineMode==='historical' && g.timelineStarts)
@@ -408,7 +418,6 @@ export class FxPlayer{
         const own=c==='actor'||c==='item'||c==='itemExtra'?0:base;
         return(c==='actor'||c==='item'||c==='itemExtra'?0:own+late);},
       anchorAt:(L,tt)=>this.anchorFor(L,tt,ctx),
-       socketAt:(L,tt)=>{const a=this.socketResolver?.(L,tt,this);
-         return Array.isArray(a)&&a.length===3&&a.every(Number.isFinite)?a:null;}};
+       socketAt};
     let n=0;this.render.forEach(r=>{n+=r.update(t*(g.speed||1),ctx)||0;});return n;}
 }
