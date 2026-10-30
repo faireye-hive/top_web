@@ -93,7 +93,7 @@ function drawTimeline(){
       if(playing)playToggle();preview(t);});
     tr.keys.slice(0,72).forEach(k=>{
       if(k.time>duration) return;
-      const title=['callback','estimated','edited','dx9'].includes(k.kind)?`${k.label} · ${k.time.toFixed(3)}s · ${k.source}`:k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
+      const title=tr.key==='__pose'?(`${tr.file} · evento #${k.index} · frame DX9 ${k.frame} · ${k.time.toFixed(3)}s · ${k.source}`):['callback','estimated','edited'].includes(k.kind)?`${k.label} · ${k.time.toFixed(3)}s · ${k.source}`:k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
         `${tr.file} · ${k.field}, chave ${k.index+1} · ${k.time.toFixed(3)}s · posição interpolada na vida PAR`;
       const b=h('button',{type:'button',class:'time-key '+k.kind,title,'aria-label':title,
         style:`left:${Math.max(0,Math.min(100,k.time/duration*100))}%`});
