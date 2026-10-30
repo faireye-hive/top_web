@@ -8,6 +8,7 @@ import {FxPlayer,GLOBAL_DEFAULTS,globals,normalizeStore,layerData,resolveEff,ski
 import * as ED from '../js/skill-fx-edit.mjs';
 import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs';
 import {poseForSkill} from '../js/skill-fx-pose.mjs';
+import {stripSwing} from '../js/skill-fx-strip.mjs';
 
 /* ---------------------------------------------------------------- helpers */
 const $=id=>document.getElementById(id);
@@ -457,13 +458,28 @@ function drawLayerPanel(){
   if(L.kind==='eff'){root.append(section('Modelo EFF (voo) · chaves e tempos originais',true,effEditor(L,L.file)));return;}
   if(L.kind==='strip'){
     const set=(f,v)=>setField(L,f,v);
-    const sw={a0:-70,a1:110,start:0,dur:.35,r0:.25,r1:1.35,h:1.1,...(data.swing||{})};
+    const sw=stripSwing(data.swing);
     const sset=(f,v)=>{sw[f]=v;setField(L,'swing',{...sw});};
+    const setRotation=(axis,value)=>{
+      const rotation=[...sw.rotation];rotation[axis]=value;sset('rotation',rotation);};
+    const rotationPreset=(angles)=>{
+      touch();sset('rotation',[...angles]);drawLayerPanel();
+      toast('Orientação da trilha ajustada na prévia 3D');};
+    const presets=h('div',{class:'strip-presets'},
+      h('button',{type:'button',text:'▱ Deitada (−90° X)',onclick:()=>rotationPreset([-90,0,0])}),
+      h('button',{type:'button',text:'▯ Em pé (0°)',onclick:()=>rotationPreset([0,0,0])}),
+      h('button',{type:'button',text:'◩ Inclinada (−45° X)',onclick:()=>rotationPreset([-45,0,0])}));
     root.append(section('Trilha da lâmina',true,
       texturePicker(data.texture,v=>set('texture',v)),blendControls(data.src,data.dst,(s,d)=>{set('src',s);set('dst',d);}),
       h('div',{class:'row-sel'},'Cor',h('input',{type:'color',value:rgbHex(data.color||[1,1,1,1]),oninput:e=>{touch();const r=hexRgb(e.target.value);set('color',[r[0],r[1],r[2],(data.color||[1,1,1,1])[3]]);}})),
       numControl('Vida da trilha (s)',data.life,{min:.05,max:3,step:.05},v=>set('life',v)),
       numControl('Passo de amostra (s)',data.step,{min:.005,max:.2,step:.005},v=>set('step',v))));
+    root.append(section('Orientação da trilha · 3D (prévia)',true,
+      h('p',{class:'hint',text:'Ajuste a orientação da fita da espada no espaço. Deitada gira a trilha no eixo X sem deslocar o pivô da arma. É um ajuste da simulação, não um campo do .par histórico.'}),
+      presets,
+      numControl('Inclinação X (°) · deitar',sw.rotation[0],{min:-180,max:180,step:5},v=>setRotation(0,v)),
+      numControl('Rotação Y (°) · virar',sw.rotation[1],{min:-180,max:180,step:5},v=>setRotation(1,v)),
+      numControl('Rotação Z (°) · girar',sw.rotation[2],{min:-180,max:180,step:5},v=>setRotation(2,v))));
     root.append(section('Trajetória do golpe (só prévia)',false,
       h('p',{class:'hint',text:'O jogo calcula o arco pelos dummies da arma; aqui você simula o arco para ver a trilha.'}),
       numControl('Ângulo inicial (°)',sw.a0,{min:-360,max:360,step:5},v=>sset('a0',v)),numControl('Ângulo final (°)',sw.a1,{min:-360,max:360,step:5},v=>sset('a1',v)),

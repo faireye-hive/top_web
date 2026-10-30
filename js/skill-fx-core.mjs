@@ -8,6 +8,7 @@
 //  - na tela convertemos para GL: (x, y, z) -> (x, z, -y);
 //  - o curso das curvas segue LegacyParticleCurves.h (o último intervalo segura a última chave).
 import * as THREE from 'three';
+import {stripSwing,stripRotationRadians} from './skill-fx-strip.mjs';
 
 /* ------------------------------------------------------------------ tabelas */
 export const BLEND_NAMES = {1:'ZERO',2:'ONE',3:'SRCCOLOR',4:'INVSRCCOLOR',5:'SRCALPHA',6:'INVSRCALPHA',
@@ -323,12 +324,18 @@ class StripLayer{
     this.geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(this.N*2*3),3));
     const idx=[];for(let i=0;i<this.N-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}this.geo.setIndex(idx);
     this.mat=makeMaterial(null,5,2);this.mat.vertexColors=true;
-    this.mesh=new THREE.Mesh(this.geo,this.mat);this.mesh.frustumCulled=false;player.root.add(this.mesh);}
+    this.mesh=new THREE.Mesh(this.geo,this.mat);this.mesh.frustumCulled=false;
+    this.mesh.rotation.order='XYZ';player.root.add(this.mesh);}
   update(t,ctx){
     const L=this.layer,s=layerData(ctx.m,ctx.store,L),g=ctx.g;
     if(!s||!ctx.enabled(L)){this.mesh.visible=false;return 0;}
-    const swing=s.swing||{a0:-70,a1:110,start:0,dur:.35,r0:.25,r1:1.35,h:1.1};
+    const swing=stripSwing(s.swing);
     const start=ctx.startFor(L)+(swing.start||0);
+    // A fita usa coordenadas locais, para rodar sobre o pivô do golpe sem
+    // mover a altura original da espada ao incliná-la.
+    const rot=stripRotationRadians(swing);
+    this.mesh.rotation.set(rot[0],rot[1],rot[2]);
+    this.mesh.position.set(0,swing.h*g.scale+g.height,0);
     this.mesh.visible=true;syncMaterial(this.mat,this.p.tex.get(s.texture),s.src,s.dst);
     const life=Math.max(.05,s.life||.5),pos=this.geo.getAttribute('position'),uv=this.geo.getAttribute('uv'),col=this.geo.getAttribute('color');
     let n=0;const steps=Math.min(this.N,Math.max(2,Math.floor(life/Math.max(.005,s.step||.03))+1));
@@ -338,8 +345,8 @@ class StripLayer{
       const age=(t-ts)/life,a=((swing.a0+(swing.a1-swing.a0)*u)*Math.PI)/180;
       const fade=ts<start||ts>start+swing.dur+life?0:(1-age);
       const cos=Math.cos(a),sin=Math.sin(a);
-      pos.setXYZ(n,cos*swing.r0*g.scale,swing.h*g.scale+sin*swing.r0*g.scale+g.height,0);
-      pos.setXYZ(n+1,cos*swing.r1*g.scale,swing.h*g.scale+sin*swing.r1*g.scale+g.height,0);
+      pos.setXYZ(n,cos*swing.r0*g.scale,sin*swing.r0*g.scale,0);
+      pos.setXYZ(n+1,cos*swing.r1*g.scale,sin*swing.r1*g.scale,0);
       uv.setXY(n,i/(steps-1),1);uv.setXY(n+1,i/(steps-1),0);
       const k=clamp(fade*(c[3]??1)*g.opacity,0,1)*(s.src===5?1:1);
       col.setXYZ(n,c[0]*k,c[1]*k,c[2]*k);col.setXYZ(n+1,c[0]*k,c[1]*k,c[2]*k);n+=2;}
