@@ -6,7 +6,7 @@ import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=3';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=4';
-import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip } from './class-skills.mjs?v=1';
+import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip } from './class-skills.mjs?v=2';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=3';
 import { resolvePrimaryAction } from './context-action.mjs';
 import { createCombat, COMBAT } from './combat-state.mjs?v=2';
