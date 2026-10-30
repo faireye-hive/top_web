@@ -132,6 +132,10 @@ const targetCore=new THREE.Mesh(new THREE.CapsuleGeometry(.27,.72,4,10),new THRE
 targetCore.position.y=.64;targetDummy.add(targetCore);
 const ring=new THREE.Mesh(new THREE.RingGeometry(.44,.54,32),new THREE.MeshBasicMaterial({color:0x66cfd1,transparent:true,opacity:.65,side:THREE.DoubleSide}));
 ring.rotation.x=-Math.PI/2;ring.position.y=.025;targetDummy.add(ring);scene.add(targetDummy);
+const socketMarker=new THREE.Mesh(new THREE.SphereGeometry(.085,12,10),
+  new THREE.MeshBasicMaterial({color:0x65f6c8,depthTest:false,depthWrite:false}));
+socketMarker.visible=false;socketMarker.renderOrder=250;scene.add(socketMarker);
+const socketPoint=new THREE.Vector3();
 const camera=new THREE.PerspectiveCamera(50,1,.1,150);
 const orbit=new OrbitControls(camera,renderer.domElement);
 orbit.enableDamping=true;orbit.minDistance=2;orbit.maxDistance=28;orbit.maxPolarAngle=Math.PI/2-.04;
@@ -607,7 +611,16 @@ async function pickSkill(){
 function preview(t){
   if(!currentSkill)return;const g=playbackGlobals();
   phase=clamp(Number(t)||0,0,g.duration);
-  updateActorAnimation(phase*g.speed);const n=player.update(phase,g,enabledMap());
+  updateActorAnimation(phase*g.speed);
+  const selected=sel(),point=selected&&$('show-socket').checked?
+    socketFromSkeleton({manifest,actor:$('actor').value,job:$('job').value,
+      layer:selected,avatar,root:player.root,equipped:equippedActive}):null;
+  socketMarker.visible=!!point;
+  if(point){
+    socketPoint.set(...point);player.root.localToWorld(socketPoint);
+    socketMarker.position.copy(socketPoint);
+  }
+  const n=player.update(phase,g,enabledMap());
   $('time-range').value=String(Math.round(phase*1000));$('time-label').textContent=phase.toFixed(2)+' / '+g.duration.toFixed(2)+' s';
   $('perf').textContent=n+' objetos FX';}
 function playToggle(){playing=!playing;$('play').textContent=playing?'Ⅱ Pausar':'▶ Reproduzir';}
@@ -644,6 +657,7 @@ function bind(){
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
   $('actor').onchange=()=>void loadActor();
   $('equip-actor').onchange=()=>void loadActor();
+  $('show-socket').onchange=()=>preview(phase);
   $('skill').onchange=()=>{playing=false;$('play').textContent='▶ Reproduzir';void pickSkill();};
   $('play').onclick=playToggle;$('restart').onclick=()=>{phase=0;preview(0);};
   $('time-range').oninput=e=>{if(playing)playToggle();preview(Number(e.target.value)/1000);};
