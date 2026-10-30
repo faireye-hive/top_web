@@ -75,11 +75,14 @@ export function restoreHero(raw,fallback='lance'){
     const data=JSON.parse(raw);
     if(data?.version!==2||!CLASSES[data.job]||!CHARACTERS[data.character]||!CLASSES[data.job].characters.includes(data.character))return hero;
     if(!Number.isInteger(data.level)||data.level<1||data.level>1000||!Number.isFinite(data.xp)||data.xp<0||data.xp>=data.level*40)return hero;
+    // Saves da versão anterior ainda não tinham a habilidade de prática de arco.
+    // Preserve todos os outros valores ao adicionar Hunter.
+    const practice={...hero.practice,...data.practice};
     for(const key of Object.keys(PRACTICES)){
-      const p=data.practice?.[key];
+      const p=practice[key];
       if(!Number.isInteger(p?.level)||p.level<10||p.level>200||!Number.isInteger(p?.uses)||p.uses<0||p.uses>=practiceRequirement(p.level))return hero;
     }
-    Object.assign(hero,{character:data.character,job:data.job,level:data.level,xp:data.xp,equipped:data.equipped===true,practice:data.practice});
+    Object.assign(hero,{character:data.character,job:data.job,level:data.level,xp:data.xp,equipped:data.equipped===true,practice});
     refreshHero(hero,{heal:true});return hero;
   }catch{return hero;}
 }
