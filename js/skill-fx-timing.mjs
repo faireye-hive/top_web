@@ -64,7 +64,8 @@ function resolveCallback(raw, label, clipDuration, impactTime, warnings, pose=nu
   if(key===-1)return {time:0,verified:true,source:'SkillInfo: início de ação (-1)',label};
   if(key===-2){
     if(clipDuration>0)return {time:precision(clipDuration),verified:true,
-      source:'SkillInfo: fim de ação (-2) + duração do clipe GLB',label};
+      source:pose?.source?'SkillInfo: fim de ação (-2) + '+pose.source:
+        'SkillInfo: fim de ação (-2) + duração do clipe GLB',label};
     warnings.push(label+': callback -2 (fim), mas a pose 3D não está disponível; t=0 é apenas fallback.');
     return {time:0,verified:false,source:'Pose ausente',label};
   }
@@ -98,6 +99,7 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
   const warnings=[],events=[],known={};
   const anim=historical?.animation||{},visual=historical?.visual||{};
   const impactTime=overrides?.verifiedImpactTime;
+  const actionDuration=positive(clipDuration)||positive(pose?.duration);
   const callbacks={actor:anim.keyframe,item:itemCallback(visual.itemEffect,anim.keyframe),
     itemExtra:itemCallback(visual.itemEffect2,anim.keyframe),
     flight:visual.flightKeyframe??anim.keyframe};
@@ -107,7 +109,7 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
       starts[channel]=0;known[channel]=false;continue;
     }
     const label={actor:'Personagem',item:'Item',itemExtra:'Item extra',flight:'Voo'}[channel];
-    const resolved=resolveCallback(callbacks[channel],label,clipDuration,impactTime,warnings,pose,overrides?.manualKeyframes);
+    const resolved=resolveCallback(callbacks[channel],label,actionDuration,impactTime,warnings,pose,overrides?.manualKeyframes);
     starts[channel]=resolved.time;known[channel]=resolved.verified;
     if(resolved.verified)events.push({channel,time:resolved.time,label,source:resolved.source,kind:resolved.manual?'edited':'callback'});
   }
@@ -127,7 +129,7 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
       source:'Distância/velocidade do voo: estimativa, não callback original',kind:'estimated'});
   }else{
     const hit=layers.some(l=>['target','ground','water'].includes(l.channel))
-      ? resolveCallback(visual.durationPoint,'Impacto sem voo',clipDuration,impactTime,warnings,pose,overrides?.manualKeyframes)
+      ? resolveCallback(visual.durationPoint,'Impacto sem voo',actionDuration,impactTime,warnings,pose,overrides?.manualKeyframes)
       : {time:0,verified:false,source:'Sem efeito de alvo'};
     for(const c of ['target','ground','water'])starts[c]=hit.time;
     if(hit.verified&&layers.some(l=>['target','ground','water'].includes(l.channel)))
@@ -147,7 +149,7 @@ export function stageTimes({layers=[],resources,historical,distance=3.8,
 export function buildTimeline({layers=[],resolve,resolveEff,historical=null,distance=3.8,
   flightSpeed=0,clipDuration=0,clip=null,overrides=null,pose=null}={}){
   const stage=stageTimes({layers,historical,distance,flightSpeed,clipDuration,overrides,pose});
-  const tracks=[];let end=Math.max(0,positive(clipDuration)),continuous=0,visibleKeyCount=0;
+  const tracks=[];let end=Math.max(0,positive(clipDuration),positive(pose?.duration)),continuous=0,visibleKeyCount=0;
   // Keyframes dos GLB têm timestamps explícitos (em segundos) nos AnimationTracks.
   // Mostramos a temporização real do movimento, mas NÃO afirmamos que um
   // desses tempos corresponde ao evento 'keyframe' do SkillInfo legado.
