@@ -71,7 +71,9 @@ export function bakeMerged(m,store){
   for(const [file,p] of Object.entries(store.res)){
     const r=out.resources[file];if(!r)continue;
     for(const [i,patch] of Object.entries(p.systems||{}))if(r.systems?.[i])Object.assign(r.systems[i],clone(patch));
-    for(const [i,patch] of Object.entries(p.strips||{}))if(r.strips?.[i]){const q=clone(patch);delete q.swing;Object.assign(r.strips[i],q);}
+    // swing/rotation são metadados da prévia Three.js no visuals.json, não campos nativos do .par.
+    // Preservar na exportação para que os ajustes não desapareçam ao recarregar o catálogo.
+    for(const [i,patch] of Object.entries(p.strips||{}))if(r.strips?.[i])Object.assign(r.strips[i],clone(patch));
     for(const [i,patch] of Object.entries(p.parts||{}))if(r.parts?.[i])Object.assign(r.parts[i],clone(patch));
     if(p.top&&r.kind==='eff')Object.assign(r,clone(p.top));}
   const remap=(sk,map)=>{
