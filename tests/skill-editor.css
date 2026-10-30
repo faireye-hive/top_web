@@ -154,3 +154,7 @@ details.sec>.sec-body{padding:4px 10px 10px;display:grid;gap:9px}
 
 .time-track[data-channel="animation"] .time-band{background:#8576e5aa}
 .time-key.glb{background:#ac96ff;width:5px;height:12px;top:3px}
+
+/* v5.1 · callbacks do cliente OpenGL (separados das chaves PAR/EFF) */
+.time-key.callback{background:#66e5bc;border-color:#b3ffe4;box-shadow:0 0 0 1px #003a28}
+.time-key.estimated{background:#eda96d;border-color:#ffe6b5;border-style:dashed}
