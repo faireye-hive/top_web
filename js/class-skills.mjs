@@ -27,6 +27,18 @@ export function resolveSkillClip(skill,character,clips){
     const clip=clips.find(a=>getActionId(a)===item.id);
     if(clip)return clip;
   }
+  // Conch Ray (216) prevê a ação 67 com adaga, mas CharacterAction.tx não
+  // fornece essa ação para Ami/Phyllis. O próprio skillinfo prevê 13 como
+  // animação BASE: se equipada não existe para o ator, usar a base real.
+  // Não aplicar este fallback a skills de pistola/arco/espada: trocar a
+  // animação armada por um golpe desarmado seria visualmente incorreto.
+  if(skill.id===216 && (character==='ami'||character==='phyllis') &&
+     variants.length===0 && Array.isArray(skill.baseActions)){
+    for(const id of skill.baseActions){
+      const clip=clips.find(a=>getActionId(a)===id);
+      if(clip)return clip;
+    }
+  }
   return null;
 }
 export function classSkillEntries(catalog,job,character,clips){
