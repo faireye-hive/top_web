@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#071522">
 <base href="../">
-<title>TOP Web · Skill FX Studio v5 · Keyframes históricos</title>
-<link rel="stylesheet" href="tests/skill-editor.css?v=5">
+<title>TOP Web · Skill FX Studio v6 · Keyframes históricos</title>
+<link rel="stylesheet" href="tests/skill-editor.css?v=6">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -64,7 +64,7 @@
      <output id="time-label">0.00 / 5.00 s</output>
    </div>
    <div class="source-timeline" aria-label="Keyframes e duração dos efeitos">
-     <div class="source-title"><b>◈ KEYFRAMES ORIGINAIS</b>
+     <div class="source-title"><b>◈ KEYFRAMES ORIGINAIS · DX9 / PAR / EFF / GLB</b>
        <span id="timeline-summary">Carregando .par / .eff...</span></div>
      <div class="source-events" id="source-events" role="list"></div>
      <p class="source-footnote" id="source-note">EFF = durações explícitas. PAR = curvas distribuídas pela vida de cada partícula.</p>
@@ -102,11 +102,11 @@
       <strong>Como usar</strong>
       <p>Tudo que aparece aqui são os <b>campos reais</b> do .par/.eff (contagem, vida, velocidade, direção, curvas de tamanho/cor, blend D3D, keyframes). Digite o valor ou arraste o controle. <code>Ctrl+Z</code> desfaz.</p>
       <p><b>↓ visuals.json</b> gera o arquivo já editado para colocar em <code>assets/skills/</code>. <b>↓ Edições</b> guarda só as mudanças.</p>
-      <p>Na reprodução automática, os tempos de <b>.par</b>, <b>.eff</b> e GLB controlam a linha do tempo. Os eventos DX9 sem timestamp permanecem identificados como não verificados.</p>
+      <p>Na reprodução automática, os frames de evento de <b>CharacterAction.tx</b>, os tempos de <b>.par</b>, <b>.eff</b> e GLB controlam a linha do tempo. Os eventos DX9 sem timestamp permanecem identificados como não verificados.</p>
       <p>A prévia é uma aproximação dos tipos do sources, não o renderer DX9 completo.</p>
     </div>
  </aside>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script type="module" src="tests/skill-editor.mjs?v=5"></script>
+<script type="module" src="tests/skill-editor.mjs?v=6"></script>
 </body></html>

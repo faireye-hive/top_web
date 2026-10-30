@@ -7,6 +7,7 @@ import {FxPlayer,GLOBAL_DEFAULTS,globals,normalizeStore,layerData,resolveEff,ski
   TYPE_NAMES,BLEND_NAMES,BLEND_PRESETS,curve1,clone} from '../js/skill-fx-core.mjs';
 import * as ED from '../js/skill-fx-edit.mjs';
 import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs';
+import {poseForSkill} from '../js/skill-fx-pose.mjs';
 
 /* ---------------------------------------------------------------- helpers */
 const $=id=>document.getElementById(id);
@@ -34,7 +35,7 @@ const RAD=180/Math.PI;
 /* ------------------------------------------------------------------ estado */
 let catalog=null,manifest=null,historical=null,store=readStore(),usage={};
 let historicalLevel=1;
-const TIMING_MODE_KEY='top-vfx-timing-mode-v5';
+const TIMING_MODE_KEY='top-vfx-timing-mode-v6'; // primeira abertura da v6 = automático
 let timingMode=localStorage.getItem(TIMING_MODE_KEY)==='manual'?'manual':'historical';
 let timelineCache=null;
 let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNames=[],lgoNames=[];
@@ -56,12 +57,15 @@ function updateUndo(){$('undo').disabled=!undoStack.length;$('redo').disabled=!r
 function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);}
 function status(msg){$('status').textContent=msg;}
 function invalidateTimeline(){timelineCache=null;}
+function currentPose(){return poseForSkill(currentSkill,$('actor').value,clipFor());}
+function poseAdjustments(){return store.skills[skillId()]?.timingByActor?.[$('actor').value]||{};}
 function timelineInfo(){
   if(!currentSkill||!manifest)return null;
   if(!timelineCache){const g=globalsNow(),clip=clipFor();
     timelineCache=buildTimeline({layers,resolve:L=>layerData(manifest,store,L),
       resolveEff:file=>resolveEff(manifest,store,file),historical:historicalSkill(),
-      distance:g.distance,flightSpeed:g.flightSpeed,clipDuration:clip?.duration||0,clip});}
+      distance:g.distance,flightSpeed:g.flightSpeed,clipDuration:clip?.duration||0,clip,
+       pose:currentPose(),overrides:{manualKeyframes:poseAdjustments()}});}
   return timelineCache;}
 function playbackGlobals(){
   const g=globalsNow();if(timingMode==='manual')return g;
@@ -75,7 +79,7 @@ function drawTimeline(){
   const badge=$('timing-badge');badge.classList.toggle('warn',timingMode==='historical'&&!!info?.stage.warnings.length);
   badge.textContent=timingMode==='historical'?('AUTO · '+(info?.tracks.length||0)+' camadas · '+(info?.visibleKeyCount||0)+' chaves PAR/EFF'):'MANUAL · valores do painel';
   $('timeline-summary').textContent=(info?.tracks.length||0)+' camadas · '+duration.toFixed(2)+' s'+(info?.continuous?' · emissão contínua':'');
-  $('source-note').textContent=timingMode==='historical'?(info?.stage.warnings.join(' | ')||'Tempos EFF/PAR originais; GLB quando disponível.'):'Edição manual: atraso e duração da prévia substituem a agenda automática.';
+  $('source-note').textContent=timingMode==='historical'?(info?.stage.warnings.join(' | ')||'Eventos CharacterAction DX9, temporização EFF/PAR e GLB quando disponíveis.'):'Edição manual: atraso e duração da prévia substituem a agenda automática.';
   for(const tr of info?.tracks||[]){
     const row=h('div',{class:'time-track'+(selectedKey===tr.key?' active':''),'data-channel':tr.channel,role:'listitem',title:tr.timing+' · '+tr.start.toFixed(3)+'–'+tr.end.toFixed(3)+'s'});
     const label=h('div',{class:'time-name'},h('b',{text:tr.file}),h('span',{text:tr.channel}));
@@ -89,18 +93,28 @@ function drawTimeline(){
       if(playing)playToggle();preview(t);});
     tr.keys.slice(0,72).forEach(k=>{
       if(k.time>duration) return;
-      const title=k.kind==='callback'||k.kind==='estimated'?`${k.label} · ${k.time.toFixed(3)}s · ${k.source}`:k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
+      const title=tr.key==='__pose'?(`${tr.file} · evento #${k.index} · frame DX9 ${k.frame} · ${k.time.toFixed(3)}s · ${k.source}`):['callback','estimated','edited'].includes(k.kind)?`${k.label} · ${k.time.toFixed(3)}s · ${k.source}`:k.kind==='glb'?`${tr.file} · keyframe GLB ${k.index+1} · ${k.time.toFixed(3)}s (movimento, sem evento DX9 associado)` : k.kind==='eff'?`${tr.file} · Peça ${k.part+1}, chave ${k.index+1} · ${k.time.toFixed(3)}s · duração ${k.duration.toFixed(3)}s`:
         `${tr.file} · ${k.field}, chave ${k.index+1} · ${k.time.toFixed(3)}s · posição interpolada na vida PAR`;
       const b=h('button',{type:'button',class:'time-key '+k.kind,title,'aria-label':title,
         style:`left:${Math.max(0,Math.min(100,k.time/duration*100))}%`});
-      b.addEventListener('click',e=>{e.stopPropagation();if(playing)playToggle();if(tr.key!=='__animation'&&tr.key!=='__callbacks'){selectedKey=tr.key;redrawLayers();drawLayerPanel();drawTimeline();}preview(k.time);});
+      b.addEventListener('click',e=>{e.stopPropagation();if(playing)playToggle();if(!['__animation','__callbacks','__pose'].includes(tr.key)){selectedKey=tr.key;redrawLayers();drawLayerPanel();drawTimeline();}preview(k.time);});
       lane.append(b);});
     row.append(label,lane);row.addEventListener('click',e=>{if(e.target.closest('button'))return;
-      if(tr.key!=='__animation'&&tr.key!=='__callbacks'){selectedKey=tr.key;redrawLayers();drawLayerPanel();}});root.append(row);
+      if(!['__animation','__callbacks','__pose'].includes(tr.key)){selectedKey=tr.key;redrawLayers();drawLayerPanel();}});root.append(row);
   }
   if(!info?.tracks.length)root.append(h('p',{class:'hint',text:'Nenhum arquivo PAR/EFF vinculado a esta skill.'}));
 }
-function updateTimeline(){invalidateTimeline();drawTimeline();preview(phase);}
+function updateTimeline(){invalidateTimeline();drawTimeline();syncAutoDuration();preview(phase);}
+function syncAutoDuration(){
+  if(timingMode!=='historical')return;
+  const control=$('global-controls')?.querySelector('[data-field="duration"]');
+  if(!control)return;
+  for(const input of control.querySelectorAll('input')){
+    const duration=playbackGlobals().duration;
+    input.value=String(duration);
+    if(input.type==='range')input.max=String(Math.max(30,Math.ceil(duration)));
+  }
+}
 
 /* ------------------------------------------------------------------- cena */
 const renderer=new THREE.WebGLRenderer({canvas:$('preview'),antialias:true,alpha:false,preserveDrawingBuffer:true});
@@ -175,11 +189,21 @@ const GF=[['scale','Escala geral',.1,4,.05],['opacity','Opacidade geral',0,2,.05
   ['castDelay','Atraso do disparo (manual, s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (manual, s)',1,30,.5]];
 function drawGlobals(){
   const root=$('global-controls');root.replaceChildren();const g=globalsNow();
-  for(const[name,label,min,max,step]of GF)
-    root.append(numControl(label,g[name],{min,max,step},v=>{
-      skillRec(store,skillId()).global[name]=v;persist();
-      if(name==='distance'){targetDummy.position.x=v;drawHistorical();}
-      updateTimeline();}));
+  for(const[name,label,min,max,step]of GF){
+      const autoDuration=name==='duration'&&timingMode==='historical';
+      const control=numControl(autoDuration?'Duração automática da prévia (s)':label,
+        autoDuration?playbackGlobals().duration:g[name],{min,max,step},v=>{
+          if(autoDuration)return;
+          touch();skillRec(store,skillId()).global[name]=v;persist();
+          if(name==='distance'){targetDummy.position.x=v;drawHistorical();}
+          updateTimeline();});
+      if(autoDuration)control.querySelectorAll('input').forEach(input=>{
+        input.disabled=true;input.title='Calculada automaticamente pelos tempos DX9/GLB/PAR/EFF. Altere para Manual para editar.';});
+      control.dataset.field=name;
+      if(autoDuration){const slider=control.querySelector('input[type="range"]');
+        if(slider)slider.max=String(Math.max(30,Math.ceil(playbackGlobals().duration)));}
+      root.append(control);
+    }
   root.append(checkControl('Alcance (range) centralizado',g.centerRange>=.5,v=>{skillRec(store,skillId()).global.centerRange=v?1:0;persist();preview(phase);}));
   targetDummy.position.x=g.distance;$('time-range').max=String(Math.round((timingMode==='historical'?timelineInfo()?.duration:g.duration||5)*1000));}
 
@@ -226,6 +250,44 @@ function drawHistorical(){
     historicalCard('Tempo automático (.par/.eff/GLB)',(timelineInfo()?.duration||0).toFixed(2)+' s','Janela de reprodução; não cooldown')
   );
   root.append(stats);
+  const pose=currentPose();
+  if(pose){
+    const keyBox=h('div',{class:'hist-meta pose-keys'});
+    keyBox.append(h('div',{},h('b',{text:'CharacterAction.tx · '+$('actor').value+' · ação '+pose.action}),
+      h('span',{class:'hint',text:'Frames '+pose.startFrame+'–'+pose.endFrame+
+        ' · duração DX9 '+pose.originalDuration.toFixed(3)+' s'+
+        ' · aplicada '+pose.duration.toFixed(3)+' s ('+pose.source+')'})));
+    const edits=poseAdjustments();
+    for(const key of pose.keyframes){
+      const manual=Object.hasOwn(edits,key.index);
+      const row=h('label',{class:'pose-event-row'});
+      row.append(h('span',{text:'Keyframe #'+key.index+' · frame '+key.frame}),
+        h('small',{text:manual?'Editado':'DX9 original'}));
+      const input=h('input',{type:'number',min:'0',max:'180',step:'.001',
+        value:String(manual?edits[key.index]:key.time),
+        title:'Segundos do evento. Alterar salva substituição local; não modifica o original.'});
+      input.addEventListener('change',()=>{
+        const value=Number(input.value);
+        if(input.value.trim()===''||!Number.isFinite(value)||value<0||value>180){
+          toast('Informe um tempo entre 0 e 180 segundos');input.value=String(key.time);return;}
+        touch();const rec=skillRec(store,skillId());rec.timingByActor??={};
+        const actor=$('actor').value;rec.timingByActor[actor]??={};
+        if(Math.abs(value-key.time)<.0005)delete rec.timingByActor[actor][key.index];
+        else rec.timingByActor[actor][key.index]=value;
+        persist();updateTimeline();drawHistorical();
+      });
+      row.append(input);keyBox.append(row);
+    }
+    const reset=h('button',{type:'button',class:'pose-reset',text:'↺ Restaurar keyframes DX9 deste personagem'});
+    reset.addEventListener('click',()=>{
+      if(!Object.keys(poseAdjustments()).length)return;
+      touch();delete skillRec(store,skillId()).timingByActor?.[$('actor').value];
+      persist();updateTimeline();drawHistorical();toast('Keyframes DX9 restaurados');
+    });
+    keyBox.append(reset);root.append(keyBox);
+  }else{
+    root.append(h('p',{class:'hint',text:'Nenhum evento de pose DX9 válido para a combinação de skill, arma e personagem. A timeline continua usando PAR/EFF/GLB disponíveis.'}));
+  }
   if(sk.cooldown.kind!=='lua_estatico'&&sk.cooldown.kind!=='constante'&&sk.cooldown.kind!=='sem_valor')
     root.append(h('p',{class:'hist-warning',text:'Cooldown não resolvido automaticamente: '+sk.cooldown.raw+' (Lua complexo ou função ausente).'}));
   if(sk.spLua?.kind==='lua_complexo')
@@ -516,8 +578,8 @@ function exportMerged(){
   download('visuals.json',new Blob([JSON.stringify(out)],{type:'application/json'}));
   toast('visuals.json editado exportado: substitua assets/skills/visuals.json');}
 function exportEdits(){download('vfx-edits.json',new Blob([JSON.stringify(ED.exportEdits(store),null,2)+'\n'],{type:'application/json'}));toast('Edições exportadas');}
-function exportTiming(){const t=timelineInfo();if(!t)return;const out={skill:currentSkill.id,mode:timingMode,
-  original:historicalSkill(),timeline:t,limitations:'Callbacks -1/-2 do OpenGL identificam início/fim; callback >=0 requer impact frame da tabela de poses por personagem/arma, ainda não fornecido. Chegada do voo é estimada; curvas PAR normalizadas.'};
+function exportTiming(){const t=timelineInfo();if(!t)return;const out={skill:currentSkill.id,mode:timingMode,actor:$('actor').value,
+  original:historicalSkill(),pose:currentPose(),manualKeyframes:poseAdjustments(),timeline:t,limitations:'Keyframes DX9 obtidos de CharacterAction.tx (ações equipadas dos quatro personagens); com GLB, frames são mapeados à duração do clipe. Eventos não existentes e colisão real ainda não são inferidos; chegada do voo é estimada; curvas PAR são normalizadas.'};
   download('TOP_skill_'+currentSkill.id+'_tempos.json',new Blob([JSON.stringify(out,null,2)+'\n'],{type:'application/json'}));toast('Cronologia exportada com fontes e advertências');}
 async function importFile(file){
   if(!file)return;
@@ -536,7 +598,7 @@ function bind(){
   $('historical-level').onchange=e=>setHistoricalLevel(e.target.value);
   $('timing-mode').value=timingMode;
   $('timing-mode').onchange=e=>{timingMode=e.target.value==='manual'?'manual':'historical';
-    localStorage.setItem(TIMING_MODE_KEY,timingMode);drawTimeline();preview(phase);};
+    localStorage.setItem(TIMING_MODE_KEY,timingMode);drawGlobals();drawTimeline();preview(phase);};
   $('historical-sync').onclick=useClipDuration;
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
   $('actor').onchange=()=>void loadActor();
