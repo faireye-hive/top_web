@@ -10,11 +10,12 @@ export const CLASSES=Object.freeze({
   crusader:{name:'Crusader',characters:['lance','phyllis'],weapon:'sword',attackAttribute:'strength',growth:[2,0,1,1,1]},
   champion:{name:'Champion',characters:['carsise'],weapon:'greatsword',attackAttribute:'strength',growth:[2,0,3,0,0]},
   sharpshooter:{name:'Sharpshooter',characters:['lance','phyllis'],weapon:'firearm',attackAttribute:'dexterity',growth:[0,0,1,3,1]},
+  hunter:{name:'Hunter',characters:['lance','phyllis'],weapon:'bow',attackAttribute:'dexterity',growth:[0,0,1,3,1]},
   cleric:{name:'Cleric',characters:['phyllis','ami'],weapon:'staff',attackAttribute:'intelligence',growth:[0,3,2,0,0]},
   'seal-master':{name:'Seal Master',characters:['phyllis','ami'],weapon:'staff',attackAttribute:'intelligence',growth:[0,2,2,1,0]},
   voyager:{name:'Voyager',characters:['lance','phyllis','ami'],weapon:'dagger',attackAttribute:'intelligence',growth:[1,2,2,0,0]}
 });
-export const PRACTICES=Object.freeze({unarmed:'Punhos',sword:'Espadas',greatsword:'Espadões',firearm:'Tiro',staff:'Cajados',dagger:'Adagas'});
+export const PRACTICES=Object.freeze({unarmed:'Punhos',sword:'Espadas',greatsword:'Espadões',firearm:'Tiro',bow:'Arcos',staff:'Cajados',dagger:'Adagas'});
 export function attributesFor(job,level){
   return Object.fromEntries(ATTRIBUTE_KEYS.map((key,i)=>[key,5+CLASSES[job].growth[i]*(level-1)]));
 }
