@@ -48,30 +48,91 @@ export function parDuration(system) {
   return {duration:precision(delay+play+life),open:false};
 }
 
-export function stageTimes({layers=[],resources, historical, distance=3.8,
-  flightSpeed=0, clipDuration=0, overrides=null}={}) {
+// Semântica de callback: PlayCombat.cpp / SkillVisual.h do porte OpenGL.
+// -1 = início, -2 = fim, >=0 = evento no impacto da pose. O timestamp de
+// impacto NÃO vem do SkillInfo: ActorSkin calcula (impact-start)/30 da pose.
+function callbackIndex(raw) {
+  const n=Number(String(raw??'').trim());
+  return String(raw??'').trim()!=='' && Number.isInteger(n) ? n : -3;
+}
+function itemCallback(raw, fallback) {
+  const parts=String(raw??'').split(',');
+  return Number(parts[0])>0 ? callbackIndex(parts[1]) : fallback;
+}
+function resolveCallback(raw, label, clipDuration, impactTime, warnings) {
+  const key=callbackIndex(raw);
+  if(key===-1)return {time:0,verified:true,source:'SkillInfo: início de ação (-1)',label};
+  if(key===-2){
+    if(clipDuration>0)return {time:precision(clipDuration),verified:true,
+      source:'SkillInfo: fim de ação (-2) + duração do clipe GLB',label};
+    warnings.push(label+': callback -2 (fim), mas a pose 3D não está disponível; t=0 é apenas fallback.');
+    return {time:0,verified:false,source:'Pose ausente',label};
+  }
+  if(key>=0){
+    // Jamais tratar qualquer chave de movimento GLB como impacto. O valor
+    // verificado deve ser extraído da tabela de poses do personagem e arma.
+    if(impactTime!=null && Number.isFinite(Number(impactTime)) && Number(impactTime)>=0){
+      const t=positive(impactTime);
+      return {time:precision(clipDuration>0?Math.min(t,clipDuration):t),verified:true,
+        source:'Callback de impacto da pose: timestamp fornecido explicitamente',label};
+    }
+    warnings.push(label+': callback '+key+' requer frame impact da pose (.lab/tabela de ações); início em t=0 é só prévia.');
+    return {time:0,verified:false,source:'Impacto não mapeado',label};
+  }
+  return {time:0,verified:false,source:'Callback ausente',label};
+}
+
+export function stageTimes({layers=[],resources,historical,distance=3.8,
+  flightSpeed=0,clipDuration=0,overrides=null}={}) {
   const actors=layers.filter(l=>l.channel==='actor'||l.channel==='item'||l.channel==='itemExtra');
   const flight=layers.filter(l=>l.channel==='flight');
   const speed=positive(flightSpeed)||positive(flight.find(l=>positive(l.vis?.speed))?.vis?.speed)||
     positive(flight.find(l=>positive(l.flightSpeed))?.flightSpeed);
-  // SkillInfo keyframe não identifica timestamp; só o evento de GLB validado
-  // e explicitamente marcado como tal poderá definir o instante de liberação.
-  const event=overrides?.verifiedRelease;
-  const release=event!=null && Number.isFinite(Number(event)) ? positive(event) : 0;
+  const warnings=[],events=[],known={};
+  const anim=historical?.animation||{},visual=historical?.visual||{};
+  const impactTime=overrides?.verifiedImpactTime;
+  const callbacks={actor:anim.keyframe,item:itemCallback(visual.itemEffect,anim.keyframe),
+    itemExtra:itemCallback(visual.itemEffect2,anim.keyframe),
+    flight:visual.flightKeyframe??anim.keyframe};
+  const starts={};
+  for(const channel of ['actor','item','itemExtra','flight']){
+    if(!layers.some(l=>l.channel===channel)){
+      starts[channel]=0;known[channel]=false;continue;
+    }
+    const label={actor:'Personagem',item:'Item',itemExtra:'Item extra',flight:'Voo'}[channel];
+    const resolved=resolveCallback(callbacks[channel],label,clipDuration,impactTime,warnings);
+    starts[channel]=resolved.time;known[channel]=resolved.verified;
+    if(resolved.verified)events.push({channel,time:resolved.time,label,source:resolved.source,kind:'callback'});
+  }
+  // Um instante medido de lançamento só altera o canal de voo.
+  if(overrides?.verifiedRelease!=null && Number.isFinite(Number(overrides.verifiedRelease))){
+    starts.flight=positive(overrides.verifiedRelease);
+    known.flight=true;
+    if(flight.length)events.push({channel:'flight',time:starts.flight,label:'Voo (verificado)',
+      source:'Evento de liberação informado e verificado',kind:'callback'});
+  }
+  const release=starts.flight;
   const flightTime=flight.length&&speed>0 ? positive(distance)/speed : 0;
   const impact=release+flightTime;
-  const starts={actor:0,item:0,itemExtra:0,flight:release,target:impact,ground:impact};
-  const warnings=[];
-  if (historical?.animation && !['','0','-1'].includes(String(historical.animation.keyframe)))
-    warnings.push('SkillInfo keyframe='+historical.animation.keyframe+' é um índice legado sem timestamp verificável.');
-  if (historical?.visual && !['','0','-1'].includes(String(historical.visual.flightKeyframe)))
-    warnings.push('Keyframe de voo não possui timestamp verificável.');
-  if (flight.length && speed<=0) warnings.push('Projétil sem velocidade verificável: o tempo de voo não pode ser calculado.');
-  if (flight.length && speed>0) warnings.push('Momento do impacto calculado por distância / velocidade visual (estimativa).');
-  if (event==null && flight.length) warnings.push('Instante exato de liberação não documentado; início em t=0 para prévia, sem afirmar paridade DX9.');
-  if (!historical) warnings.push('SkillInfo histórico indisponível para esta skill.');
+  if(flight.length){
+    for(const c of ['target','ground','water'])starts[c]=precision(impact);
+    if(speed>0)events.push({channel:'target',time:precision(impact),label:'Chegada (estimada)',
+      source:'Distância/velocidade do voo: estimativa, não callback original',kind:'estimated'});
+  }else{
+    const hit=layers.some(l=>['target','ground','water'].includes(l.channel))
+      ? resolveCallback(visual.durationPoint,'Impacto sem voo',clipDuration,impactTime,warnings)
+      : {time:0,verified:false,source:'Sem efeito de alvo'};
+    for(const c of ['target','ground','water'])starts[c]=hit.time;
+    if(hit.verified&&layers.some(l=>['target','ground','water'].includes(l.channel)))
+      events.push({channel:'target',time:hit.time,label:'Impacto sem voo',source:hit.source,kind:'callback'});
+  }
+  if(flight.length && speed<=0)warnings.push('Projétil sem velocidade verificável: não é possível estimar chegada.');
+  if(flight.length && speed>0)warnings.push('Chegada estimada por distância/velocidade (não é colisão DX9).');
+  if(flight.length&&!known.flight)warnings.push('Voo sem timestamp de callback: sai em t=0 somente para prévia.');
+  if(!historical)warnings.push('SkillInfo histórico indisponível para esta skill.');
   return {release:precision(release),impact:precision(impact),flightTime:precision(flightTime),
-    speed:precision(speed),starts,warnings,actors:actors.length,flight:flight.length,releaseVerified:event!=null};
+    speed:precision(speed),starts,warnings,actors:actors.length,flight:flight.length,
+    releaseVerified:known.flight,events};
 }
 
 // As informações de resources precisam ser os valores EFETIVOS, inclusive edições
@@ -94,6 +155,14 @@ export function buildTimeline({layers=[],resolve,resolveEff,historical=null,dist
     visibleKeyCount+=keys.length;
   }
 
+  if(stage.events?.length){
+    const keys=stage.events.map((e,index)=>({...e,index,time:precision(e.time)}));
+    tracks.push({key:'__callbacks',label:'Callbacks históricos',file:'Eventos OpenGL / SkillInfo',
+      channel:'callbacks',start:0,end:Math.max(0,...keys.map(k=>k.time)),open:false,keys,
+      timing:'Início/fim conforme callback; impacto pode permanecer não verificado.'});
+    visibleKeyCount+=keys.length;
+    end=Math.max(end,...keys.map(k=>k.time));
+  }
   for(const layer of layers){
     const data=resolve(layer);if(!data)continue;
     const start=stage.starts[layer.channel]??0;
