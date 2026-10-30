@@ -1,0 +1,16 @@
+Skill FX Studio v2 — como instalar
+==================================
+Copie mantendo as pastas (sobrescreva os 3 arquivos antigos do editor):
+
+  tests/skill-editor.html   (substitui)
+  tests/skill-editor.css    (substitui)
+  tests/skill-editor.mjs    (substitui)
+  js/skill-fx-core.mjs      (NOVO - simulador PAR/EFF)
+  js/skill-fx-edit.mjs      (NOVO - edição/exportação)
+
+Abra com servidor HTTP:  python3 -m http.server 8000  ->  /tests/skill-editor.html
+O editor só precisa de assets/skills/catalog.json e visuals.json (+ textures/, models.glb).
+hero-state.mjs / class-skills.mjs / skill-rules.mjs continuam sendo usados se existirem (animação do personagem).
+
+Fluxo: edite -> "↓ visuals.json" -> substitua assets/skills/visuals.json.
+"↓ Edições" guarda só as mudanças (vfx-edits.json) para importar depois.
