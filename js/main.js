@@ -533,7 +533,7 @@ async function loadCharacter(id){
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;
-    skillVisuals.setActor(id,animations);
+    skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
     mixer.addEventListener('finished',event=>{
