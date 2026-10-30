@@ -78,8 +78,8 @@ details.sec{border:1px solid #1d4050;border-radius:10px;margin-bottom:9px;backgr
 details.sec>summary{cursor:pointer;padding:8px 10px;font-weight:800;font-size:11px;color:var(--gold);letter-spacing:.03em;list-style:none}
 details.sec>summary::before{content:"▸ ";color:#7aa}details.sec[open]>summary::before{content:"▾ "}
 details.sec>.sec-body{padding:4px 10px 10px;display:grid;gap:9px}
-.vec{display:grid;grid-template-columns:62px repeat(3,1fr);gap:5px;align-items:center;font-size:11px;color:#c1d6db}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.vec{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:5px;align-items:center;font-size:11px;color:#c1d6db}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .row-sel{display:grid;gap:4px;font-size:11px;color:#c1d6db}
 .row-sel select,.row-sel input[type=color]{width:100%;height:30px;padding:2px 6px;background:#0b2a3a;border-radius:7px}
 .row-sel input[type=color]{padding:1px}
@@ -98,7 +98,10 @@ details.sec>.sec-body{padding:4px 10px 10px;display:grid;gap:9px}
 .curve-prev{width:100%;height:34px;border-radius:7px;border:1px solid #29495c;display:block}
 .key-box{border:1px dashed #36596b;border-radius:9px;padding:7px;display:grid;gap:5px;background:#0a2331}
 .key-head{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--gold)}
-.key-grid{display:grid;grid-template-columns:34px repeat(3,1fr);gap:4px;align-items:center;font-size:10px;color:var(--sub)}
+.key-grid{display:grid;grid-template-columns:46px repeat(3,minmax(0,1fr));gap:4px;align-items:center;font-size:10px;color:var(--sub)}
+.key-grid input[type=number]{width:100%;min-width:0;background:#0b2a3a;color:var(--text);border:1px solid #375563;border-radius:6px;padding:5px 3px;font:inherit;font-size:10px;font-variant-numeric:tabular-nums}
+.key-grid input[type=number]:focus{outline:1px solid var(--gold)}
+.vec input{min-width:0}.row-sel{min-width:0}
 .layer .solo{flex:none;padding:3px 6px;font-size:11px;border-radius:7px;background:#12303f}
 .layer .solo.on{background:#b98a4d;color:#2a1a05}
 .layer.custom{border-style:dashed}

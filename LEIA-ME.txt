@@ -1,16 +1,35 @@
-Skill FX Studio v2 — como instalar
-==================================
-Copie mantendo as pastas (sobrescreva os 3 arquivos antigos do editor):
+Skill FX Studio v3 — correção do painel de modelos EFF
+======================================================
 
-  tests/skill-editor.html   (substitui)
-  tests/skill-editor.css    (substitui)
-  tests/skill-editor.mjs    (substitui)
-  js/skill-fx-core.mjs      (NOVO - simulador PAR/EFF)
-  js/skill-fx-edit.mjs      (NOVO - edição/exportação)
+CORRIGIDO:
+- O editor não mostra mais os textos "[object HTMLLabelElement]" e
+  "[object HTMLDivElement]" ao abrir uma peça de modelo .eff.
+- A função h() agora aceita árvores de controles HTML com arrays de
+  qualquer profundidade, sem transformar os elementos em texto.
+- Os inputs de keyframes, eixo e movimento cabem no painel direito.
+- O cache do navegador é atualizado (arquivos CSS/JS com ?v=3).
 
-Abra com servidor HTTP:  python3 -m http.server 8000  ->  /tests/skill-editor.html
-O editor só precisa de assets/skills/catalog.json e visuals.json (+ textures/, models.glb).
-hero-state.mjs / class-skills.mjs / skill-rules.mjs continuam sendo usados se existirem (animação do personagem).
+INSTALAÇÃO NO PROJETO DO JOGO:
+1. Faça cópia dos arquivos que já estão no projeto.
+2. Extraia este ZIP na RAIZ do projeto (o diretório que já tem js/, tests/ e assets/).
+3. Copie/substitua os arquivos mantendo exatamente a mesma estrutura de pastas.
+4. Use um servidor HTTP na raiz do projeto:
+      python3 -m http.server 8000
+5. Abra http://localhost:8000/tests/skill-editor.html e recarregue com Ctrl+Shift+R.
 
-Fluxo: edite -> "↓ visuals.json" -> substitua assets/skills/visuals.json.
-"↓ Edições" guarda só as mudanças (vfx-edits.json) para importar depois.
+Este pacote NÃO modifica assets/skills/visuals.json, nem os demais dados originais
+ou modelos de personagem do jogo. As edições anteriores salvas no localStorage
+continuam com a mesma chave (top-vfx-edits-v2).
+
+O editor depende dos assets já presentes no projeto:
+- assets/skills/catalog.json
+- assets/skills/visuals.json
+- assets/skills/textures/, icons/, models.glb, animations/
+- assets/characters/<personagem>.glb para mostrar o personagem.
+
+Para testar com os seus assets do skills.zip separadamente, use o outro
+pacote "Skill_FX_Studio_v3_Teste_Com_Assets.zip". Ele inclui os arquivos
+skills que você enviou, mas não contém os modelos de personagem.
+
+LIMITAÇÃO: o simulador Three.js ainda aproxima os efeitos DX9; isto NÃO é
+uma validação de fidelidade de cada uma das skills no jogo original.

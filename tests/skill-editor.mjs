@@ -15,7 +15,15 @@ const h=(tag,props={},...kids)=>{
     if(k==='class')e.className=v;else if(k==='text')e.textContent=v;
     else if(k==='style')e.style.cssText=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);
     else if(v===true)e.setAttribute(k,'');else if(v!==false&&v!=null)e.setAttribute(k,v);}
-  for(const c of kids.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(String(c)));
+  // Componentes complexos (especialmente as peças .eff) passam arrays
+  // aninhados para section(). flat() só desdobrava um nível, fazendo o
+  // navegador mostrar "[object HTMLLabelElement],[object HTMLDivElement]".
+  const appendChild=(child)=>{
+    if(Array.isArray(child)){for(const nested of child)appendChild(nested);return;}
+    if(child==null||child===false)return;
+    e.append(child instanceof Node?child:document.createTextNode(String(child)));
+  };
+  for(const child of kids)appendChild(child);
   return e;};
 const STORE_KEY='top-vfx-edits-v2',assetPrefix='assets/skills/';
 const num=(v,d=0)=>Number.isFinite(Number(v))?Number(v):d;
