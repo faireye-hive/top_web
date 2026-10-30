@@ -15,7 +15,7 @@ import { calculateMovementSpeed } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta } from './camera-behavior.mjs?v=2'
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
-import { createSkillVisuals } from './skill-visuals.mjs?v=3';
+import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=1';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
@@ -83,7 +83,6 @@ const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
-const skillVisuals=createSkillVisuals({scene,heightAt:(x,z)=>world?sampleHeight(x,z):0});
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
 let maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
@@ -93,6 +92,8 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.NoToneMapping; // clássico: evita a perda de saturação do ACES
 renderer.toneMappingExposure=1.12;
 const camera=new THREE.PerspectiveCamera(51.6,1,.3,800);
+const skillVisuals=createSkillVisuals({scene,camera,heightAt:(x,z)=>world?sampleHeight(x,z):0});
+window.__skillVfxInfo=()=>skillVisuals.diagnostics();
 const hemi=new THREE.HemisphereLight(0xd5e4ee,0x4a5850,0.9);
 scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffe6b0,1.22); sun.position.set(-50,90,70); scene.add(sun);
@@ -532,6 +533,7 @@ async function loadCharacter(id){
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;
+    skillVisuals.setActor(id,animations);
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
     mixer.addEventListener('finished',event=>{
@@ -593,7 +595,10 @@ function combatEvent(event){
   if(event.type==='interrupt'){skillActionQueue=[];attackPlaying=false;playClip('Parado');}
   if(event.type==='cast'){
     if(event.monster&&avatar)avatar.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
-    playSkillAnimation(event.skill);skillVisuals.play(event.skill,playerPos,event.monster,event.flight);saveHero();
+    playSkillAnimation(event.skill);
+    skillVisuals.play(event.skill,playerPos,event.monster,event.flight,null,{
+      actor:hero.character,clip:resolveSkillClip(event.skill,hero.character,animations),
+      facing:avatar?.rotation.y||0});saveHero();
   }
   if(event.type==='skillhit'){skillVisuals.impact(event.skill,event.monster);saveHero();}
   if(['healed','buff','dot'].includes(event.type))saveHero();
