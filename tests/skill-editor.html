@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#071522">
 <base href="../">
-<title>TOP Web · Skill FX Studio v6.1 · Keyframes históricos</title>
-<link rel="stylesheet" href="tests/skill-editor.css?v=7">
+<title>TOP Web · Skill FX Studio v6.2 · Keyframes históricos</title>
+<link rel="stylesheet" href="tests/skill-editor.css?v=8">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -30,6 +30,9 @@
    <div class="section-header"><span>01</span><h2>Habilidade</h2></div>
    <label class="field">Classe<select id="job"></select></label>
    <label class="field">Personagem<select id="actor"></select></label>
+   <label class="field equipment-toggle"><input type="checkbox" id="equip-actor" checked>
+     Exibir equipamento da classe (GLB)</label>
+   <div id="equip-status" class="equip-status">Carregando visual equipado…</div>
    <label class="field">Skill<select id="skill"></select></label>
    <div class="selected-skill"><img id="skill-icon" alt="" width="54" height="54"><div><strong id="skill-name">—</strong><small id="skill-meta">—</small></div></div>
    <div class="section-header stacked"><span>02</span><h2>Camadas originais <small id="layer-count">0</small></h2></div>
@@ -47,6 +50,7 @@
      <span class="scene-title">◈ PRÉVIA 3D <small>Arraste para girar · Roda para zoom</small></span>
      <div class="toolbar-buttons">
        <label><input id="show-actor" type="checkbox" checked> Personagem</label>
+       <label><input id="show-socket" type="checkbox" checked> Origem FX</label>
        <label><input id="show-target" type="checkbox" checked> Alvo</label>
        <button id="camera-reset" type="button">⟲ Câmera</button>
        <button id="snapshot" type="button">📷 Captura</button>
@@ -109,5 +113,5 @@
  </aside>
 </main>
 <div id="toast" role="status" aria-live="polite"></div>
-<script type="module" src="tests/skill-editor.mjs?v=7"></script>
+<script type="module" src="tests/skill-editor.mjs?v=8"></script>
 </body></html>

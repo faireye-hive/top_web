@@ -6,6 +6,7 @@ import {FxPlayer,GLOBAL_DEFAULTS,normalizeStore,layerData,resolveEff} from './sk
 import {buildTimeline} from './skill-fx-timing.mjs';
 import {poseForSkill} from './skill-fx-pose.mjs';
 import {skillWorldTransform,skillPlaybackLimit} from './skill-fx-world.mjs';
+import {socketFromSkeleton} from './skill-fx-sockets.mjs';
 import {readLocalPresets,mergePresetStores,skillPreset} from './skill-vfx-data.mjs';
 
 const resourcePath='assets/skills/';
@@ -25,7 +26,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
   const textureLoader=new THREE.TextureLoader(),textureCache=new Map(),models=new Map();
   const active=[];
   let manifest=null,historical=null,basePresets={version:1,skills:{}},disposed=false;
-  let actor='lance',clips=[],catalog=null;
+  let actor='lance',clips=[],catalog=null,actorModel=null,actorJob=null,actorEquipped=false;
   const loadJson=(name)=>fetch(resourcePath+name,{cache:'no-cache'})
     .then(r=>{if(!r.ok)throw Error(name+' HTTP '+r.status);return r.json();});
   const manifestReady=loadJson('visuals.json').then(data=>{manifest=data;return data;})
@@ -99,6 +100,11 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     const layers=player.setSkill(manifest,edits,String(skill.id),chosenActor);
     player.root.position.set(world.x,heightAt(world.x,world.z)||0,world.z);
     player.root.rotation.y=world.yaw;
+    const model=options.avatar||actorModel;
+    const job=options.job||actorJob;
+    const equipped=options.equipped??actorEquipped;
+    player.setSocketResolver((layer,t,p)=>socketFromSkeleton({
+      manifest,actor:chosenActor,job,layer,avatar:model,root:p.root,equipped}));
     const source=historical?.skills?.[String(skill.id)]||null;
     const pose=poseForSkill(mappedSkill,chosenActor,clip);
     const timeline=buildTimeline({layers,
@@ -145,8 +151,12 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     // Geometrias dos modelos vêm do GLB compartilhado, não dos FxPlayer.
     models.clear();
   }
-  function setActor(value,actorClips=[]){
+  function setActor(value,actorClips=[],options={}){
+    if(actorModel && actorModel!==options.avatar)clear();
     actor=value||actor;clips=actorClips||[];
+    actorModel=options.avatar||null;
+    actorJob=options.job||null;
+    actorEquipped=options.equipped===true;
   }
   function warm(skills=[]){
     return Promise.all([ready,modelReady]).then(()=>{
@@ -173,6 +183,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     get rendererMode(){return 'shared FxPlayer / PAR + EFF + strip + keyframes';},
     diagnostics(){return {mode:this.rendererMode,active:active.length,
       loaded:!!manifest,loadedResources:Object.keys(manifest?.resources||{}).length,
+      actorModelConnected:!!actorModel,actorEquipped,actorJob,
       editorDraftsApplied:!!manifest&&!String(manifest.source||'').includes('editado no Skill FX Studio')&&
         Object.keys(editorEdits(manifest).res).length>0,
       source:manifest?.source||null,

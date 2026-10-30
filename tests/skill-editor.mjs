@@ -9,6 +9,7 @@ import * as ED from '../js/skill-fx-edit.mjs';
 import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs';
 import {poseForSkill} from '../js/skill-fx-pose.mjs';
 import {stripSwing} from '../js/skill-fx-strip.mjs';
+import {socketFromSkeleton,socketDescription} from '../js/skill-fx-sockets.mjs';
 
 /* ---------------------------------------------------------------- helpers */
 const $=id=>document.getElementById(id);
@@ -42,7 +43,7 @@ let timelineCache=null;
 let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNames=[],lgoNames=[];
 let phase=0,playing=false,loading=false,lastNow=performance.now(),loopPlay=true,token=0,toastTimer;
 let undoStack=[],redoStack=[],lastSnap=0,saveTimer=0;
-let classMods={};
+let classMods={},equipmentManifest=null,equipmentPromise=null,equippedActive=false;
 const loader=new GLTFLoader();
 
 function readStore(){try{return normalizeStore(JSON.parse(localStorage.getItem(STORE_KEY)||'null'));}catch{return normalizeStore(null);}}
@@ -131,6 +132,10 @@ const targetCore=new THREE.Mesh(new THREE.CapsuleGeometry(.27,.72,4,10),new THRE
 targetCore.position.y=.64;targetDummy.add(targetCore);
 const ring=new THREE.Mesh(new THREE.RingGeometry(.44,.54,32),new THREE.MeshBasicMaterial({color:0x66cfd1,transparent:true,opacity:.65,side:THREE.DoubleSide}));
 ring.rotation.x=-Math.PI/2;ring.position.y=.025;targetDummy.add(ring);scene.add(targetDummy);
+const socketMarker=new THREE.Mesh(new THREE.SphereGeometry(.085,12,10),
+  new THREE.MeshBasicMaterial({color:0x65f6c8,depthTest:false,depthWrite:false}));
+socketMarker.visible=false;socketMarker.renderOrder=250;scene.add(socketMarker);
+const socketPoint=new THREE.Vector3();
 const camera=new THREE.PerspectiveCamera(50,1,.1,150);
 const orbit=new OrbitControls(camera,renderer.domElement);
 orbit.enableDamping=true;orbit.minDistance=2;orbit.maxDistance=28;orbit.maxPolarAngle=Math.PI/2-.04;
@@ -454,7 +459,11 @@ function drawLayerPanel(){
   if(!L.custom){const b=h('button',{type:'button',text:'↺ Restaurar camada'});b.onclick=()=>{touch();ED.resetLayer(store,L);persist();structural();};actions.append(b);}
   else{const b=h('button',{type:'button',text:'🗑 Excluir camada'});b.onclick=()=>{touch();ED.removeExtra(store,skillId(),L.key);selectedKey=null;persist();structural();};actions.append(b);}
   root.append(actions);
-
+  const origin=socketDescription(manifest,$('actor').value,$('job').value,L,{equipped:equippedActive});
+  if(['item','itemExtra','flight','actor'].includes(L.channel))
+    root.append(h('p',{class:'hint socket-origin',text:origin&&avatar?.getObjectByName(origin.bone)
+      ?'Origem animada: '+origin.description
+      :'Origem: fallback da prévia (dummy/rig 3D não encontrado)'}));
   if(L.kind==='eff'){root.append(section('Modelo EFF (voo) · chaves e tempos originais',true,effEditor(L,L.file)));return;}
   if(L.kind==='strip'){
     const set=(f,v)=>setField(L,f,v);
@@ -528,18 +537,38 @@ function drawLayerPanel(){
 /* ------------------------------------------------------------ personagens */
 async function tryImport(path){try{return await import(path);}catch{return null;}}
 async function loadActor(){
-  const current=++token,actor=$('actor').value;loading=true;status('Carregando '+actor+'...');
+  const current=++token,actor=$('actor').value,job=$('job').value;
+  loading=true;status('Carregando '+actor+'...');
   try{
-    const[base,extra]=await Promise.all([loader.loadAsync('assets/characters/'+actor+'.glb?v=3'),
-      loader.loadAsync(assetPrefix+'animations/'+actor+'.glb?v=3').catch(()=>null)]);
+    if(!equipmentPromise)equipmentPromise=fetch('assets/equipment/manifest.json')
+      .then(r=>r.ok?r.json():null).catch(()=>null);
+    equipmentManifest=await equipmentPromise;
+    if(current!==token)return;
+    const relative=$('equip-actor').checked?equipmentManifest?.sets?.[job]?.models?.[actor]:null;
+    let base=null,usingEquipment=false;
+    if(relative){
+      try{base=await loader.loadAsync('assets/equipment/'+relative+'?v=1');usingEquipment=true;}
+      catch(err){console.warn('GLB equipado indisponível; usando personagem base:',err);}
+    }
+    if(!base)base=await loader.loadAsync('assets/characters/'+actor+'.glb?v=3');
+    const extra=await loader.loadAsync(assetPrefix+'animations/'+actor+'.glb?v=3').catch(()=>null);
     if(current!==token)return;
     if(avatar)scene.remove(avatar);if(mixer)mixer.stopAllAction();
     avatar=skeletonClone(base.scene);avatar.rotation.y=-Math.PI/2;
     avatar.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});scene.add(avatar);
     mixer=new THREE.AnimationMixer(avatar);clips=[...(base.animations||[]),...(extra?.animations||[])];
+    equippedActive=usingEquipment;
     avatar.visible=$('show-actor').checked;
+    $('equip-status').textContent=usingEquipment
+      ?'✓ Modelo equipado '+actor+'-'+job+' · sockets LAB animados'
+      :relative?'⚠ GLB equipado indisponível; usando personagem base'
+        :'Personagem base (sem equipamento da classe)';
+    player.setSocketResolver((layer,t,p)=>socketFromSkeleton({
+      manifest,actor,job,layer,avatar,root:p.root,equipped:equippedActive}));
   }catch(err){
-    if(current!==token)return;console.warn(err);if(avatar){scene.remove(avatar);avatar=null;}clips=[];
+    if(current!==token)return;console.warn(err);if(avatar){scene.remove(avatar);avatar=null;}
+    avatar=null;clips=[];equippedActive=false;player.setSocketResolver(null);
+    $('equip-status').textContent='Modelo de personagem indisponível';
     toast('Sem modelo 3D do personagem: a edição dos efeitos continua normal.');
   }finally{if(current===token)loading=false;}
   invalidateTimeline();await pickSkill();drawHistorical();}
@@ -582,7 +611,16 @@ async function pickSkill(){
 function preview(t){
   if(!currentSkill)return;const g=playbackGlobals();
   phase=clamp(Number(t)||0,0,g.duration);
-  const n=player.update(phase,g,enabledMap());updateActorAnimation(phase*g.speed);
+  updateActorAnimation(phase*g.speed);
+  const selected=sel(),point=selected&&$('show-socket').checked?
+    socketFromSkeleton({manifest,actor:$('actor').value,job:$('job').value,
+      layer:selected,avatar,root:player.root,equipped:equippedActive}):null;
+  socketMarker.visible=!!point;
+  if(point){
+    socketPoint.set(...point);player.root.localToWorld(socketPoint);
+    socketMarker.position.copy(socketPoint);
+  }
+  const n=player.update(phase,g,enabledMap());
   $('time-range').value=String(Math.round(phase*1000));$('time-label').textContent=phase.toFixed(2)+' / '+g.duration.toFixed(2)+' s';
   $('perf').textContent=n+' objetos FX';}
 function playToggle(){playing=!playing;$('play').textContent=playing?'Ⅱ Pausar':'▶ Reproduzir';}
@@ -618,6 +656,8 @@ function bind(){
   $('historical-sync').onclick=useClipDuration;
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
   $('actor').onchange=()=>void loadActor();
+  $('equip-actor').onchange=()=>void loadActor();
+  $('show-socket').onchange=()=>preview(phase);
   $('skill').onchange=()=>{playing=false;$('play').textContent='▶ Reproduzir';void pickSkill();};
   $('play').onclick=playToggle;$('restart').onclick=()=>{phase=0;preview(0);};
   $('time-range').oninput=e=>{if(playing)playToggle();preview(Number(e.target.value)/1000);};

@@ -293,6 +293,8 @@ class EffLayer{
     if(L.kind==='eff'){// voo (.eff solto): sai do personagem e vai até o alvo
       const eff=resolveEff(ctx.m,ctx.store,L.file);if(!eff)return hide();
       const age=t-start,dist=g.distance;
+      const socket=ctx.socketAt?.(L,t);
+      const origin=socket||[0,1,0];
       const spd=(g.flightSpeed||L.vis?.speed||L.flightSpeed||10);
       if(g.timelineMode==='historical'&&age>dist/spd)return hide();
       const travel=Math.min(1,age*spd/Math.max(.1,dist));
@@ -301,7 +303,7 @@ class EffLayer{
         const it=this.inst(used++,eff);it.setVisible(true);
         const back=c===0?0:.5*c;const alpha=c===0?1:Math.max(0,1-c/copies);
         const x=dist*travel-back;
-        it.update(age,{pos:[Math.max(0,x),1+g.height,0],sizeMul:1,colorMul:[1,1,1,1],alphaMul:alpha*g.opacity,
+        it.update(age,{pos:[Math.max(0,origin[0]+(x/Math.max(.1,dist))*(dist-origin[0])),origin[1]+g.height,origin[2]*(1-travel)],sizeMul:1,colorMul:[1,1,1,1],alphaMul:alpha*g.opacity,
           scale:(mode===3&&age>0?1.5:1)*g.scale,quat:null,eff,stopAtKeysEnd:g.timelineMode==='historical'});}
       return hide();}
     const s=layerData(ctx.m,ctx.store,L);if(!s)return hide();
@@ -342,7 +344,9 @@ class StripLayer{
     // mover a altura original da espada ao incliná-la.
     const rot=stripRotationRadians(swing);
     this.mesh.rotation.set(rot[0],rot[1],rot[2]);
-    this.mesh.position.set(0,swing.h*g.scale+g.height,0);
+    const socket=ctx.socketAt?.(L,t);
+    if(socket)this.mesh.position.set(socket[0],socket[1]+(swing.h-1.1)*g.scale+g.height,socket[2]);
+    else this.mesh.position.set(0,swing.h*g.scale+g.height,0);
     this.mesh.visible=true;syncMaterial(this.mat,this.p.tex.get(s.texture),s.src,s.dst);
     const life=Math.max(.05,s.life||.5),pos=this.geo.getAttribute('position'),uv=this.geo.getAttribute('uv'),col=this.geo.getAttribute('color');
     let n=0;const steps=Math.min(this.N,Math.max(2,Math.floor(life/Math.max(.005,s.step||.03))+1));
@@ -367,7 +371,7 @@ export class FxPlayer{
   constructor({scene,camera,textureBase='assets/skills/textures/',textureProvider,models}){
     this.scene=scene;this.camera=camera;this.root=new THREE.Group();scene.add(this.root);
     this.tex=new TextureBank(textureBase,textureProvider);this.models=models||new Map();
-    this.layers=[];this.render=[];this.m=null;this.store=null;this.skillId=null;this.hidden=new Set();this.solo=null;this.actorDummies=null;}
+    this.layers=[];this.render=[];this.m=null;this.store=null;this.skillId=null;this.hidden=new Set();this.solo=null;this.actorDummies=null;this.socketResolver=null;}
   setSkill(manifest,store,skillId,actor){
     this.clear();this.m=manifest;this.store=store;this.skillId=skillId;this.actor=actor;
     this.layers=buildLayers(manifest,store,skillId);
@@ -377,7 +381,10 @@ export class FxPlayer{
   /** reconstrói só os objetos 3D (depois de mudar o tipo de uma camada) */
   rebuild(){if(this.m)return this.setSkill(this.m,this.store,this.skillId,this.actor);}
   clear(){for(const r of this.render)r.dispose();this.render=[];this.layers=[];}
+  setSocketResolver(resolver){this.socketResolver=typeof resolver==='function'?resolver:null;}
   anchorFor(L,t,ctx){
+    const resolved=ctx.socketAt?.(L,t);
+    if(resolved)return resolved;
     const g=ctx.g,dist=g.distance;let x=0,y=0,z=0;
     const dummyH=(()=>{const d=L.dummy;const a=this.m?.attachments?.[this.actor]?.actor?.[String(d)];
       if(a&&d>=0){const mt=a.matrix;return mt?mt[14]:1;}return d>=0?1:0;})();
@@ -392,6 +399,16 @@ export class FxPlayer{
     if(!this.m)return 0;g={...GLOBAL_DEFAULTS,...g};
     const hasFlight=this.layers.some(l=>l.channel==='flight'),dist=g.distance;
     const spd=g.flightSpeed||this.layers.find(l=>l.flightSpeed)?.flightSpeed||10;
+    // Um socket é calculado uma vez por camada por frame, não por partícula.
+    // O cálculo da matriz animada é caro em sistemas com muitas partículas.
+    const socketCache=new Map();
+    const socketAt=(L,tt)=>{
+      if(!this.socketResolver)return null;
+      if(socketCache.has(L.key))return socketCache.get(L.key);
+      const a=this.socketResolver(L,tt,this);
+      const v=Array.isArray(a)&&a.length===3&&a.every(Number.isFinite)?a:null;
+      socketCache.set(L.key,v);return v;
+    };
     const ctx={m:this.m,store:this.store,g,
       enabled:L=>{if(this.solo&&this.solo!==L.key)return false;return!(enabledMap?.[L.key]===false)&&!this.hidden.has(L.key);},
       startFor:L=>{const c=L.channel;if(g.timelineMode==='historical' && g.timelineStarts)
@@ -400,6 +417,7 @@ export class FxPlayer{
         const late=(c==='target'||c==='ground')?(hasFlight?dist/spd:0):0;
         const own=c==='actor'||c==='item'||c==='itemExtra'?0:base;
         return(c==='actor'||c==='item'||c==='itemExtra'?0:own+late);},
-      anchorAt:(L,tt)=>{const a=this.anchorFor(L,tt,ctx);return a;}};
+      anchorAt:(L,tt)=>this.anchorFor(L,tt,ctx),
+       socketAt};
     let n=0;this.render.forEach(r=>{n+=r.update(t*(g.speed||1),ctx)||0;});return n;}
 }
