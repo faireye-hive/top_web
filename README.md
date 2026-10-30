@@ -1,3 +1,16 @@
+# TOP Web 0.14 — 28 skills selecionadas para mobile
+
+As sete classes agora têm um catálogo de quatro skills, com ícones históricos
+e ações adequadas a pistola, arco, espadas ou magia. Os recursos binários
+originais estão no arquivo **TOP_Web_028_Skills_Originais_Assets.zip**,
+entregue na conversa, e devem ser extraídos em `assets/skills/` antes do merge.
+
+A UI e as animações estão sendo integradas, **mas efeitos, dano e cooldown de
+skills ainda não foram implementados**. Veja
+[docs/SKILLS_MOBILE_28.md](docs/SKILLS_MOBILE_28.md).
+
+---
+
 # TOP Web 0.13 — Evanescence, prática e botão contextual
 
 - **Celular deitado:** ataque/interação no mesmo botão; Skills em arco ao redor.

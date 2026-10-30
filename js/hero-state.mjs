@@ -10,11 +10,12 @@ export const CLASSES=Object.freeze({
   crusader:{name:'Crusader',characters:['lance','phyllis'],weapon:'sword',attackAttribute:'strength',growth:[2,0,1,1,1]},
   champion:{name:'Champion',characters:['carsise'],weapon:'greatsword',attackAttribute:'strength',growth:[2,0,3,0,0]},
   sharpshooter:{name:'Sharpshooter',characters:['lance','phyllis'],weapon:'firearm',attackAttribute:'dexterity',growth:[0,0,1,3,1]},
+  hunter:{name:'Hunter',characters:['lance','phyllis'],weapon:'bow',attackAttribute:'dexterity',growth:[0,0,1,3,1]},
   cleric:{name:'Cleric',characters:['phyllis','ami'],weapon:'staff',attackAttribute:'intelligence',growth:[0,3,2,0,0]},
   'seal-master':{name:'Seal Master',characters:['phyllis','ami'],weapon:'staff',attackAttribute:'intelligence',growth:[0,2,2,1,0]},
   voyager:{name:'Voyager',characters:['lance','phyllis','ami'],weapon:'dagger',attackAttribute:'intelligence',growth:[1,2,2,0,0]}
 });
-export const PRACTICES=Object.freeze({unarmed:'Punhos',sword:'Espadas',greatsword:'Espadões',firearm:'Tiro',staff:'Cajados',dagger:'Adagas'});
+export const PRACTICES=Object.freeze({unarmed:'Punhos',sword:'Espadas',greatsword:'Espadões',firearm:'Tiro',bow:'Arcos',staff:'Cajados',dagger:'Adagas'});
 export function attributesFor(job,level){
   return Object.fromEntries(ATTRIBUTE_KEYS.map((key,i)=>[key,5+CLASSES[job].growth[i]*(level-1)]));
 }
@@ -74,11 +75,14 @@ export function restoreHero(raw,fallback='lance'){
     const data=JSON.parse(raw);
     if(data?.version!==2||!CLASSES[data.job]||!CHARACTERS[data.character]||!CLASSES[data.job].characters.includes(data.character))return hero;
     if(!Number.isInteger(data.level)||data.level<1||data.level>1000||!Number.isFinite(data.xp)||data.xp<0||data.xp>=data.level*40)return hero;
+    // Saves da versão anterior ainda não tinham a habilidade de prática de arco.
+    // Preserve todos os outros valores ao adicionar Hunter.
+    const practice={...hero.practice,...data.practice};
     for(const key of Object.keys(PRACTICES)){
-      const p=data.practice?.[key];
+      const p=practice[key];
       if(!Number.isInteger(p?.level)||p.level<10||p.level>200||!Number.isInteger(p?.uses)||p.uses<0||p.uses>=practiceRequirement(p.level))return hero;
     }
-    Object.assign(hero,{character:data.character,job:data.job,level:data.level,xp:data.xp,equipped:data.equipped===true,practice:data.practice});
+    Object.assign(hero,{character:data.character,job:data.job,level:data.level,xp:data.xp,equipped:data.equipped===true,practice});
     refreshHero(hero,{heal:true});return hero;
   }catch{return hero;}
 }
