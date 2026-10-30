@@ -1,12 +1,13 @@
 import { availableSkillClips, resolveSlots, statText } from './rpg-state.mjs';
+import { classSkillEntries } from './class-skills.mjs';
 
-export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
+export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={}){
   const $=id=>document.getElementById(id);
   const overlay=$('rpg-overlay'),trigger=$('rpg-open'),close=$('rpg-close'),content=$('rpg-skill-list');
   if(!overlay||!trigger||!close||!content)return {
     isOpen:()=>false,setClips:()=>{},setStats:()=>{},setItems:()=>{},triggerSkill:()=>false
   };
-  let available=[],slots=[null,null,null,null],isOpen=false,lastFocused=null;
+  let available=[],slots=[null,null,null,null],classSkills=null,isOpen=false,lastFocused=null;
   const KEY='topweb_rpg_skill_slots_v1';
   let saved=null;
   try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch{}
@@ -48,21 +49,61 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
   }
   function drawHotbar(){
     for(const button of hotbar){
-      const i=Number(button.dataset.hotbarSlot)-1,name=slots[i];
-      button.disabled=!name;
+      const i=Number(button.dataset.hotbarSlot)-1;
+      const skill=classSkills?.[i],name=skill?.name||slots[i];
+      const ready=classSkills?!!skill?.available:!!name;
+      button.disabled=!ready;
       button.classList.toggle('is-empty',!name);
-      button.setAttribute('aria-label',name?`Atalho ${i+1}: ${nameOf(name)}`:`Atalho ${i+1} vazio`);
-      const ic=button.querySelector('.rpg-hotbar-symbol');
-      const label=button.querySelector('.rpg-hotbar-number');
-      const iconUse=ic?.querySelector('use');
-      if(iconUse)iconUse.setAttribute('href',hotbarIcons[i]||hotbarIcons[0]);
-      else if(ic)ic.textContent=name?iconFor(name):'+';
-      if(label)label.textContent=String(i+1);
-      button.title=name?nameOf(name):'Selecione uma animação no menu Skills';
+      button.classList.toggle('skill-unavailable',!!skill&&!ready);
+      const labelText=skill?skill.name:nameOf(name);
+      button.setAttribute('aria-label',skill?
+        `Atalho ${i+1}: ${labelText}${ready?'':' (animação ainda indisponível)'}`:
+        (name?`Atalho ${i+1}: ${labelText}`:`Atalho ${i+1} vazio`));
+      const icon=button.querySelector('.rpg-hotbar-symbol'),number=button.querySelector('.rpg-hotbar-number');
+      if(icon){
+        const previous=icon.querySelector('img');
+        if(previous)previous.remove();
+        const svg=icon.querySelector('svg');
+        if(svg)svg.hidden=!!skill;
+        if(skill?.icon){
+          const img=document.createElement('img');
+          img.className='skill-original-icon';img.alt='';
+          img.loading='eager';img.decoding='async';
+          img.src='assets/skills/'+skill.icon;
+          img.addEventListener('error',()=>{img.hidden=true;if(svg)svg.hidden=false},{once:true});
+          icon.append(img);
+        }
+      }
+      if(number)number.textContent=String(i+1);
+      button.title=skill?(labelText+(ready?'':' · ação de arma ausente neste GLB')):
+        (name?nameOf(name):'Selecione uma animação no menu Skills');
     }
   }
   function drawSkills(){
     content.replaceChildren();
+    if(classSkills){
+      const title=document.createElement('p');title.className='rpg-empty';
+      title.textContent='Quatro skills originais da classe. A ação será executada somente se existir animação compatível com a arma e o personagem.';
+      content.append(title);
+      classSkills.forEach((skill,i)=>{
+        const row=document.createElement('div');row.className='rpg-skill-entry';
+        const image=document.createElement('img');
+        image.src='assets/skills/'+skill.icon;image.alt='';image.loading='lazy';
+        image.className='rpg-skill-original-icon';
+        const label=document.createElement('div');label.className='rpg-skill-entry-label';
+        const name=document.createElement('strong');name.textContent=(i+1)+'. '+skill.name;
+        const detail=document.createElement('small');
+        detail.textContent=skill.available?'Animação original disponível · sem efeito/dano ainda':
+          'Ação de arma ainda indisponível para este personagem';
+        label.append(name,detail);
+        const btn=document.createElement('button');btn.type='button';
+        btn.textContent=skill.available?'▶':'—';btn.disabled=!skill.available;
+        btn.title='Executar animação';btn.setAttribute('aria-label','Executar '+skill.name);
+        btn.addEventListener('click',()=>triggerSkill(i+1));
+        row.append(image,label,btn);content.append(row);
+      });
+      return;
+    }
     if(!available.length){
       const p=document.createElement('p');p.className='rpg-empty';
       p.textContent='Nenhuma animação de skill disponível neste personagem.';
@@ -91,12 +132,21 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
       row.append(icon,text,actions);content.append(row);
     }
   }
+  function setClassSkills(catalog,job,character,clips){
+    classSkills=classSkillEntries(catalog,job,character,clips);
+    if(!catalog?.classes?.[job])classSkills=null;
+    drawHotbar();drawSkills();
+  }
   function setClips(clips){
     available=availableSkillClips(clips);
     slots=resolveSlots(saved,available,4);
     saved=slots.slice();persist();drawHotbar();drawSkills();
   }
   function triggerSkill(n){
+    if(classSkills){
+      const skill=classSkills[n-1];
+      return !!(skill?.available&&onPlaySkill?.(skill));
+    }
     const clip=slots[n-1];
     if(!clip)return false;
     if(typeof onPlayClip!=='function')return false;
@@ -164,5 +214,5 @@ export function initRpgHud({onPlayClip,onOpen,onClose,onMessage}={}){
     }
   });
   setItems([]);setStats({name:'Lance'});drawHotbar();setTab('stats');
-  return {isOpen:()=>isOpen,open,dismiss,setClips,setStats,setItems,triggerSkill};
+  return {isOpen:()=>isOpen,open,dismiss,setClips,setClassSkills,setStats,setItems,triggerSkill};
 }
