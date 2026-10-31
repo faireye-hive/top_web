@@ -4,7 +4,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
   availableBones} from '../js/pose-studio-runtime.mjs?v=1';
-import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,ACTION_CATEGORIES} from '../js/pose-action-catalog.mjs?v=1';
+import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES} from '../js/pose-action-catalog.mjs?v=1';
 
 const $=id=>document.getElementById(id);
 const stateLabels={idle:'Cidade',guard:'Guarda',run:'Corrida',armedRun:'Corrida armada',attack:'Ataque'};
@@ -156,16 +156,25 @@ function showClip(){
  $('clip').replaceChildren();
  const automatic=document.createElement('option');automatic.value='';
  automatic.textContent='Automático ('+(chosen||'não disponível')+')';$('clip').append(automatic);
- for(const clip of clips){const option=document.createElement('option');option.value=clip.name;option.textContent=clip.name;$('clip').append(option);}
+ for(const clip of clips){
+  const option=document.createElement('option');option.value=clip.name;
+  const id=actionNumber(clip.name);
+  const record=id!==null&&historicalCatalog?historicalAction(historicalCatalog,actorEl.value,id,clips):null;
+  option.textContent=record?record.code+' · '+record.label+' — '+record.groupName:clip.name;
+  $('clip').append(option);
+ }
  const override=profile.clips?.[selectedState]||'';
  $('clip').value=clips.some(c=>c.name===override)?override:'';
  const found=clips.find(c=>c.name===chosen);
+ const foundId=actionNumber(found?.name),historical=foundId!==null&&historicalCatalog?
+   historicalAction(historicalCatalog,actorEl.value,foundId,clips):null;
  const desired=POSE_DEFAULTS[selectedState];
  const original=clips.some(c=>c.name.toLowerCase().split('·').pop().trim()===desired.toLowerCase());
  const warning=!(profile.clips?.[selectedState])&&!original;
- $('clip-info').textContent=(warning?'⚠ ':'✓ ')+stateLabels[selectedState]+' · '+(found?.name||'Sem clipe')+
+ $('clip-info').textContent=(warning?'⚠ ':'✓ ')+stateLabels[selectedState]+' · '+
+   (historical?historical.code+' · '+historical.label:(found?.name||'Sem clipe'))+
    (found?' · '+found.duration.toFixed(2)+' s':'')+
-   (warning?' · Ação histórica '+desired+' ainda não exportada neste GLB; prévia usa outra ação.':'');
+   (warning?' · Verifique a ação histórica '+desired+' no catálogo; a prévia pode usar outro banco.':'');
  previewClip(found,{once:selectedState==='attack'});
  reloadHolster();
  renderCatalog();
