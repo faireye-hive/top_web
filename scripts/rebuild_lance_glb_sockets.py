@@ -51,7 +51,7 @@ def load_glb(path):
     gltf=json.loads(raw[20:20+n])
     pos=20+n
     bn,btype=struct.unpack_from('<I4s',raw,pos)
-    if btype!=b'BIN\\0' or pos+8+bn!=len(raw):
+    if btype!=b'BIN\0' or pos+8+bn!=len(raw):
         raise ValueError('BIN chunk inválido')
     return gltf,raw[pos+8:]
 
@@ -62,7 +62,7 @@ def save_glb(path,gltf,binary):
     length=12+8+len(data)+8+len(binary)
     path.write_bytes(struct.pack('<4sII',b'glTF',2,length)+
         struct.pack('<I4s',len(data),b'JSON')+data+
-        struct.pack('<I4s',len(binary),b'BIN\\0')+binary)
+        struct.pack('<I4s',len(binary),b'BIN\0')+binary)
 
 
 def inverse_bind(gltf,binary,bone):
@@ -103,7 +103,7 @@ def mark_weapon_parts(gltf):
     # skinned meshes das espadas. Não tratar peças de roupa como armas.
     meshes=[]
     for n in gltf['nodes']:
-        m=re.fullmatch(r'Parte (\d+) · (.+\\.lgo)',n.get('name',''))
+        m=re.fullmatch(r'Parte (\d+) · (.+\.lgo)',n.get('name',''))
         if m and 'mesh' in n and 'skin' in n and int(m[1])>=5:
             meshes.append((int(m[1]),n))
     meshes.sort(key=lambda item:item[0])
