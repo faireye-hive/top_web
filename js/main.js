@@ -496,6 +496,10 @@ function tryPose(){
   }
   toast('Chegue perto de um banco, parede ou NPC.');return false;
 }
+function isRunningPose(){
+  return currentClip.toLowerCase().includes('correr') ||
+    ['run','armedRun'].some(state=>selectPoseName(state,activePoseProfile,animations)===currentClip);
+}
 function poseResolvedName(match){
   const state=match==='Parado'?(combat?.auto?'guard':'idle'):
     match==='Correr'?(combat?.auto?'armedRun':'run'):
@@ -529,8 +533,9 @@ function stopCombat(force=false){
   if(skillAnimationLocked&&!force)return;
   if(force)skillAnimationLocked=false;
   skillActionQueue=[];
-  if(combat?.auto||attackPlaying){attackPlaying=false;playClip('Parado');}
-  combat?.stop();
+  const wasActive=!!combat?.auto||attackPlaying;
+  combat?.stop(); // Trocar de guarda para descanso só depois de desativar Auto.
+  if(wasActive){attackPlaying=false;playClip('Parado');}
 }
 function selectMobileAutoMode(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
@@ -1778,9 +1783,9 @@ function update(dt){
       if(moved){
         playClip('Correr');
         if(runningAction&&currentClip.toLowerCase().includes('correr'))runningAction.setEffectiveTimeScale(running?1.2:1);
-      }else if(currentClip.toLowerCase().includes('correr'))playClip('Parado');
+      }else if(isRunningPose())playClip('Parado');
     }
-  }else if(!seated && !attackPlaying&&currentClip.toLowerCase().includes('correr'))playClip('Parado');
+  }else if(!seated && !attackPlaying&&isRunningPose())playClip('Parado');
   // No movimento puramente lateral, espera soltar o controle antes de girar
   // atrás do personagem: evita transformar A/D em uma órbita infinita.
   if(!MOBILE_UI && wish<=.01 && autoCameraEnabled && !seated && cameraFollowTarget!==null &&
