@@ -176,7 +176,7 @@ test('Auto tem botão pequeno acima do Alvo e o grande é manual',()=>{
   const page=read('index.html'),code=read('js/main.js'),css=read('mobile-landscape.css');
   assert.match(page,/id="mobile-auto"/);
   assert.match(page,/id="mobile-attack"[^>]*aria-label="Atacar manualmente"/);
-  assert.match(css,/#mobile-auto\{[\s\S]*?right:90px;bottom:58px/);
+  assert.match(css,/#mobile-auto\{[\s\S]*?right:84px;bottom:58px/);
   assert.match(code,/\$\('mobile-auto'\)\.addEventListener\('click',toggleAutoAttack\)/);
   assert.match(code,/if\(context.type==='attack'\)return manualAttack\(\)/);
   assert.match(code,/combat\.manualAttack\(playerPos\)/);
