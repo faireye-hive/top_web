@@ -88,7 +88,8 @@ function redrawWeaponFields(){
  $('part').disabled=!holster?.parts.length;
  if(!part){note('Nenhuma arma reconhecida no modelo carregado. Confira o diagnóstico das malhas.');updateWeaponViewControls();return;}
  const w=editableWeapon();
- const bones=availableBones(model);
+ const bones=new Set(availableBones(model));
+ model?.traverse(obj=>{if(obj.name?.startsWith('TOP Dummy '))bones.add(obj.name)});
  $('bone').replaceChildren();
  for(const name of bones){const option=document.createElement('option');option.value=name;option.textContent=name;$('bone').append(option);}
  $('bone').value=w.bone;
@@ -324,8 +325,8 @@ async function loadCharacter(){
   $('part').replaceChildren();
   holster?.parts.forEach((part,i)=>{
     const option=document.createElement('option');option.value=part.key;
-    const item=equipment?.sets?.[job]?.items?.filter(v=>v.slot===6||v.slot===9)[i];
-    option.textContent='Arma '+(i+1)+(item?' · '+item.name:'');
+    const item=equipment?.sets?.[job]?.items?.find(v=>v.slot===part.slot);
+    option.textContent='Arma '+(i+1)+' · slot '+part.slot+(item?' · '+item.name:'');
     $('part').append(option);
   });
   if(!holster?.parts.some(part=>part.key===selectedPart))selectedPart=holster?.parts[0]?.key||'';
@@ -352,7 +353,7 @@ function preset(which){
   const bones=holster?.bones||[];
   const defaults=weaponDefaults(which==='hip'?'sharpshooter':'cleric',
     selectedWeapon().index,bones);
-  if(which==='reset')Object.assign(w,holster.defaultSettings(selectedWeapon()));
+  if(which==='reset'||which==='back')Object.assign(w,holster.defaultSettings(selectedWeapon()));
   else Object.assign(w,defaults);
  });
 }
@@ -430,6 +431,22 @@ $('clip').onchange=()=>{
  showClip();
 };
 $('part').onchange=()=>{selectedPart=$('part').value;redrawWeaponFields()};
+$('weapon-mode').onchange=()=>{
+ const part=selectedWeapon();if(!part)return;
+ const selected=$('weapon-mode').value;
+ setWeaponMode(part.key,selected);
+ status('✓ '+stateLabels[selectedState]+' · Arma '+(part.index+1)+': '+selected+'. Salve para aplicar no jogo.');
+};
+for(const button of document.querySelectorAll('[data-weapon-view]')){
+ button.onclick=()=>{
+   const mode=button.dataset.weaponView;
+   for(const part of holster?.parts||[])setWeaponMode(part.key,mode);
+   updateWeaponViewControls();
+   status('✓ '+stateLabels[selectedState]+' · '+(holster?.parts.length||0)+
+     ' arma(s) em modo '+mode+'. Salve para aplicar no jogo.');
+ };
+}
+
 $('bone').onchange=()=>editWeapon(w=>{w.bone=$('bone').value});
 $('stow').onchange=()=>{ensureProfile();profile.stowOnIdle=$('stow').checked;reloadHolster()};
 for(const [kind,key] of [['p','position'],['r','rotation']])
