@@ -1,0 +1,72 @@
+TOP Web — Animações históricas não exportadas
+Personagem: Lance
+Classe: crusader
+Modelo verificado: assets/equipment/models/lance-crusader.glb
+Ações com frames presentes no arquivo histórico e ausentes da prévia: 60
+Ações sem frames válidos neste personagem (não entram como faltantes): 36
+Origem das animações: Client/animation/0000.lab
+Tabela de IDs / quadros: Client/scripts/txt/CharacterAction.tx
+Referência de nomes: referencias/characterposeinfo.txt
+Observação: cada pose é um intervalo dentro do LAB, não um arquivo separado.
+Para aparecer no jogo, reconverter o GLB incluindo os IDs listados.
+
+164 — Pose de estilo | Duas espadas | frames 855–917 | ID 164 | Original: Cool Pose
+165 — Pose engraçada | Duas espadas | frames 918–986 | ID 165 | Original: Funny Pose
+166 — Postura de guarda | Duas espadas | frames 1347–1379 | ID 166 | Original: Guard waiting
+168 — Corrida armada | Duas espadas | frames 1382–1400 | ID 168 | Original: Guarded Run
+170 — Ataque básico 2 | Duas espadas | frames 2174–2208 | ID 170 | Original: Normal Attack 2
+171 — Ataque básico 3 | Duas espadas | frames 2210–2244 | ID 171 | Original: Normal Attack 3
+172 — Ataque forte | Duas espadas | frames 1421–1453 | ID 172 | Original: Mighty Strike
+177 — Skill 5 | Duas espadas | frames 2916–2948 | ID 177 | Original: Skill 5
+178 — Sentado no chão | Duas espadas | frames 1112–1144 | ID 178 | Original: Normal Sit
+179 — Morte | Duas espadas | frames 431–503 | ID 179 | Original: Death (All)
+180 — Acenar | Duas espadas | frames 506–546 | ID 180 | Original: Wave (All)
+181 — Chorar | Duas espadas | frames 547–603 | ID 181 | Original: Cry (All)
+182 — Comemorar | Duas espadas | frames 604–656 | ID 182 | Original: Gambol (All)
+183 — Raiva | Duas espadas | frames 62–122 | ID 183 | Original: Angry (All)
+184 — Provocar | Duas espadas | frames 657–703 | ID 184 | Original: Defy (All)
+185 — Autoadmiração | Duas espadas | frames 987–1047 | ID 185 | Original: Self Love (Male only)
+190 — Minerar | Duas espadas | frames 1050–1074 | ID 190 | Original: Mining (Scene Interchange)
+191 — Coletar | Duas espadas | frames 2445–2468 | ID 191 | Original: Gather (Scene Interchange)
+192 — Sentado no banco | Duas espadas | frames 804–852 | ID 192 | Original: Sit Bench(Scene Interchange)
+193 — Encostado na parede | Duas espadas | frames 706–754 | ID 193 | Original: Lean Wall (Interchange Action)
+194 — Encostado na árvore | Duas espadas | frames 1112–1144 | ID 194 | Original: Lean Tree (Interchange Action)
+195 — Interação com personagem | Duas espadas | frames 1859–1895 | ID 195 | Original: Character Interchange (Scene Interchange)
+200 — Sentado aguardando | Duas espadas | frames 3184–3207 | ID 200 | Original: Sit down and wait
+201 — Morte (espera) | Duas espadas | frames 503–504 | ID 201 | Original: Death Waiting Point
+202 — Animação de skill 6 | Duas espadas | frames 2916–2948 | ID 202 | Original: Skill Action 6
+204 — Animação de skill 8 | Duas espadas | frames 3908–3968 | ID 204 | Original: Skill Effect 8
+205 — Animação de skill 9 | Duas espadas | frames 3971–4000 | ID 205 | Original: Skill Action 9
+206 — Animação de skill 10 | Duas espadas | frames 4003–4082 | ID 206 | Original: Skill Action 10
+207 — Animação de skill 11 | Duas espadas | frames 4085–4135 | ID 207 | Original: Skill Action 11
+216 — Movimento de skill 20 | Duas espadas | frames 4328–4410 | ID 216 | Original: Skill movement 20
+001 — Parado / descanso | Sem arma / base | frames 2–59 | ID 1 | Original: Normal Wait
+002 — Pose de estilo | Sem arma / base | frames 855–917 | ID 2 | Original: Cool Pose
+003 — Pose engraçada | Sem arma / base | frames 918–986 | ID 3 | Original: Funny Pose
+004 — Postura de guarda | Sem arma / base | frames 125–157 | ID 4 | Original: Guard waiting
+005 — Corrida normal | Sem arma / base | frames 1921–1937 | ID 5 | Original: Normal Run
+006 — Corrida armada | Sem arma / base | frames 160–178 | ID 6 | Original: Guarded Run
+007 — Ataque básico 1 | Sem arma / base | frames 1940–1961 | ID 7 | Original: Normal Attack 1
+008 — Ataque básico 2 | Sem arma / base | frames 1983–2003 | ID 8 | Original: Normal Attack 2
+009 — Ataque básico 3 | Sem arma / base | frames 2005–2024 | ID 9 | Original: Normal Attack 3
+010 — Ataque forte | Sem arma / base | frames 2005–2024 | ID 10 | Original: Mighty Strike
+011 — Skill 1 | Sem arma / base | frames 247–299 | ID 11 | Original: Skill 1
+012 — Skill 2 | Sem arma / base | frames 757–801 | ID 12 | Original: Skill£²
+013 — Skill 3 | Sem arma / base | frames 2707–2784 | ID 13 | Original: Skill 3
+015 — Skill 5 | Sem arma / base | frames 247–299 | ID 15 | Original: Skill 5
+017 — Morte | Sem arma / base | frames 431–503 | ID 17 | Original: Death (All)
+019 — Chorar | Sem arma / base | frames 547–603 | ID 19 | Original: Cry (All)
+020 — Comemorar | Sem arma / base | frames 604–656 | ID 20 | Original: Gambol (All)
+021 — Raiva | Sem arma / base | frames 62–122 | ID 21 | Original: Angry (All)
+022 — Provocar | Sem arma / base | frames 657–703 | ID 22 | Original: Defy (All)
+023 — Autoadmiração | Sem arma / base | frames 987–1047 | ID 23 | Original: Self Love (Male only)
+028 — Minerar | Sem arma / base | frames 1050–1074 | ID 28 | Original: Mining (Scene Interchange)
+029 — Coletar | Sem arma / base | frames 2445–2468 | ID 29 | Original: Gather (Scene Interchange)
+032 — Encostado na árvore | Sem arma / base | frames 1112–1144 | ID 32 | Original: Lean Tree (Interchange Action)
+033 — Interação com personagem | Sem arma / base | frames 1859–1895 | ID 33 | Original: Character Interchange (Scene Interchange)
+039 — Morte (espera) | Sem arma / base | frames 503–504 | ID 39 | Original: Death Waiting Point
+042 — Animação de skill 8 | Sem arma / base | frames 3908–3968 | ID 42 | Original: Skill Effect 8
+043 — Animação de skill 9 | Sem arma / base | frames 3971–4000 | ID 43 | Original: Skill Action 9
+044 — Animação de skill 10 | Sem arma / base | frames 4003–4082 | ID 44 | Original: Skill Action 10
+045 — Animação de skill 11 | Sem arma / base | frames 4085–4135 | ID 45 | Original: Skill Action 11
+054 — Movimento de skill 20 | Sem arma / base | frames 4328–4410 | ID 54 | Original: Skill movement 20
