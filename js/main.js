@@ -429,8 +429,9 @@ function teleport(x,z){
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
-  if(avatar)if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
-  avatar.position.copy(playerPos);
+  // Teleporte é uma descontinuidade: centralizar imediatamente, sem rastro.
+  mobileCameraFocus.copy(playerPos);
+  if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
   placeCamera();
@@ -804,6 +805,7 @@ function sitDown(mark){
   }
   const seat=footSurface(sx,sz,Math.max(sampleHeight(sx,sz),mark.base)+0.45);
   playerPos.set(sx,seat,sz);
+  mobileCameraFocus.copy(playerPos);
   if(avatar){
     avatar.position.copy(playerPos);
     avatar.rotation.y=mark.yaw+(mark.role==='sit'&&seatFacingReversed?Math.PI:0);
@@ -829,6 +831,7 @@ function standUp(){
   seated=null;attackPlaying=false;pendingPose=null;moverTarget=null;waypoint.hide();
   const y=footSurface(exit[0],exit[1],origin.y);
   playerPos.set(exit[0],y,exit[1]);
+  mobileCameraFocus.copy(playerPos);
   if(avatar){avatar.position.copy(playerPos);avatar.rotation.y=previous.returnYaw;}
   playClip('Parado');
   return true;
@@ -1657,6 +1660,9 @@ function update(dt){
     CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
   }
   playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
+  // Executar a cada frame, DEPOIS de mover o jogador e ANTES de posicionar a câmera.
+  // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
+  if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
@@ -1786,6 +1792,7 @@ window.__selfTestControls=async function(){
   }
   keys.clear();moverTarget=null;seated=null;allowBlocked=saved.blocked;
   playerPos.copy(saved.pos);playerPos.y=sampleHeight(playerPos.x,playerPos.z);
+  mobileCameraFocus.copy(playerPos);
   if(avatar){avatar.position.copy(playerPos);avatar.rotation.y=saved.rot;}
   CAM.yaw=saved.yaw;CAM.dist=saved.dist;CAM.lift=saved.lift;
   attackPlaying=false;playClip('Parado');placeCamera();updateChunks();
@@ -1969,6 +1976,7 @@ function configureMobileControls(){
 configureMobileControls();
 mobileQuery.addEventListener('change',()=>{
   MOBILE_UI=mobileQuery.matches;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;document.body.classList.toggle('mobile-ui',MOBILE_UI);
+  mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
   maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
