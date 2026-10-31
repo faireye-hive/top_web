@@ -19,7 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=3';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=4';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -595,7 +595,7 @@ async function loadCharacter(id){
     const relative=hero.equipped?equipmentManifest?.sets?.[hero.job]?.models?.[id]:null;
     if(hero.equipped&&!relative)throw new Error('Conjunto indisponível para esse personagem.');
     const model=relative?'assets/equipment/'+relative:CHARACTERS[id].model;
-    const gltf=await new GLTFLoader().loadAsync(model+'?v=4');
+    const gltf=await new GLTFLoader().loadAsync(model+'?v=5');
     let extraClips=[];
     if(await skillCatalogReady && SKILL_ANIMATION_ACTORS.includes(id)){
       try{

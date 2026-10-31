@@ -1,0 +1,43 @@
+name: Rebuild Lance Crusader GLB with original LAB sockets
+on:
+  push:
+    branches:
+      - fix/lance-historical-dummy-glb-20261031
+    paths:
+      - 'scripts/rebuild_lance_glb_sockets.py'
+      - 'js/historical-weapon-dummies.mjs'
+      - '.github/workflows/rebuild-lance-sockets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test GLB rebuilder with synthetic data
+        run: python -m unittest discover -s tests -p 'test_lance_socket_rebuilder.py' -v
+      - name: Reconstruct the published model using LAB dummy transforms
+        run: python scripts/rebuild_lance_glb_sockets.py
+      - name: Verify model and source action coverage
+        run: |
+          python scripts/rebuild_lance_glb_sockets.py --verify-only
+          python scripts/verify_pose_glb.py assets/equipment/models/lance-crusader.glb --actor lance --job crusader
+      - name: Commit regenerated GLB to the PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/equipment/models/lance-crusader.glb
+          if ! git diff --cached --quiet; then
+            git commit -m "Rebuild Lance Crusader GLB with historical LAB sockets"
+            git push origin HEAD:fix/lance-historical-dummy-glb-20261031
+          else
+            echo "GLB already contains the expected sockets"
+          fi

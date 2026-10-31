@@ -8,6 +8,9 @@ on:
       - 'assets/poses/historical-catalog.json'
       - 'assets/equipment/manifest.json'
       - 'Lance/converter.py'
+      - 'scripts/rebuild_lance_glb_sockets.py'
+      - 'tests/test_lance_socket_rebuilder.py'
+      - 'assets/equipment/models/lance-crusader.glb'
       - 'js/main.js'
       - 'js/pose-studio-runtime.mjs'
       - 'js/historical-weapon-dummies.mjs'
@@ -29,13 +32,15 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check converter syntax
-        run: python -m py_compile scripts/build_evanescence.py scripts/verify_pose_glb.py Lance/converter.py
+        run: python -m py_compile scripts/build_evanescence.py scripts/verify_pose_glb.py scripts/rebuild_lance_glb_sockets.py Lance/converter.py
       - name: Run pose export regression tests
-        run: python -m unittest discover -s tests -p 'test_pose_export.py' -v
+        run: python -m unittest discover -s tests -p 'test_pose_export.py' -v && python -m unittest discover -s tests -p 'test_lance_socket_rebuilder.py' -v
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Validate Pose Studio and historical action tests
         run: node --test tests/pose-studio.test.mjs tests/pose-action-catalog.test.mjs tests/pose-missing-report.test.mjs
+      - name: Verify reconstructed Lance GLB sockets
+        run: python scripts/rebuild_lance_glb_sockets.py --verify-only
       - name: Check JS syntax
         run: node --check js/main.js && node --check js/pose-studio-runtime.mjs && node --check tests/pose-editor.mjs

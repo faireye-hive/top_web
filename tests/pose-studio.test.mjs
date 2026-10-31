@@ -193,6 +193,43 @@ test('arma guardada usa matriz do dummy das costas e não valores inventados na 
  holster.dispose();
 });
 
+test('GLB reconstruído usa diretamente o nó animado TOP Dummy 22, sem duplicar inverseBind',()=>{
+ const bones=Array.from({length:27},(_,i)=>({isBone:true,name:'Bone '+i}));
+ const socket={name:'TOP Dummy 22',children:[],add(o){o.parent=this;this.children.push(o)},remove(o){this.children=this.children.filter(child=>child!==o);o.parent=null}};
+ const calls=[];
+ const geom={getAttribute(k){return k==='skinIndex'?{count:1,getX:()=>18}:
+   k==='skinWeight'?{count:1,getX:()=>1}:null},
+   clone(){return {applyMatrix4(m){calls.push('inverseHand');return this},dispose(){}}}};
+ const sword={isSkinnedMesh:true,name:'Parte 5 · 01010021.lgo',
+   geometry:geom,skeleton:{bones,boneInverses:bones.map(()=>({}))},
+   bindMatrix:{},material:{},userData:{equipmentSlot:6},visible:true};
+ const root={
+   traverse(fn){fn(sword);for(const bone of bones)fn(bone);fn(socket)},
+   getObjectByName(name){return name===socket.name?socket:bones.find(b=>b.name===name)}
+ };
+ const THREE={
+   Matrix4:class{fromArray(){return this}invert(){return this}
+     multiplyMatrices(){calls.push('legacySocketMultiply');return this}},
+   Mesh:class{constructor(geometry,material){this.geometry=geometry;this.material=material}},
+   Group:class{constructor(){this.position={set(){}};
+     this.rotation={set(){},order:''};this.scale={setScalar(){}};
+     this.matrix={multiplyMatrices(){calls.push('oldHolderMatrix')},decompose(){}}}
+     add(o){o.parent=this}updateMatrixWorld(){}}
+ };
+ const holster=new WeaponHolster(THREE,root,'crusader',{stowOnIdle:true,weapons:{}},'lance');
+ assert.equal(holster.parts.length,1);
+ assert.equal(holster.parts[0].socketNode,socket);
+ assert.equal(holster.parts[0].holder.parent,socket);
+ assert.equal(holster.defaultSettings(holster.parts[0]).bone,'TOP Dummy 22');
+ assert.ok(calls.includes('inverseHand'));
+ assert.ok(!calls.includes('oldHolderMatrix'));
+ holster.setStowed(true);
+ assert.equal(sword.visible,false);
+ holster.setStowed(false);
+ assert.equal(sword.visible,true);
+ holster.dispose();
+});
+
 test('jogo/editor usam o mesmo módulo e editor permite exportação para arquivo versionado',()=>{
  const game=file('js/main.js'),page=file('tests/pose-editor.html'),editor=file('tests/pose-editor.mjs');
  assert.match(game,/new WeaponHolster\(THREE,avatar,hero\.job,activePoseProfile,id\)/);

@@ -93,7 +93,20 @@ def parse_lab(data:bytes):
         names.append(raw.decode('latin1',errors='replace').strip() or f'osso_{i}')
     offset=20+bones*72
     inverse=np.frombuffer(data,dtype='<f4',count=bones*16,offset=offset).copy().reshape(bones,4,4)
-    offset+=bones*64+dummy_count*72
+    offset+=bones*64
+    # Os dummies do LAB são pontos de encaixe, NÃO ossos extras.
+    # Antes eram ignorados; preservar exatamente seus IDs, pais e matrizes.
+    dummies=[]
+    if offset+dummy_count*72>len(data):
+        raise ValueError('Arquivo LAB truncado no catálogo de dummies')
+    for i in range(dummy_count):
+        at=offset+i*72
+        ident,parent=struct.unpack_from('<II',data,at)
+        matrix=np.frombuffer(data,dtype='<f4',count=16,offset=at+8).copy().reshape(4,4)
+        if parent>=bones or not np.isfinite(matrix).all():
+            raise ValueError(f'Dummy LAB {ident} tem pai ou matriz inválidos')
+        dummies.append(dict(id=int(ident),parent=int(parent),matrix=matrix))
+    offset+=dummy_count*72
     pos=np.empty((bones,frames,3),dtype='<f4')
     quat=np.empty((bones,frames,4),dtype='<f4')
     scales=np.ones((bones,3),dtype=np.float32)
@@ -144,7 +157,8 @@ def parse_lab(data:bytes):
     assert offset==len(data),('lab end',offset,len(data))
     qlength=np.linalg.norm(quat,axis=2,keepdims=True)
     quat=quat/np.maximum(qlength,1e-9)
-    return dict(bones=bones,frames=frames,parents=parents,names=names,inv=inverse,pos=pos,quat=quat,scales=scales)
+    return dict(bones=bones,frames=frames,parents=parents,names=names,
+                inv=inverse,dummies=dummies,pos=pos,quat=quat,scales=scales)
 
 
 def clips_from_table(text, frame_count, section=1, actions=None, all_actions=False):
@@ -347,6 +361,21 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
             if parent!=0xffffffff and parent<lab['bones']:
                 g['nodes'][1+parent].setdefault('children',[]).append(1+i)
             else:g['nodes'][0]['children'].append(1+i)
+        # O runtime Three.js precisa de sockets animados pelo osso pai.
+        # LAB/DirectX utiliza matrizes de vetores-linha; glTF usa coluna:
+        # flatten(D_directx @ inverseBind_directx) produz a matriz glTF
+        # local correta: boneWorld * inverseBind * dummyBind.
+        for dummy in lab['dummies']:
+            parent=dummy['parent']
+            local=(dummy['matrix'] @ lab['inv'][parent]).astype('<f4')
+            socket={
+                'name':f'TOP Dummy {dummy["id"]}',
+                'matrix':local.reshape(-1).astype(float).tolist(),
+                'extras':{'topDummy':dummy['id'],'topParentBone':parent,'source':'LAB'}
+            }
+            socket_idx=len(g['nodes'])
+            g['nodes'].append(socket)
+            g['nodes'][1+parent].setdefault('children',[]).append(socket_idx)
         inv=writer.arr(lab['inv'].reshape(-1,16).astype('<f4'),5126,'MAT4')
         g['skins'].append({'name':f'Esqueleto original · {Path(labs[0]).name}','inverseBindMatrices':inv,
                            'joints':[1+i for i in range(lab['bones'])], 'skeleton':1})
@@ -426,7 +455,7 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
         print('Texturas BMP usadas:',list(loaded))
         print('Texturas ausentes:', sorted(missing))
         print(f'GLB gerado: {output} ({output.stat().st_size/1024:.1f} KiB)')
-        return dict(missing=sorted(missing), clips=[x[0] for x in clipdefs], parts=len(geoms),bones=lab['bones'])
+        return dict(missing=sorted(missing), clips=[x[0] for x in clipdefs], parts=len(geoms),bones=lab['bones'], dummies=len(lab['dummies']))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description='Converte modelos originais LGO/LAB Tales of Pirates em GLB para o TOP Studio')
