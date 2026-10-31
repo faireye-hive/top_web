@@ -23,3 +23,15 @@ main{min-height:0;flex:1;display:grid;grid-template-columns:minmax(260px,304px) 
 .catalog-item.no-source-frames .tag{color:#a3aeb5}
 #catalog-detail{white-space:pre-wrap;overflow-wrap:anywhere}
 #catalog-use:disabled{opacity:.5}
+
+/* Relatório de ações históricas ausentes (nomes visíveis sem filtro). */
+.missing-card{border:1px solid #ad7c43;border-radius:11px;padding:11px;background:linear-gradient(145deg,#42332077,#132f3b)}
+.missing-card h2{color:#ffcb86;margin:0 0 7px;font-size:13px}
+.missing-actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.missing-actions button{flex:1 1 115px;font-size:11px;padding:7px 5px}
+#missing-details summary{color:#ffe2a7;font-size:12px;cursor:pointer;line-height:1.5;padding:4px 0}
+.missing-list{margin-top:8px;max-height:270px;overflow:auto;overscroll-behavior:contain;display:grid;gap:5px}
+.missing-item{width:100%;display:block;text-align:left;padding:8px;border:1px solid #8e714a;border-radius:7px;background:#26332c;font-size:11px}
+.missing-item:hover{background:#394535}
+.missing-item .missing-head{display:block;font-weight:700;color:#ffe2ab}
+.missing-item .missing-sub{display:block;color:#c6d3c9;font-size:10px;margin-top:2px}
