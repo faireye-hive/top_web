@@ -240,3 +240,34 @@ não cria uma animação de caminhada nova.
 do LAB e aplicar aos meshes das armas, incluindo o inverso do dummy
 de empunhadura do LGO, como no cliente OpenGL. Validar visualmente
 no Lance antes de generalizar as demais classes.
+
+## Correção: cidade com espadas nas costas (Lance Crusader)
+
+Não existe um clipe separado chamado "espadas guardadas na cidade":
+a animação do corpo é `163 · Parado / descanso`, e o estado `run`
+usa `167 · Corrida normal`. A diferença visual das espadas é **onde
+elas são anexadas**, não os keyframes do corpo. Ação `005` pertence à
+corrida base; não deve ser atribuída ao botão Cidade/descanso.
+
+O histórico `Client/animation/0000.lab` contém as matrizes reais
+dos dummies de mão `6/9` e de guarda `22/21`. O módulo
+`js/historical-weapon-dummies.mjs` contém essas matrizes, somente
+para **Lance Crusader**, extraídas sem editar seus valores.
+
+O `WeaponHolster` remove da geometria da espada a transformação de
+mão usada na conversão original, anexa a cópia aos dummies animados das
+costas via *inverse bind matrix* e só exibe a arma original na mão quando
+há combate ou skill. Isso funciona com o GLB atual, sem reconvertê-lo.
+Ajustes manuais em XYZ agora são deslocamentos **relativos ao dummy**;
+edits antigos baseados em offsets aproximados são restaurados para o
+encaixe histórico na primeira carga (somente nessa classe). Outros
+personagens mantêm os ajustes aproximados até termos seus LABs.
+
+No Pose Studio, o botão `Guardar espadas na cidade` aparece à esquerda,
+logo depois dos estados de animação, para não ficar escondido em telas
+estreitas. Para comparar com uma imagem do Lance sem o conjunto vermelho,
+desmarque `Usar equipamento Evanescence`. Entretanto o GLB base não
+carrega essas espadas: isso muda o visual, **não cria novo equipamento**.
+
+A orientação exata deve ainda ser conferida em jogo e no navegador real,
+porque testes de código não substituem comparação visual lado a lado.
