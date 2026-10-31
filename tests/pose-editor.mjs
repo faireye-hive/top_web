@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
-  availableBones} from '../js/pose-studio-runtime.mjs?v=5';
+  availableBones} from '../js/pose-studio-runtime.mjs?v=6';
 import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
   missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
