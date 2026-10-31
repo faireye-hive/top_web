@@ -145,6 +145,8 @@ export class WeaponHolster {
       const historical=!!sockets&&sockets.hand.parent===skinBone&&
         !!source.skeleton.bones[sockets.back.parent]&&
         !!source.skeleton.boneInverses[sockets.back.parent];
+      const socketNode=historical
+        ?avatar.getObjectByName('TOP Dummy '+(slot===6?22:21)):null;
       const transformed=source.geometry.clone();
       if(historical){
         // O conversor aplicou handDummy * inverseGrip * modelLocal;
@@ -164,41 +166,52 @@ export class WeaponHolster {
       const adjust=new THREE.Group();adjust.name='Pose Studio · ajuste '+index;
       adjust.add(view);holder.add(adjust);
       this.parts.push({index,key:'weapon-'+index,source,holder,adjust,view,
-        slot,historical:historical?sockets:null});
+        slot,historical:historical?sockets:null,socketNode});
     });
     this.setProfile(profile);
   }
   defaultSettings(part){
     if(part?.historical){
       const bone=part.source.skeleton.bones[part.historical.back.parent];
-      return {bone:bone.name,position:[0,0,0],rotation:[0,0,0],scale:1,anchor:'historical'};
+      return {bone:(part.socketNode||bone).name,
+        position:[0,0,0],rotation:[0,0,0],scale:1,anchor:'historical'};
     }
     return weaponDefaults(this.job,part?.index||0,this.bones);
   }
   setProfile(profile){
     this.profile=profile||null;
     for(const part of this.parts){
-      const {source,holder,adjust,index,key,historical}=part;
+      const {source,holder,adjust,index,key,historical,socketNode}=part;
       const defaults=this.defaultSettings(part);
       // As versões anteriores salvavam offsets aproximados de coluna. Não
       // aplicá-los por engano sobre o novo dummy histórico (deslocaria a arma).
       if(historical&&profile?.weapons?.[key]&&profile.weapons[key].anchor!=='historical')
         profile.weapons[key]=defaults;
       const setting=profile?.weapons?.[key]||defaults;
-      const bone=this.avatar.getObjectByName(setting.bone)||
+      if(socketNode&&setting.anchor==='historical'&&setting.bone!==socketNode.name)
+        setting.bone=socketNode.name;
+      const bone=socketNode||this.avatar.getObjectByName(setting.bone)||
         this.avatar.getObjectByName(defaults.bone);
       if(!bone)continue;
       if(holder.parent!==bone)bone.add(holder);
       if(historical){
-        // Dummy LAB está no espaço de bind do personagem. Converter para
-        // espaço local do osso atual (mesma convenção das inverse bind matrices).
-        const boneIndex=source.skeleton.bones.indexOf(bone);
-        const boneInverse=source.skeleton.boneInverses[boneIndex];
-        if(!boneInverse)continue;
-        const backMatrix=new this.THREE.Matrix4().fromArray(historical.back.matrix);
-        holder.matrixAutoUpdate=false;
-        holder.matrix.multiplyMatrices(boneInverse,backMatrix);
-        holder.matrix.decompose(holder.position,holder.quaternion,holder.scale);
+        if(socketNode){
+          // GLB reconstruído: o TOP Dummy é filho do osso e já contém a
+          // matriz histórica. Não aplicar inverseBind ou dummy duas vezes.
+          holder.matrixAutoUpdate=true;
+          holder.position.set(0,0,0);
+          holder.rotation.set(0,0,0);
+          holder.scale.setScalar(1);
+        }else{
+          // Compatibilidade com GLBs anteriores ao exportador dos sockets.
+          const boneIndex=source.skeleton.bones.indexOf(bone);
+          const boneInverse=source.skeleton.boneInverses[boneIndex];
+          if(!boneInverse)continue;
+          const backMatrix=new this.THREE.Matrix4().fromArray(historical.back.matrix);
+          holder.matrixAutoUpdate=false;
+          holder.matrix.multiplyMatrices(boneInverse,backMatrix);
+          holder.matrix.decompose(holder.position,holder.quaternion,holder.scale);
+        }
         holder.updateMatrixWorld(true);
         adjust.position.set(...setting.position);
         adjust.rotation.order='XYZ';
