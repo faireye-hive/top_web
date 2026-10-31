@@ -146,8 +146,8 @@ test('controle de toque manual funciona também em Câmera livre e responde imed
   }
   assert.match(code,/getPref\('topweb_mobile_touch_sensitivity'/);
   assert.match(code,/setPref\('topweb_mobile_touch_sensitivity',mobileTouchSensitivity\)/);
-  assert.match(code,/dragOrbitDelta\(dx\*mobileTouchSensitivity,innerWidth\)/);
-  assert.match(code,/dy\*\.0018\*mobileTouchSensitivity/);
+  assert.match(code,/dragOrbitDelta\(dx\*mobileTouchSensitivity\*horizontalSign,innerWidth\)/);
+  assert.match(code,/dy\*\.0018\*mobileTouchSensitivity\*verticalSign/);
   assert.match(code,/CAM\.yaw=mobileOrbitYaw;CAM\.lift=mobileOrbitLift;clampCam\(\)/);
   assert.match(code,/setTouchSensitivity\?\.\(CAMERA_TOUCH_DEFAULT\)/);
   const disabled=code.slice(code.indexOf('function updateCameraTuningDisabled()'),
