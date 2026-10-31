@@ -60,8 +60,9 @@ por `Correr`/`Parado` durante esse período.
   vem da própria duração da animação GLB e do fim da sequência.
 - O combate continua processando o tempo de conjuração, impacto e dano,
   independentemente de o personagem estar imóvel.
-- Trocar o personagem, teletransportar ou morrer são exceções explícitas
-  que cancelam a animação para evitar manter um modelo inválido.
+- Trocas de classe, personagem e equipamento solicitadas no painel são
+  bloqueadas até a skill terminar. Teletransporte e derrota continuam sendo
+  exceções explícitas que podem encerrar a animação por segurança.
 - Ataque básico continua com seu comportamento de movimento anterior;
   o bloqueio é exclusivo das animações de skill.
 
