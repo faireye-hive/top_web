@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
-  availableBones} from '../js/pose-studio-runtime.mjs?v=2';
+  availableBones} from '../js/pose-studio-runtime.mjs?v=3';
 import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
   missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
@@ -37,7 +37,7 @@ function selectedWeapon(){return holster?.parts.find(part=>part.key===selectedPa
 function editableWeapon(){
  ensureProfile();
  const part=selectedWeapon();if(!part)return null;
- if(!profile.weapons[part.key])profile.weapons[part.key]=weaponDefaults(jobEl.value,part.index,holster.bones);
+ if(!profile.weapons[part.key])profile.weapons[part.key]=holster.defaultSettings(part);
  return profile.weapons[part.key];
 }
 function redrawWeaponFields(){
@@ -207,7 +207,7 @@ function chooseHistoricalAction(id){
   return;
  }
  previewClip(row.clip,{once:['combat','skills','emotes','interaction'].includes(row.category)});
- if(holster)holster.setStowed($('stow').checked&&row.group===0&&['postures','movement','social'].includes(row.category));
+ if(holster)holster.setStowed($('stow').checked&&['idle','run'].includes(selectedState)&&!['combat','skills'].includes(row.category));
  status('▶ '+row.code+' · '+row.label+' · clipe real do GLB '+actorEl.value);
 }
 function showClip(){
@@ -273,7 +273,7 @@ async function loadCharacter(){
   mixer=new THREE.AnimationMixer(model);
   profile=poseProfile(store,actor,job);
   ensureProfile();
-  holster=$('equipped').checked?new WeaponHolster(THREE,model,job,profile):null;
+  holster=$('equipped').checked?new WeaponHolster(THREE,model,job,profile,actor):null;
   skeletonHelper=new THREE.SkeletonHelper(model);skeletonHelper.visible=$('skeleton').checked;scene.add(skeletonHelper);
   $('stow').checked=profile.stowOnIdle!==false;
   $('part').replaceChildren();
@@ -286,7 +286,7 @@ async function loadCharacter(){
   if(!holster?.parts.some(part=>part.key===selectedPart))selectedPart=holster?.parts[0]?.key||'';
   $('part').value=selectedPart;
   selectedHistoricalId=null;redrawWeaponFields();showClip();
-  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas ajustáveis');
+  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas reconhecidas · '+(holster?.parts.filter(p=>p.historical).length||0)+' encaixes históricos');
  }catch(error){console.error(error);status('Falha ao carregar modelo: '+error.message);}
 }
 function updateJobs(){
@@ -307,7 +307,7 @@ function preset(which){
   const bones=holster?.bones||[];
   const defaults=weaponDefaults(which==='hip'?'sharpshooter':'cleric',
     selectedWeapon().index,bones);
-  if(which==='reset')Object.assign(w,weaponDefaults(jobEl.value,selectedWeapon().index,bones));
+  if(which==='reset')Object.assign(w,holster.defaultSettings(selectedWeapon()));
   else Object.assign(w,defaults);
  });
 }
@@ -366,6 +366,14 @@ $('missing-copy').onclick=async()=>{
 $('missing-download').onclick=downloadMissingList;
 $('catalog-use').onclick=()=>{
  const row=selectedHistorical();if(!row?.clip)return;
+ const incompatible=(selectedState==='idle'&&row.category==='movement')||
+   (['run','armedRun'].includes(selectedState)&&row.category!=='movement')||
+   (selectedState==='attack'&&row.category!=='combat');
+ if(incompatible){
+   status('⚠ '+row.code+' · '+row.label+' não corresponde a '+stateLabels[selectedState]+
+     '. Escolha o estado correto (por exemplo, Correr para a ação 005).');
+   return;
+ }
  ensureProfile();profile.clips[selectedState]=row.clip.name;
  showClip();
  status('✓ '+row.code+' · '+row.label+' atribuído ao estado '+stateLabels[selectedState]+'. Salve para aplicar no jogo.');
