@@ -102,12 +102,17 @@ function showCatalogDetail(row){
 function missingRows(){
  return missingHistoricalActions(catalogRows());
 }
-function missingText(){
+function currentModelPath(){
  const actor=actorEl.value,job=jobEl.value;
- const modelPath=$('equipped').checked
+ return $('equipped').checked
    ?'assets/equipment/'+(equipment?.sets?.[job]?.models?.[actor]||'modelo indisponível')
    :'assets/characters/'+actor+'.glb';
- return missingActionReportText({actor,job,modelPath,records:catalogRows()});
+}
+function missingText(){
+ return missingActionReportText({
+   actor:actorEl.value,job:jobEl.value,modelPath:currentModelPath(),
+   records:catalogRows()
+ });
 }
 function renderMissingReport(){
  const el=$('missing-list');el.replaceChildren();
@@ -116,7 +121,8 @@ function renderMissingReport(){
  const actors={lance:'Lance',carsise:'Carsise',phyllis:'Phyllis',ami:'Ami'};
  const withoutFrames=catalogRows().filter(row=>row.status==='no-source-frames').length;
  $('missing-title').textContent='⚠ '+rows.length+' animações faltantes · '+(actors[actor]||actor)+' '+job;
- $('missing-source').textContent='Origem: Client/animation/'+lab+
+ $('missing-source').textContent='Modelo verificado: '+currentModelPath()+
+   ' · Origem: Client/animation/'+lab+
    ' · IDs/frames: Client/scripts/txt/CharacterAction.tx'+
    ($('equipped').checked?'':' · Atenção: você está visualizando o modelo SEM equipamento.');
  $('missing-summary').textContent='Nomes e IDs que faltam no GLB ('+rows.length+')';
@@ -194,7 +200,10 @@ function chooseHistoricalAction(id){
  selectedHistoricalId=row.id;
  renderCatalog();
  if(!row.clip){
-  status('⚠ '+row.code+' · '+row.label+' ainda não está no GLB. Regenere os modelos com o Client original.');
+  if(action){action.stop();action=null;}
+  mixer?.stopAllAction();mixer?.update(0);
+  $('timeline').value=0;$('clock').textContent='Sem clipe GLB';
+  status('⚠ '+row.code+' · '+row.label+' ainda não está no GLB. Consulte o LAB original e regenere o modelo.');
   return;
  }
  previewClip(row.clip,{once:['combat','skills','emotes','interaction'].includes(row.category)});
