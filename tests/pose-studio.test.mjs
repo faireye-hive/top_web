@@ -171,7 +171,14 @@ test('arma guardada usa matriz do dummy das costas e não valores inventados na 
    updateMatrixWorld(){}
   }
  };
- const holster=new WeaponHolster(THREE,root,'crusader',{stowOnIdle:true,weapons:{}},'lance');
+ const oldProfile={stowOnIdle:true,weapons:{'weapon-0':{
+   bone:'Osso 2 · Spine',position:[.19,.03,.11],rotation:[0,0,40],scale:1
+ }}};
+ const holster=new WeaponHolster(THREE,root,'crusader',oldProfile,'lance');
+ assert.equal(oldProfile.weapons['weapon-0'].anchor,'historical');
+ assert.deepEqual(oldProfile.weapons['weapon-0'].position,[0,0,0]);
+ const encoded=parsePoseProfiles({version:1,profiles:{'lance:crusader':oldProfile}});
+ assert.equal(encoded.profiles['lance:crusader'].weapons['weapon-0'].anchor,'historical');
  assert.equal(holster.parts.length,1);
  assert.equal(holster.parts[0].historical.slot,6);
  assert.equal(holster.parts[0].holder.parent,back);
