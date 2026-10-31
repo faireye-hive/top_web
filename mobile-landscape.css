@@ -23,6 +23,22 @@ body.mobile-ui .rpg-hotbar-symbol svg{display:block;width:70%;height:70%}
 body.mobile-ui .mobile-actions button svg{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);width:25px;height:25px}
 body.mobile-ui .mobile-actions button small{position:absolute;bottom:7px;left:0;right:0;margin:0!important;text-align:center}
 body.mobile-ui #mobile-attack svg{width:40px;height:40px}
+/* Botão Auto compacto, empilhado acima do alvo e sem cobrir as skills. */
+body.mobile-ui .mobile-actions #mobile-auto{
+ position:absolute;right:90px;bottom:58px;width:40px;height:40px;min-height:40px;
+ padding:0;border-radius:50%;border:2px solid #8ea8b8;
+ color:#e1eef6;background:radial-gradient(circle at 30% 25%,#31566b,#0e2738 75%);
+ box-shadow:0 2px 9px #0009;pointer-events:auto;
+}
+body.mobile-ui #mobile-auto svg{width:19px;height:19px;top:36%}
+body.mobile-ui #mobile-auto small{font-size:8px;bottom:2px;font-weight:800}
+body.mobile-ui #mobile-auto.auto-active{
+ background:radial-gradient(circle at 30% 25%,#4d987e,#0b4945 75%);
+ border-color:#b5f8df;outline:2px solid #a1f5d5;box-shadow:0 0 13px #70e8cba6!important;
+}
+body.mobile-ui #mobile-auto:disabled{opacity:.45;filter:saturate(.5)}
+body.mobile-ui #mobile-attack.manual-unavailable{opacity:.48;filter:saturate(.5)}
+
 body.mobile-ui .mobile-nav-button:disabled{display:none}
 body.mobile-ui .rpg-toggle::before{content:none}
 body.mobile-ui .rpg-stat-cell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 6px}
