@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Tales of Pirates — TOP Web",
+  "short_name": "TOP Web",
+  "description": "Explore o mundo de Tales of Pirates direto no seu celular.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#081d2c",
+  "theme_color": "#0a2c42",
+  "icons": [
+    {
+      "src": "./pwa/top-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

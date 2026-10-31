@@ -1,3 +1,4 @@
+import {updateFollowTarget} from './mobile-camera-follow.mjs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
@@ -81,6 +82,7 @@ const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
+const mobileCameraFocus=playerPos.clone();
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
@@ -386,14 +388,15 @@ function updateObjectMarkers(){
   });
 }
 function placeCamera(){
+  const cameraPivot=MOBILE_UI?mobileCameraFocus:playerPos;
   clampCam();
   const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
   const desiredFov=cameraFovAtDistance(CAM.dist);
   if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
   const {fwd}=cameraBasis();
-  _look.set(playerPos.x,playerPos.y+LOOK_H,playerPos.z);
+  _look.set(cameraPivot.x,cameraPivot.y+LOOK_H,cameraPivot.z);
   let dist=CAM.dist;
-  const eyeY=playerPos.y+CAM.dist*pitch;
+  const eyeY=cameraPivot.y+CAM.dist*pitch;
   const steps=12;
   for(let i=1;i<=steps;i++){
     const t=i/steps;
@@ -402,7 +405,7 @@ function placeCamera(){
     const y=_look.y+(eyeY-_look.y)*t;
     if(sampleHeight(x,z)+.55>y){dist=Math.max(2.4,CAM.dist*(i-1)/steps);break;}
   }
-  _eye.set(_look.x-fwd.x*dist,playerPos.y+dist*pitch,_look.z-fwd.z*dist);
+  _eye.set(_look.x-fwd.x*dist,cameraPivot.y+dist*pitch,_look.z-fwd.z*dist);
   camera.position.copy(_eye);
   camera.lookAt(_look);
 }
@@ -426,7 +429,8 @@ function teleport(x,z){
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
-  if(avatar)avatar.position.copy(playerPos);
+  if(avatar)if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
+  avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
   placeCamera();
@@ -1498,6 +1502,7 @@ async function boot(){
     const free=findFree(ORIGIN.x,ORIGIN.z);
     if(free)playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
     else playerPos.set(ORIGIN.x,sampleHeight(ORIGIN.x,ORIGIN.z),ORIGIN.z);
+    mobileCameraFocus.copy(playerPos);
     placeCamera();
     updateChunks();updateHUD();drawMinimap();
     progress(62,'Importando personagem e animações…');
