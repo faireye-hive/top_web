@@ -45,7 +45,7 @@ export function parsePoseProfiles(input){
       const entries=value.placements?.[state];
       if(!entries||typeof entries!=='object'||Array.isArray(entries))continue;
       for(const [part,mode] of Object.entries(entries)){
-        if(!/^weapon-\\d+$/.test(part)||!WEAPON_PLACEMENTS.includes(mode))continue;
+        if(!/^weapon-\d+$/.test(part)||!WEAPON_PLACEMENTS.includes(mode))continue;
         (placements[state]??={})[part]=mode;
       }
     }
