@@ -286,8 +286,8 @@ test('jogo/editor usam o mesmo módulo e editor permite exportação para arquiv
  assert.match(page,/data-weapon-view="back"/);
  assert.match(page,/id="weapon-mode"/);
  assert.match(page,/id="weapon-diagnostics"/);
- assert.match(editor,/setWeaponMode\\(part.key/);
- assert.match(editor,/holster.setStowed\\(stowed,selectedState\\)/);
- assert.match(game,/weaponHolster\\?\\.setStowed\\(!combat\\?\\.auto&&!weaponAttackState,weaponPoseState\\)/);
+ assert.ok(editor.includes('setWeaponMode(part.key'));
+ assert.ok(editor.includes('holster.setStowed(stowed,selectedState)'));
+ assert.ok(game.includes('weaponHolster?.setStowed(!combat?.auto&&!weaponAttackState,weaponPoseState)'));
  assert.match(file('index.html'),/tests\/pose-editor\.html/);
 });
