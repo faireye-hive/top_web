@@ -83,7 +83,8 @@ test('editor e exportador não restringem mais catálogo às cinco poses genéri
 });
 
 test('cada ID e cada faixa de frames coincide com as duas tabelas históricas originais',()=>{
- const original=text('referencias/characterposeinfo.txt').split(/\r?\n/).filter(line=>/^\d+\t/.test(line));
+ const original=readFileSync(new URL('../referencias/characterposeinfo.txt',import.meta.url),'latin1')
+    .split(/\r?\n/).filter(line=>/^\d+\t/.test(line));
  assert.equal(original.length,54);
  for(let i=0;i<54;i++){
    const cells=original[i].split('\t');
