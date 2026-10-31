@@ -90,7 +90,7 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(page,/option value="free"/);
   assert.match(code,/getPref\('topweb_mobile_camera_mode','follow'\)/);
   assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
-  assert.match(page,/main\.js\?v=37/);
+  assert.match(page,/main\.js\?v=38/);
   assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
   assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)\{\s*mobileSteeringReferenceYaw=CAM\.yaw/);
   assert.match(code,/if\(!steering\)\{mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;\}/);
@@ -102,6 +102,25 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
 test('a redução da rotação vale apenas para câmera automática, não arrastar manual',()=>{
   const code=read('js/main.js');
   assert.match(code,/const manualOrbit=performance\.now\(\)<cameraManualUntil/);
-  assert.match(code,/mobileCameraMode==='follow'&&!manualOrbit\?\.42:1\.1/);
+  assert.match(code,/mobileCameraMode==='follow'&&!manualOrbit\?cameraRadians\(mobileCameraSpeedDeg\):1\.1/);
   assert.match(code,/mobileOrbitYaw=subtleFollowTarget\(mobileFollowAnchorYaw,/);
+});
+
+test('sliders numéricos alteram câmera automaticamente e guardam a preferência',()=>{
+  const html=read('index.html'),code=read('js/main.js');
+  for(const id of ['mobile-camera-speed','mobile-camera-speed-number',
+    'mobile-camera-turn','mobile-camera-turn-number','mobile-camera-reset']){
+    assert.match(html,new RegExp('id="'+id+'"'));
+  }
+  assert.match(code,/getPref\('topweb_mobile_camera_speed_deg'/);
+  assert.match(code,/getPref\('topweb_mobile_camera_turn_deg'/);
+  assert.match(code,/setPref\(key,degrees\)/);
+  assert.match(code,/slider\.addEventListener\('input',e=>apply\(e\.target\.value\)\)/);
+  assert.match(code,/number\.addEventListener\('change',e=>apply\(e\.target\.value\)\)/);
+  assert.match(code,/subtleFollowTarget\(mobileFollowAnchorYaw,[\s\S]*?cameraRadians\(mobileCameraTurnDeg\)\)/);
+  assert.match(code,/mobileCameraMode==='follow'&&!manualOrbit\?cameraRadians\(mobileCameraSpeedDeg\):1\.1/);
+  assert.match(code,/mobileCameraTuning\.querySelectorAll\('input'\)/);
+  assert.match(code,/element\.disabled=mobileCameraMode==='free'/);
+  assert.match(code,/setCameraSpeed\?\.\(CAMERA_SPEED_DEFAULT_DEG\)/);
+  assert.match(code,/setCameraTurn\?\.\(CAMERA_TURN_DEFAULT_DEG\)/);
 });
