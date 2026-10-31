@@ -98,3 +98,10 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(code,/performance\.now\(\)>cameraManualUntil/);
   assert.match(code,/mobileOrbitYaw=subtleFollowTarget\(mobileFollowAnchorYaw,/);
 });
+
+test('a redução da rotação vale apenas para câmera automática, não arrastar manual',()=>{
+  const code=read('js/main.js');
+  assert.match(code,/const manualOrbit=performance\.now\(\)<cameraManualUntil/);
+  assert.match(code,/mobileCameraMode==='follow'&&!manualOrbit\?\.42:1\.1/);
+  assert.match(code,/mobileOrbitYaw=subtleFollowTarget\(mobileFollowAnchorYaw,/);
+});
