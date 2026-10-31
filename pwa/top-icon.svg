@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="TOP Web">
+<defs><linearGradient id="sea" x2="1" y2="1"><stop stop-color="#06283b"/><stop offset="1" stop-color="#0e6078"/></linearGradient><linearGradient id="gold" x2=".2" y2="0" x1=".7" y1="1"><stop stop-color="#ffdf94"/><stop offset="1" stop-color="#bc8540"/></linearGradient></defs>
+<rect width="512" height="512" rx="116" fill="url(#sea)"/>
+<circle cx="256" cy="255" r="191" fill="none" stroke="#59c7d0" stroke-opacity=".34" stroke-width="10"/>
+<path d="M103 344 Q175 326 254 347 T409 344" stroke="#8be4e1" stroke-width="15" fill="none" stroke-linecap="round"/>
+<path d="M254 108 V320" stroke="url(#gold)" stroke-width="17" stroke-linecap="round"/>
+<path d="M240 118 Q123 180 162 290 L241 290Z" fill="#f2d7a3"/>
+<path d="M273 143 Q365 214 343 291 L273 291Z" fill="#ffe9b6"/>
+<path d="M164 319 L351 319 Q333 355 269 363 L216 361Z" fill="#e1a95c"/>
+<text x="256" y="428" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="61" fill="#fff5d4" letter-spacing="10">TOP</text>
+</svg>
