@@ -1,5 +1,5 @@
 import {updateFollowTarget} from './mobile-camera-follow.mjs';
-import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG} from './mobile-camera-settings.mjs';
+import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG,CAMERA_TOUCH_DEFAULT,cameraTouchSensitivity} from './mobile-camera-settings.mjs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
@@ -47,6 +47,7 @@ let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'fre
 // Graus por segundo e graus máximos por gesto, ajustáveis no painel (0–180).
 let mobileCameraSpeedDeg=cameraDegrees(getPref('topweb_mobile_camera_speed_deg',String(CAMERA_SPEED_DEFAULT_DEG)));
 let mobileCameraTurnDeg=cameraDegrees(getPref('topweb_mobile_camera_turn_deg',String(CAMERA_TURN_DEFAULT_DEG)));
+let mobileTouchSensitivity=cameraTouchSensitivity(getPref('topweb_mobile_touch_sensitivity',String(CAMERA_TOUCH_DEFAULT)));
 let mobileSteeringReferenceYaw=null; // travado enquanto o joystick estiver pressionado
 let mobileFollowAnchorYaw=null; // limita giro automático a ~24° por gesto
 let cameraManualUntil=0;
@@ -1595,9 +1596,19 @@ function update(dt){
   if(keys.has('ArrowRight')||keys.has('KeyE')){if(MOBILE_UI)mobileOrbitYaw+=dt*1.1;else CAM.yaw+=dt*1.6;manualCamera();}
   if(keys.has('ArrowDown')){if(MOBILE_UI)mobileOrbitLift=Math.max(1.35,mobileOrbitLift-dt*.55);else CAM.lift-=dt*.55;}
   if(keys.has('ArrowUp')){if(MOBILE_UI)mobileOrbitLift=Math.min(2.4,mobileOrbitLift+dt*.55);else CAM.lift+=dt*.55;}
+  const keyFw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);
+  const keySide=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
+  const fw=keyFw+touchMove.forward;
+  const sideways=keySide+touchMove.sideways;
+  const walkingBackward=fw<-.12;
   if(MOBILE_UI){
-    // O controle de velocidade afeta apenas o acompanhamento AUTOMÁTICO.
-    // Giro manual com o dedo mantém seu próprio limite e sensibilidade.
+    // Marcha a ré: apenas manter a posição da câmera junto ao avatar,
+    // nunca girar 180° para apontar para trás.
+    if(mobileCameraMode==='follow'&&walkingBackward){
+      mobileOrbitYaw=CAM.yaw;
+      mobileFollowAnchorYaw=null;
+    }
+    // Giro automático suave; o toque manual é aplicado diretamente no gesto.
     const manualOrbit=performance.now()<cameraManualUntil;
     CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,
       mobileCameraMode==='follow'&&!manualOrbit?cameraRadians(mobileCameraSpeedDeg):1.1);
@@ -1605,10 +1616,6 @@ function update(dt){
   }
   clampCam();
   const {fwd,right}=cameraBasis();
-  const keyFw=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);
-  const keySide=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
-  const fw=keyFw+touchMove.forward;
-  const sideways=keySide+touchMove.sideways;
   // Congelar o referencial do joystick durante uma mesma pressão.
   // Sem isto, o giro da câmera muda o vetor de deslocamento a cada frame
   // e segurar 'esquerda' faria o personagem andar em círculos.
@@ -1617,6 +1624,7 @@ function update(dt){
     mobileSteeringReferenceYaw=CAM.yaw;
     mobileFollowAnchorYaw=CAM.yaw;
   }
+  if(steering&&!walkingBackward&&mobileFollowAnchorYaw===null)mobileFollowAnchorYaw=CAM.yaw;
   if(!steering){mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;}
   let dx=fwd.x*fw+right.x*sideways;
   let dz=fwd.z*fw+right.z*sideways;
@@ -1687,7 +1695,7 @@ function update(dt){
     cameraFollowTarget=Math.atan2(dx,dz);
     // Modo mobile "Seguir direção": a câmera gira atrás do rumo REAL percorrido.
     // Arrastar a câmera suspende o giro automático temporariamente.
-    if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&
+    if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&!walkingBackward&&
        mobileFollowAnchorYaw!==null&&performance.now()>cameraManualUntil){
       mobileOrbitYaw=subtleFollowTarget(mobileFollowAnchorYaw,
         Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ),
@@ -1985,6 +1993,27 @@ const setCameraSpeed=bindMobileCameraTuning('mobile-camera-speed','mobile-camera
   'topweb_mobile_camera_speed_deg',mobileCameraSpeedDeg,value=>{mobileCameraSpeedDeg=value;});
 const setCameraTurn=bindMobileCameraTuning('mobile-camera-turn','mobile-camera-turn-number',
   'topweb_mobile_camera_turn_deg',mobileCameraTurnDeg,value=>{mobileCameraTurnDeg=value;});
+// Sensibilidade do toque independente dos controles de giro automático:
+// funciona também em "Livre" e altera a câmera enquanto o dedo arrasta.
+function bindMobileTouchTuning(){
+  const slider=$('mobile-touch-sensitivity'),number=$('mobile-touch-sensitivity-number');
+  if(!slider||!number)return;
+  const apply=raw=>{
+    mobileTouchSensitivity=cameraTouchSensitivity(raw,mobileTouchSensitivity);
+    slider.value=String(mobileTouchSensitivity);
+    number.value=String(mobileTouchSensitivity);
+    setPref('topweb_mobile_touch_sensitivity',mobileTouchSensitivity);
+  };
+  apply(mobileTouchSensitivity);
+  slider.addEventListener('input',e=>apply(e.target.value));
+  number.addEventListener('change',e=>apply(e.target.value));
+  return apply;
+}
+const setTouchSensitivity=bindMobileTouchTuning();
+$('mobile-touch-reset')?.addEventListener('click',()=>{
+  setTouchSensitivity?.(CAMERA_TOUCH_DEFAULT);
+  toast('Sensibilidade manual restaurada para 2×.');
+});
 $('mobile-camera-reset')?.addEventListener('click',()=>{
   setCameraSpeed?.(CAMERA_SPEED_DEFAULT_DEG);
   setCameraTurn?.(CAMERA_TURN_DEFAULT_DEG);
@@ -2116,7 +2145,13 @@ renderer.domElement.addEventListener('pointermove',e=>{
   if(drag&&e.pointerId===drag.id&&(drag.touch||(e.buttons&2)!==0)){
     const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
     drag.x=e.clientX;drag.y=e.clientY;
-    if(MOBILE_UI){mobileOrbitYaw-=dragOrbitDelta(dx,innerWidth);mobileOrbitLift=THREE.MathUtils.clamp(mobileOrbitLift+dy*.0018,1.35,2.4);}
+    if(MOBILE_UI){
+      mobileOrbitYaw-=dragOrbitDelta(dx*mobileTouchSensitivity,innerWidth);
+      mobileOrbitLift=THREE.MathUtils.clamp(mobileOrbitLift+dy*.0018*mobileTouchSensitivity,1.35,2.4);
+      // Seguir imediatamente o dedo, sem a antiga limitação de 1.1 rad/s
+      // que deixava arrasto lento mesmo em sensibilidades elevadas.
+      CAM.yaw=mobileOrbitYaw;CAM.lift=mobileOrbitLift;clampCam();
+    }
     else{CAM.yaw-=dx*.008;CAM.lift+=dy*.0035;clampCam();}
     manualCamera();
     applyCursor(renderer.domElement,'look');
