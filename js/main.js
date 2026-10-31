@@ -1,5 +1,5 @@
 import {updateFollowTarget} from './mobile-camera-follow.mjs';
-import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG,CAMERA_TOUCH_DEFAULT,cameraTouchSensitivity} from './mobile-camera-settings.mjs';
+import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG,CAMERA_TOUCH_DEFAULT,cameraTouchSensitivity} from './mobile-camera-settings.mjs?v=2';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
