@@ -27,6 +27,46 @@ test('desktop permanece usando playerPos sem smoothing',()=>{
   assert.match(code,/if\(MOBILE_UI\)updateFollowTarget/);
   assert.match(code,/response:6\.5,snapDistance:13/);
 });
+test('loop do jogo atualiza o foco mobile após mover o personagem e antes de placeCamera',()=>{
+  const code=read('js/main.js');
+  const start=code.indexOf('function update(dt){');
+  const end=code.indexOf('let qualitySampleTime=0',start);
+  assert.ok(start>=0 && end>start,'loop update(dt) deve existir');
+  const frame=code.slice(start,end);
+  const pos=frame.indexOf('playerPos.y=THREE.MathUtils.lerp(');
+  const follow=frame.indexOf('if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt');
+  const camera=frame.indexOf('placeCamera();');
+  assert.ok(pos>=0 && pos<follow && follow<camera,
+    'o foco deve seguir a posição final do avatar a cada frame, antes de placeCamera');
+  assert.equal(frame.match(/updateFollowTarget\(mobileCameraFocus/g)?.length,1,
+    'não duplicar o smoothing em outras fases do frame');
+  assert.match(code,/const cameraPivot=MOBILE_UI\?mobileCameraFocus:playerPos/);
+});
+test('teleporte e mudanças diretas de posição centralizam sem dt indefinido',()=>{
+  const code=read('js/main.js');
+  const teleport=code.slice(code.indexOf('function teleport(x,z){'),code.indexOf('function updateHUD(){'));
+  assert.match(teleport,/mobileCameraFocus\.copy\(playerPos\)/);
+  assert.doesNotMatch(teleport,/updateFollowTarget\(|\bdt\b/);
+  assert.match(teleport,/if\(avatar\)avatar\.position\.copy\(playerPos\)/);
+  const mobileStart=code.indexOf("mobileQuery.addEventListener('change'");
+  const mobileChange=code.slice(mobileStart,code.indexOf("window.addEventListener('resize'",mobileStart));
+  assert.match(mobileChange,/mobileCameraFocus\.copy\(playerPos\)/);
+  const sit=code.slice(code.indexOf('function sitDown('),code.indexOf('function standUp(){'));
+  const stand=code.slice(code.indexOf('function standUp(){'),code.indexOf('function indexScenePlaces(){'));
+  assert.match(sit,/mobileCameraFocus\.copy\(playerPos\)/);
+  assert.match(stand,/mobileCameraFocus\.copy\(playerPos\)/);
+});
+test('seguimento mantém avatar próximo do centro ao andar sem saltar abruptamente',()=>{
+  const focus=point(),player=point();
+  let previous=0;
+  for(let frame=0;frame<180;frame++){
+    player.x+=4/60; // caminhada/corrida de 4 unidades por segundo
+    updateFollowTarget(focus,player,1/60,{response:6.5,snapDistance:13});
+    assert.ok(focus.x>=previous && focus.x<=player.x);
+    previous=focus.x;
+  }
+  assert.ok(player.x-focus.x<1,'após 3 segundos de caminhada a câmera não pode ficar para trás');
+});
 test('PWA instalável com manifest, serviço worker e alternativa mobile',()=>{
   const index=read('index.html'),manifest=JSON.parse(read('manifest.webmanifest'));
   const worker=read('sw.js'),install=read('js/pwa-install.mjs');
