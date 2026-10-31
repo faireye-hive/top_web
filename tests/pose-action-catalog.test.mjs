@@ -81,3 +81,28 @@ test('editor e exportador não restringem mais catálogo às cinco poses genéri
  assert.match(converter,/"Encostado na parede"/);
  assert.match(html,/pose-editor\.mjs\?v=2/);
 });
+
+test('cada ID e cada faixa de frames coincide com as duas tabelas históricas originais',()=>{
+ const original=text('referencias/characterposeinfo.txt').split(/\r?\n/).filter(line=>/^\d+\t/.test(line));
+ assert.equal(original.length,54);
+ for(let i=0;i<54;i++){
+   const cells=original[i].split('\t');
+   assert.equal(Number(cells[0]),catalog.actions[i].base);
+   assert.equal(cells[1],catalog.actions[i].original);
+   assert.deepEqual(cells.slice(2,9).map(Number),catalog.actions[i].ids);
+ }
+ const actorBySection={1:'lance',2:'carsise',3:'phyllis',4:'ami'};
+ let section=null;
+ for(const line of text('referencias/CharacterAction.tx').split(/\r?\n/)){
+   if(!line.trim()||line.trimStart().startsWith('//'))continue;
+   if(!/^\s/.test(line)){section=/^\d+$/.test(line.trim())?Number(line.trim()):null;continue;}
+   const actor=actorBySection[section];if(!actor)continue;
+   const nums=line.trim().split(/[\s,]+/).map(Number);
+   if(nums.length<3||nums.slice(0,3).some(n=>!Number.isInteger(n)))continue;
+   const [id,start,end,...events]=nums;
+   if(id<1||id>378||end<=start)continue;
+   const saved=catalog.frames[actor][id];
+   assert.ok(saved,actor+' ação '+id+' deveria ter frames');
+   assert.deepEqual(saved,[start,end,...events.filter(x=>Number.isInteger(x)&&x>=start&&x<=end)]);
+ }
+});
