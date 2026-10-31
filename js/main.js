@@ -50,6 +50,9 @@ let mobileCameraTurnDeg=cameraDegrees(getPref('topweb_mobile_camera_turn_deg',St
 let mobileTouchSensitivity=cameraTouchSensitivity(getPref('topweb_mobile_touch_sensitivity',String(CAMERA_TOUCH_DEFAULT)));
 let invertTouchHorizontal=getPref('topweb_mobile_touch_invert_x','0')==='1';
 let invertTouchVertical=getPref('topweb_mobile_touch_invert_y','0')==='1';
+// O botão pequeno Auto seleciona apenas o MODO do botão grande.
+// Combate automático só começa quando o botão grande é pressionado.
+let mobileAutoModeEnabled=getPref('topweb_mobile_attack_mode','manual')==='auto';
 let mobileSteeringReferenceYaw=null; // travado enquanto o joystick estiver pressionado
 let mobileFollowAnchorYaw=null; // limita giro automático a ~24° por gesto
 let cameraManualUntil=0;
@@ -471,7 +474,7 @@ function primaryContext(){
 function primaryAction(){
   if(changingLoadout||changingCharacter||rpgHud?.isOpen())return;
   const context=primaryContext();
-  if(context.type==='attack')return manualAttack();
+  if(context.type==='attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
   return tryPose();
 }
 function tryPose(){
@@ -515,6 +518,19 @@ function stopCombat(force=false){
   if(combat?.auto||attackPlaying){attackPlaying=false;playClip('Parado');}
   combat?.stop();
 }
+function selectMobileAutoMode(){
+  if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
+  if(changingCharacter||changingLoadout)return false;
+  mobileAutoModeEnabled=!mobileAutoModeEnabled;
+  // Desmarcar o modo Auto desliga o combate ativo, sem iniciar outro ataque.
+  if(!mobileAutoModeEnabled&&combat?.auto)combat.toggle();
+  setPref('topweb_mobile_attack_mode',mobileAutoModeEnabled?'auto':'manual');
+  toast(mobileAutoModeEnabled
+    ?'Modo Auto selecionado. Toque no botão grande para começar.'
+    :'Modo manual selecionado. O botão grande dá um golpe por toque.');
+  updateCombatHud();
+  return mobileAutoModeEnabled;
+}
 function toggleAutoAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   if(!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
@@ -526,7 +542,7 @@ function toggleAutoAttack(){
   keys.clear();touchMove.forward=0;touchMove.sideways=0;
   moverTarget=null;pendingPose=null;waypoint.hide();
   combat.toggle();
-  toast('Ataque automático ligado: aproximando do alvo. Use Auto para desligar.');
+  toast('Ataque automático ligado. Toque no botão grande novamente para parar.');
   return true;
 }
 function manualAttack(){
@@ -672,25 +688,34 @@ function updateCombatHud(){
   const target=combat?.target;
   $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:'Toque num monstro ou use Alvo';
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
-  $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto?(target?'Auto · combatendo':'Auto · procure monstros próximos'):'Auto desligado';
-  for(const id of ['mobile-auto','atk']){
-    const autoButton=$(id);autoButton?.setAttribute('aria-pressed',String(!!combat?.auto));
-    autoButton?.classList.toggle('auto-active',!!combat?.auto);
-  }
-  const autoButton=$('mobile-auto');
-  if(autoButton){
-    autoButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
-    autoButton.setAttribute('aria-label',combat?.auto?'Desligar ataque automático':'Ligar ataque automático');
+  $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
+    ?(target?'Auto · combatendo':'Auto · procurando alvo')
+    :(mobileAutoModeEnabled&&MOBILE_UI?'Modo Auto · pronto':'Modo manual');
+  const desktopAuto=$('atk');
+  desktopAuto?.setAttribute('aria-pressed',String(!!combat?.auto));
+  desktopAuto?.classList.toggle('auto-active',!!combat?.auto);
+  const autoModeButton=$('mobile-auto');
+  if(autoModeButton){
+    autoModeButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+    autoModeButton.setAttribute('aria-pressed',String(mobileAutoModeEnabled));
+    autoModeButton.setAttribute('aria-label',mobileAutoModeEnabled?'Usar ataque manual':'Usar ataque automático no botão grande');
+    autoModeButton.classList.toggle('auto-active',mobileAutoModeEnabled);
   }
   const context=primaryContext(),button=$('mobile-attack');
-  button?.setAttribute('aria-label',context.type==='attack'?'Atacar manualmente':context.label);
-  button?.removeAttribute('aria-pressed');
+  const combatAction=context.type==='attack';
+  const autoAction=combatAction&&mobileAutoModeEnabled;
+  button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
+    :combatAction?'Atacar manualmente':context.label);
+  if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
+  else button?.removeAttribute('aria-pressed');
   if(context.npc){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
-  button?.classList.toggle('interaction-ready',context.type!=='attack'&&context.type!=='recovering');
-  button?.classList.toggle('manual-unavailable',context.type==='attack'&&!!combat?.auto);
+  button?.classList.toggle('interaction-ready',!combatAction&&context.type!=='recovering');
+  button?.classList.toggle('auto-mode-selected',autoAction);
+  button?.classList.toggle('auto-active',autoAction&&!!combat?.auto);
+  button?.classList.remove('manual-unavailable');
   const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
-  const label=button?.querySelector('small');if(label)label.textContent=context.type==='attack'?'Atacar':context.label;
-  if(button)button.disabled=hero.hp<=0||changingCharacter||changingLoadout||(context.type==='attack'&&!!combat?.auto);
+  const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':'Atacar'):context.label;
+  if(button)button.disabled=hero.hp<=0||changingCharacter||changingLoadout;
   $('mobile-target').disabled=hero.hp<=0||changingCharacter||changingLoadout;
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
 
@@ -1948,7 +1973,7 @@ $('hero-class').addEventListener('change',e=>{const value=e.target.value;void ch
 });});
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
 $('mobile-target').addEventListener('click',()=>{if(!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
-$('mobile-auto').addEventListener('click',toggleAutoAttack);
+$('mobile-auto').addEventListener('click',selectMobileAutoMode);
 $('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
 window.addEventListener('blur',()=>{stopCombat();saveHero();});
 window.addEventListener('pagehide',saveHero);
