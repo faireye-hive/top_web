@@ -105,7 +105,19 @@ font:600 12px system-ui,sans-serif}
      <button type="button" id="mobile-camera-reset" title="Restaurar valores padrão">Restaurar</button>
     </div>
    </div>
-   <div class="small">Câmera livre: segue só a posição. No acompanhamento, arrastar para olhar ao redor pausa o giro automático por 2,5 s.</div>
+   <div class="small">Andar para trás não gira a câmera; ela continua acompanhando a posição.</div>
+   <div class="camera-tuning" id="mobile-touch-tuning" aria-label="Sensibilidade manual da câmera">
+    <label class="small" for="mobile-touch-sensitivity"><strong>Sensibilidade do toque (×)</strong></label>
+    <div class="camera-tuning-row">
+     <input id="mobile-touch-sensitivity" type="range" min="0.5" max="5" step="0.1" value="2" aria-label="Sensibilidade para arrastar e girar a câmera">
+     <input id="mobile-touch-sensitivity-number" type="number" inputmode="decimal" min="0.5" max="5" step="0.1" value="2" aria-label="Valor da sensibilidade manual">
+    </div>
+    <div class="camera-tuning-footer">
+     <span class="small">1× = original · 2× = mais rápido · 5× = máximo</span>
+     <button type="button" id="mobile-touch-reset">Restaurar</button>
+    </div>
+   </div>
+   <div class="small">O arrasto com o dedo responde imediatamente, nos modos Livre e Acompanhamento. No acompanhamento, olhar ao redor pausa o giro automático por 2,5 s.</div>
    <label class="small">Visual do mundo</label>
    <select id="visualmode"><option value="classic">Clássico · cores mais vivas</option><option value="cinematic">Cinemático · tons suaves</option></select>
    <label class="small">Orientação ao sentar</label>
@@ -236,7 +248,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=38"></script>
+<script type="module" src="./js/main.js?v=39"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>
