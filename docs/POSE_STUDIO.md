@@ -34,6 +34,12 @@ arma ainda necessita verificar os dummies originais e testar em browser.
 - Selecione um clipe de animação que realmente esteja presente no GLB,
   reproduza/pare, navegue pela timeline, mude velocidade e visualize
   ossos/esqueleto. O editor avisa quando a animação histórica está ausente.
+- **Catálogo histórico completo**: 54 ações por cada uma das 7 famílias
+  (`referencias/characterposeinfo.txt`), somando **378 IDs**. Filtre
+  por texto/ID, categoria, banco armado/compartilhado e disponibilidade real:
+  ✓ no GLB, ⚠ frames existentes mas não exportados, — sem frames no personagem.
+  Selecionar uma ação disponível a reproduz, e o botão
+  **Usar ação no estado selecionado** permite atribuí-la ao estado configurável.
 - Para **cada arma** separadamente, selecione osso, posição XYZ (em
   metros), rotação XYZ (graus) e escala. Presets Costas, Cintura, Padrão.
 - **Guardar armas fora do combate** controla a visibilidade nos estados
@@ -95,8 +101,23 @@ Normal Run, Guarded Run e três ataques básicos. O conversor anterior
 exportava apenas ações 1, 5 e 7 (além de skills e uma pose social) em
 cada banco de arma.
 
-O script `scripts/build_evanescence.py` agora seleciona também as ações
-4, 6, 8, 9 e 10 da tabela histórica, **para a próxima regeneração**:
+O script `scripts/build_evanescence.py` agora seleciona **todas as
+54 ações do banco de arma**, além das ações compartilhadas 016, 018, 030,
+031 e 038, **para a próxima regeneração**. A opção `--compact` conserva
+um subconjunto leve caso o GLB completo fique pesado no celular.
+
+No Lance Crusader, o arquivo de referência diferencia os IDs **016, 030 e
+031** (banco sem arma/compartilhado) de **178, 192 e 193** (banco com duas
+espadas). Com o modelo equipado, um clipe compartilhado pode mostrar
+equipamento; o nome original da tabela continua sendo de ação base.
+
+O `assets/poses/historical-catalog.json` identifica todos esses IDs,
+a descrição original, a tradução e os intervalos de frames presentes nas
+seções 1–4 de `referencias/CharacterAction.tx`. Os estados já existentes
+no jogo continuam sendo os cinco estados principais; listar as 54 ações
+não significa que todas tenham um comando de gameplay implementado.
+
+Para reconstruir os GLBs com o catálogo completo:
 
 ```bash
 python3 scripts/build_evanescence.py /caminho/Client
@@ -105,8 +126,10 @@ node --test tests/pose-studio.test.mjs
 
 Este comando exige os arquivos originais `Client/` contendo LAB, LGO,
 texturas e tabelas. **Os modelos binários atuais no GitHub NÃO foram
-automaticamente regenerados.** Por isso, algumas opções de Guarda e
-Corrida armada ainda podem mostrar fallback de Parado/Correr no editor.
+automaticamente regenerados.** Por isso, muitas das 54 ações armadas
+ainda serão listadas como `⚠ Histórica não exportada`; o editor não tenta
+fingir reproduzir essas ações. A reconversão pode aumentar bastante o tamanho
+dos GLBs; verifique carregamento e FPS no celular após gerar os arquivos.
 
 ## Limitações e próximos testes
 
