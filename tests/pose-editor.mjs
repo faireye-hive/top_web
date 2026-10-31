@@ -4,6 +4,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
   availableBones} from '../js/pose-studio-runtime.mjs?v=1';
+import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,ACTION_CATEGORIES} from '../js/pose-action-catalog.mjs?v=1';
 
 const $=id=>document.getElementById(id);
 const stateLabels={idle:'Cidade',guard:'Guarda',run:'Corrida',armedRun:'Corrida armada',attack:'Ataque'};
@@ -21,6 +22,7 @@ const controls=new OrbitControls(camera,panel);controls.target.set(0,1,0);
 controls.enableDamping=true;controls.enablePan=false;controls.minDistance=1;controls.maxDistance=20;controls.update();
 let model=null,mixer=null,clips=[],action=null,holster=null,skeletonHelper=null;
 let equipment=null,store={version:1,profiles:{}},profile=null,selectedState='idle';
+let historicalCatalog=null,selectedHistoricalId=null;
 let selectedPart='weapon-0',playing=true,loading=0,clock=new THREE.Clock();
 function status(msg){$('status').textContent=msg;}
 function note(msg){$('part-alert').textContent=msg;}
@@ -60,6 +62,93 @@ function reloadHolster(){
  const stowed=$('stow').checked&&(selectedState==='idle'||selectedState==='run');
  holster.setStowed(stowed);
 }
+function previewClip(clip,{once=false}={}){
+ if(action){action.stop();action=null;}
+ if(!clip||!mixer)return;
+ action=mixer.clipAction(clip);
+ action.reset().setEffectiveWeight(1).play();
+ action.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
+ action.clampWhenFinished=once;
+ action.paused=!playing;
+ $('timeline').value=0;updateTime();
+}
+function catalogRows(){
+ if(!historicalCatalog)return [];
+ const bank=weaponBankForJob(jobEl.value,equipment);
+ return catalogForActor(historicalCatalog,actorEl.value,bank,clips,$('catalog-bank').value);
+}
+function selectedHistorical(){
+ return catalogRows().find(x=>x.id===selectedHistoricalId)||null;
+}
+function showCatalogDetail(row){
+ if(!row){
+  $('catalog-detail').textContent='Selecione uma ação histórica para consultar descrição e quadros.';
+  $('catalog-use').disabled=true;return;
+ }
+ const status=row.available?'✓ Disponível neste GLB':
+   row.frames?'⚠ Possui frames históricos, mas este GLB não a exportou':
+   '— Sem intervalo de frames válido neste personagem';
+ const original=row.original&&row.original!==row.label?'\nOriginal: '+row.original:'';
+ const frames=row.frames?'\nFrames históricos: '+row.frames[0]+'–'+row.frames[1]+
+   (row.frames.length>2?' · eventos: '+row.frames.slice(2).join(', '):''):'';
+ const note=row.group===0&&$('equipped').checked?
+   '\nAção compartilhada/base. Pode ser exibida com arma no modelo equipado; não é uma ação exclusiva do banco de arma.':'';
+ $('catalog-detail').textContent=row.code+' · '+row.label+
+   '\nBanco: '+row.groupName+' · Categoria: '+(ACTION_CATEGORIES[row.category]||row.category)+
+   original+frames+'\n'+status+note;
+ $('catalog-use').disabled=!row.clip;
+}
+function renderCatalog(){
+ const list=$('catalog-list');list.replaceChildren();
+ if(!historicalCatalog){
+  $('catalog-summary').textContent='Catálogo histórico indisponível.';
+  $('catalog-use').disabled=true;return;
+ }
+ const all=catalogRows();
+ const filtered=filterHistoricalActions(all,{
+  query:$('catalog-search').value,
+  category:$('catalog-category').value,
+  status:$('catalog-status').value
+ });
+ const available=all.filter(x=>x.available).length;
+ const historical=all.filter(x=>x.status==='not-exported').length;
+ $('catalog-summary').textContent=filtered.length+' de '+all.length+' ações · '+
+   available+' disponíveis no GLB · '+historical+' com frames, mas não exportadas';
+ for(const row of filtered){
+  const button=document.createElement('button');
+  button.type='button';button.setAttribute('role','option');
+  button.setAttribute('aria-selected',String(row.id===selectedHistoricalId));
+  button.className='catalog-item '+row.status+(row.id===selectedHistoricalId?' selected':'');
+  const code=document.createElement('span');code.className='code';code.textContent=row.code;
+  const desc=document.createElement('span');desc.className='description';
+  const title=document.createElement('span');title.className='title';
+  const sharedSuffix=row.group===0&&$('equipped').checked&&[16,30,31].includes(row.id)
+    ?' · no modelo armado':'';
+  title.textContent=row.label+sharedSuffix;
+  const sub=document.createElement('span');sub.className='sub';sub.textContent=row.groupName;
+  desc.append(title,sub);
+  const badge=document.createElement('span');badge.className='tag';
+  badge.textContent=row.available?'✓ GLB':row.frames?'⚠ Falta':'—';
+  button.append(code,desc,badge);
+  button.title=row.available?'Reproduzir esta animação':'Consultar ação e disponibilidade histórica';
+  button.onclick=()=>chooseHistoricalAction(row.id);
+  list.append(button);
+ }
+ showCatalogDetail(selectedHistorical());
+}
+function chooseHistoricalAction(id){
+ const row=catalogRows().find(x=>x.id===id);
+ if(!row)return;
+ selectedHistoricalId=row.id;
+ renderCatalog();
+ if(!row.clip){
+  status('⚠ '+row.code+' · '+row.label+' ainda não está no GLB. Regenere os modelos com o Client original.');
+  return;
+ }
+ previewClip(row.clip,{once:['combat','skills','emotes','interaction'].includes(row.category)});
+ if(holster)holster.setStowed($('stow').checked&&row.group===0&&['postures','movement','social'].includes(row.category));
+ status('▶ '+row.code+' · '+row.label+' · clipe real do GLB '+actorEl.value);
+}
 function showClip(){
  if(!clips.length)return;
  ensureProfile();
@@ -77,17 +166,9 @@ function showClip(){
  $('clip-info').textContent=(warning?'⚠ ':'✓ ')+stateLabels[selectedState]+' · '+(found?.name||'Sem clipe')+
    (found?' · '+found.duration.toFixed(2)+' s':'')+
    (warning?' · Ação histórica '+desired+' ainda não exportada neste GLB; prévia usa outra ação.':'');
- if(action){action.stop();action=null;}
- if(found&&mixer){
-  action=mixer.clipAction(found);
-  action.reset().setEffectiveWeight(1).play();
-  action.setLoop(selectedState==='attack'?THREE.LoopOnce:THREE.LoopRepeat,
-    selectedState==='attack'?1:Infinity);
-  action.clampWhenFinished=selectedState==='attack';
-  action.paused=!playing;
-  $('timeline').value=0;
- }
+ previewClip(found,{once:selectedState==='attack'});
  reloadHolster();
+ renderCatalog();
 }
 function changeState(next){
  if(!POSE_STATES.includes(next))return;
@@ -130,7 +211,7 @@ async function loadCharacter(){
   });
   if(!holster?.parts.some(part=>part.key===selectedPart))selectedPart=holster?.parts[0]?.key||'';
   $('part').value=selectedPart;
-  redrawWeaponFields();showClip();
+  selectedHistoricalId=null;redrawWeaponFields();showClip();
   status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas ajustáveis');
  }catch(error){console.error(error);status('Falha ao carregar modelo: '+error.message);}
 }
@@ -190,6 +271,15 @@ $('job').onchange=loadCharacter;
 $('equipped').onchange=loadCharacter;
 for(const b of document.querySelectorAll('[data-state]'))
  b.onclick=()=>changeState(b.dataset.state);
+for(const id of ['catalog-bank','catalog-category','catalog-status'])
+ $(id).onchange=renderCatalog;
+$('catalog-search').oninput=renderCatalog;
+$('catalog-use').onclick=()=>{
+ const row=selectedHistorical();if(!row?.clip)return;
+ ensureProfile();profile.clips[selectedState]=row.clip.name;
+ showClip();
+ status('✓ '+row.code+' · '+row.label+' atribuído ao estado '+stateLabels[selectedState]+'. Salve para aplicar no jogo.');
+};
 $('clip').onchange=()=>{
  ensureProfile();
  if($('clip').value)profile.clips[selectedState]=$('clip').value;
@@ -240,12 +330,15 @@ $('file').onchange=async()=>{
 };
 (async()=>{
  try{
-  const [resModel,resPoses]=await Promise.all([
+  const [resModel,resPoses,resCatalog]=await Promise.all([
     fetch('assets/equipment/manifest.json?v=1'),
-    fetch('assets/poses/overrides.json?v=1')
+    fetch('assets/poses/overrides.json?v=1'),
+    fetch('assets/poses/historical-catalog.json?v=1')
   ]);
   if(!resModel.ok)throw Error('manifest.json de equipamentos indisponível');
   equipment=await resModel.json();
+  if(!resCatalog.ok)throw Error('Catálogo histórico de ações indisponível');
+  historicalCatalog=await resCatalog.json();
   const shipped=resPoses.ok?await resPoses.json():{version:1,profiles:{}};
   store=readPoseProfiles(globalThis.localStorage,shipped);
   updateJobs();await loadCharacter();
