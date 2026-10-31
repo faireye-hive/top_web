@@ -201,8 +201,8 @@ $('bone').onchange=()=>editWeapon(w=>{w.bone=$('bone').value});
 $('stow').onchange=()=>{ensureProfile();profile.stowOnIdle=$('stow').checked;reloadHolster()};
 for(const [kind,key] of [['p','position'],['r','rotation']])
  for(const [axis,i]of [['x',0],['y',1],['z',2]])
-  $(kind+axis).oninput=()=>editWeapon(w=>{const value=Number($(kind+axis).value);if(Number.isFinite(value))w[key][i]=value;});
-$('scale').oninput=()=>editWeapon(w=>{const n=Number($('scale').value);if(Number.isFinite(n))w.scale=Math.max(.1,Math.min(5,n));});
+  $(kind+axis).onchange=()=>editWeapon(w=>{const value=Number($(kind+axis).value);if(Number.isFinite(value))w[key][i]=value;});
+$('scale').onchange=()=>editWeapon(w=>{const n=Number($('scale').value);if(Number.isFinite(n))w.scale=Math.max(.1,Math.min(5,n));});
 for(const b of document.querySelectorAll('[data-preset]'))
  b.onclick=()=>preset(b.dataset.preset);
 $('play').onclick=()=>{
