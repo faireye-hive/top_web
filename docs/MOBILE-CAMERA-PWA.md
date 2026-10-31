@@ -5,9 +5,11 @@ A câmera mantém a órbita ajustada pelo jogador, mas seu **foco acompanha o
 personagem** com uma interpolação exponencial independente de FPS. Em **Configurações → Câmera no celular**, há dois modos:
 
 - **Atrás do personagem · giro discreto** (padrão): a câmera ajusta o
-  enquadramento suavemente ao caminhar, mas limita a correção automática
-  a cerca de **24° por gesto** e **24°/s**. A zona morta ignora variações
-  menores que ~7°. A direção usada pelo joystick é fixada ao iniciar
+  enquadramento suavemente ao caminhar. O usuário pode alterar ao vivo a
+  **velocidade automática (0–180°/s)** e a **correção máxima (0–180° por gesto)**,
+  ambas com barra e campo numérico. O padrão é **24°/s e 24° por gesto**;
+  valor 0 desliga a rotação automática. A zona morta de ~7° evita pequenos
+  ajustes excessivos. A direção usada pelo joystick é fixada ao iniciar
   cada pressão, evitando caminhada em círculos quando a câmera gira.
   Ao soltar e pressionar novamente, o ângulo atualizado vira a referência.
 - **Livre · giro manual**: a câmera só acompanha a **posição** do avatar;
@@ -15,12 +17,17 @@ personagem** com uma interpolação exponencial independente de FPS. Em **Config
 
 Mesmo no modo suave, arrastar o cenário para olhar em volta suspende por
 2,5 s o giro automático; movimentar o joystick depois faz a câmera voltar
-gradualmente para trás da direção percorrida. O modo escolhido fica salvo
-em `topweb_mobile_camera_mode` no armazenamento local do navegador.
+gradualmente para trás da direção percorrida. O modo escolhido e os ajustes ficam salvos no armazenamento local do
+navegador (`topweb_mobile_camera_mode`,
+`topweb_mobile_camera_speed_deg`, `topweb_mobile_camera_turn_deg`).
+O botão **Restaurar** retorna para 24°/s e 24° por movimento. Os controles
+ficam desativados no modo Livre, preservando os valores para quando o
+acompanhamento for reativado.
 
 A suavização da **posição** usa resposta 6,5 por segundo e faz snap para
 distâncias grandes (por exemplo, teleporte), evitando uma câmera perdida.
-O giro usa `gentleOrbit` com velocidade máxima de 0,42 rad/s no modo discreto.
+O giro usa `gentleOrbit` com velocidade máxima derivada do controle em
+graus por segundo, enquanto `subtleFollowTarget` limita a correção por gesto.
 
 A regra só é aplicada em `MOBILE_UI`; no desktop, o enquadramento permanece
 instantâneo. O cálculo puro pode ser testado em
