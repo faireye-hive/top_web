@@ -35,6 +35,13 @@ imediata (sem limite de velocidade aplicado por frame). O botão Restaurar
 ao lado dela retorna para 2×. O valor é salvo na preferência
 `topweb_mobile_touch_sensitivity`.
 
+Também existem duas caixas de seleção independentes: **Inverter giro
+horizontal** e **Inverter giro vertical**. Elas afetam exclusivamente o
+arrasto manual por toque (sem alterar o joystick nem o acompanhamento
+automático), e ficam salvas em `topweb_mobile_touch_invert_x` e
+`topweb_mobile_touch_invert_y`.
+
+
 A suavização da **posição** usa resposta 6,5 por segundo e faz snap para
 distâncias grandes (por exemplo, teleporte), evitando uma câmera perdida.
 O giro usa `gentleOrbit` com velocidade máxima derivada do controle em
@@ -86,3 +93,23 @@ por `Correr`/`Parado` durante esse período.
 
 A validação inclui um teste simulando `finished` de dois clipes em sequência
 e conferindo que o bloqueio só é removido no segundo.
+
+## Botões de combate mobile
+
+- **Alvo** (pequeno, embaixo): seleciona/cicla monstros próximos, sem
+  iniciar combate automático.
+- **Auto** (pequeno, imediatamente acima de Alvo): liga/desliga o combate
+  contínuo. Ao desligar, conserva o alvo, permitindo voltar ao manual.
+  A borda do botão se ilumina quando o Auto está ativo.
+- **Atacar** (grande): executa apenas **um golpe básico manual por toque**,
+  exige alvo ao alcance (seleciona o mais próximo quando nenhum está
+  selecionado), respeita intervalo entre ataques, e fica desabilitado
+  enquanto o Auto estiver ativo. Interações contextuais com NPCs e bancos
+  continuam disponíveis.
+- A movimentação continua cancelando o ataque automático; uma seleção
+  manual não ativa o Auto. Os ataques manuais em preparação também podem
+  ser cancelados por movimento, como antes.
+
+O novo `manualAttack(position)` reaproveita a mesma lógica de animação,
+efeitos, dano e prática de ataque de `createCombat` usada nos golpes
+automáticos, mas não gera ataques contínuos.
