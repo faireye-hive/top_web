@@ -71,8 +71,12 @@ function showClip(){
  const override=profile.clips?.[selectedState]||'';
  $('clip').value=clips.some(c=>c.name===override)?override:'';
  const found=clips.find(c=>c.name===chosen);
- $('clip-info').textContent=(found?'✓ ':'⚠ ') +stateLabels[selectedState]+' · '+(found?.name||'Sem clipe')+
-   (found?' · '+found.duration.toFixed(2)+' s':' — este modelo precisa de novas ações no conversor');
+ const desired=POSE_DEFAULTS[selectedState];
+ const original=clips.some(c=>c.name.toLowerCase().split('·').pop().trim()===desired.toLowerCase());
+ const warning=!(profile.clips?.[selectedState])&&!original;
+ $('clip-info').textContent=(warning?'⚠ ':'✓ ')+stateLabels[selectedState]+' · '+(found?.name||'Sem clipe')+
+   (found?' · '+found.duration.toFixed(2)+' s':'')+
+   (warning?' · Ação histórica '+desired+' ainda não exportada neste GLB; prévia usa outra ação.':'');
  if(action){action.stop();action=null;}
  if(found&&mixer){
   action=mixer.clipAction(found);
@@ -146,7 +150,7 @@ function editWeapon(fn){
 function preset(which){
  editWeapon(w=>{
   const bones=holster?.bones||[];
-  const defaults=weaponDefaults(which==='hip'?'sharpshooter':jobEl.value,
+  const defaults=weaponDefaults(which==='hip'?'sharpshooter':'cleric',
     selectedWeapon().index,bones);
   if(which==='reset')Object.assign(w,weaponDefaults(jobEl.value,selectedWeapon().index,bones));
   else Object.assign(w,defaults);
