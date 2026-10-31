@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../"><meta name="theme-color" content="#071923">
+<title>TOP Web · Pose &amp; Weapon Studio</title>
+<link rel="stylesheet" href="tests/pose-editor.css?v=1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<header class="top"><div class="brand"><span class="emblem">⚔</span><div><strong>Pose &amp; Weapon <em>Studio</em></strong><small>Tales of Pirates · animação, postura e equipamento</small></div></div>
+<nav><a href="index.html">← Voltar ao jogo</a><button id="save">Salvar no navegador</button><button id="export" class="gold">↓ Exportar JSON</button><button id="import">↑ Importar JSON</button><input type="file" id="file" accept=".json,application/json" hidden></nav></header>
+<main>
+<aside class="panel left">
+ <h2>Personagem</h2>
+ <label>Modelo <select id="actor"><option value="lance">Lance</option><option value="carsise">Carsise</option><option value="phyllis">Phyllis</option><option value="ami">Ami</option></select></label>
+ <label>Classe e arma <select id="job"></select></label>
+ <label class="check"><input id="equipped" type="checkbox" checked> Usar equipamento Evanescence</label>
+ <div class="divider"></div>
+ <h2>Estado / movimento</h2>
+ <div id="states" class="state-grid">
+  <button data-state="idle" class="active">🏙 Cidade / descanso</button>
+  <button data-state="guard">🛡 Guarda / combate</button>
+  <button data-state="run">🏃 Correr</button>
+  <button data-state="armedRun">⚔ Corrida armada</button>
+  <button data-state="attack">💥 Ataque básico</button>
+ </div>
+ <label>Clipe GLB utilizado neste estado
+  <select id="clip"></select>
+ </label>
+ <div class="hint">A lista mostra os clipes realmente presentes no GLB. Se uma postura histórica estiver ausente, não será possível reproduzi-la até reconverter o modelo.</div>
+ <div id="clip-info" class="info">Escolha um personagem.</div>
+ <div class="divider"></div>
+ <h2>Animação</h2>
+ <div class="row"><button id="play">❚❚ Pausar</button><button id="restart">↺ Reiniciar</button><label class="small">Velocidade <select id="speed"><option value=".5">0,5×</option><option value="1" selected>1×</option><option value="1.5">1,5×</option></select></label></div>
+ <input id="timeline" type="range" min="0" max="1000" value="0">
+ <output id="clock">0,00 / 0,00 s</output>
+ <label class="check"><input id="skeleton" type="checkbox"> Mostrar esqueleto / ossos</label>
+</aside>
+<section class="stage">
+ <canvas id="viewport" aria-label="Visualização tridimensional da pose"></canvas>
+ <div class="stage-tip">Arraste para girar • Roda para zoom • Escolha uma arma na lateral para mover o encaixe</div>
+ <div id="status" role="status">Carregando modelos…</div>
+</section>
+<aside class="panel right">
+ <h2>Arma guardada</h2>
+ <p class="hint">Na cidade e na corrida normal, usa uma cópia estática da arma presa ao osso escolhido. Na guarda e no ataque, mostra a arma original animada na mão.</p>
+ <label class="check"><input id="stow" type="checkbox" checked> Guardar armas fora do combate</label>
+ <label>Peça da arma <select id="part"></select></label>
+ <div id="part-alert" class="info">Carregue um personagem com arma equipada.</div>
+ <div id="weapon-controls">
+ <label>Osso de destino <select id="bone"></select></label>
+ <div class="row"><button data-preset="back">Costas</button><button data-preset="hip">Cintura</button><button data-preset="reset">Padrão</button></div>
+ <h3>Posição (metros / osso)</h3>
+ <div class="triple"><label>X <input id="px" type="number" step=".01"></label><label>Y <input id="py" type="number" step=".01"></label><label>Z <input id="pz" type="number" step=".01"></label></div>
+ <h3>Rotação (graus)</h3>
+ <div class="triple"><label>X <input id="rx" type="number" step="1"></label><label>Y <input id="ry" type="number" step="1"></label><label>Z <input id="rz" type="number" step="1"></label></div>
+ <label>Escala <input id="scale" type="number" min=".1" max="5" step=".05"></label>
+ </div>
+ <div class="divider"></div>
+ <h2>Salvar para o jogo</h2>
+ <p class="hint">Salvar no navegador aplica estas configurações ao jogo <strong>na mesma origem</strong>, após atualizar a página. Para publicar para todos, exporte e substitua <code>assets/poses/overrides.json</code> no GitHub.</p>
+ <div class="row"><button id="save-bottom">💾 Salvar</button><button id="reset-profile">Limpar perfil</button></div>
+ <div class="info" id="source-note">As posições iniciais são aproximações para edição, não os dummies históricos da cintura/costas.</div>
+</aside>
+</main>
+<script type="module" src="tests/pose-editor.mjs?v=1"></script>
+</body></html>

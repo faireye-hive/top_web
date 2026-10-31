@@ -19,6 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -93,6 +94,11 @@ const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
 });
 const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
 let equipmentManifest=null,changingLoadout=false;
+let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
+const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
+  .then(r=>r.ok?r.json():{version:1,profiles:{}})
+  .catch(()=>({version:1,profiles:{}}))
+  .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
 const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
@@ -490,10 +496,22 @@ function tryPose(){
   }
   toast('Chegue perto de um banco, parede ou NPC.');return false;
 }
+function isRunningPose(){
+  return currentClip.toLowerCase().includes('correr') ||
+    ['run','armedRun'].some(state=>selectPoseName(state,activePoseProfile,animations)===currentClip);
+}
+function poseResolvedName(match){
+  const state=match==='Parado'?(combat?.auto?'guard':'idle'):
+    match==='Correr'?(combat?.auto?'armedRun':'run'):
+    match==='Ataque 1'?'attack':null;
+  return state?selectPoseName(state,activePoseProfile,animations):match;
+}
 function playClip(match,once=false){
   if(!mixer||!animations.length)return false;
-  const want=match.toLowerCase();
-  const clip=animations.find(a=>a.name.toLowerCase().split('·').pop().trim()===want)
+  const requested=poseResolvedName(match);
+  const want=requested.toLowerCase();
+  const clip=animations.find(a=>a.name===requested)
+    ||animations.find(a=>a.name.toLowerCase().split('·').pop().trim()===want)
     ||animations.find(a=>a.name.toLowerCase().includes(want));
   if(!clip)return false;
   if(currentClip===clip.name&&!once)return true;
@@ -515,8 +533,9 @@ function stopCombat(force=false){
   if(skillAnimationLocked&&!force)return;
   if(force)skillAnimationLocked=false;
   skillActionQueue=[];
-  if(combat?.auto||attackPlaying){attackPlaying=false;playClip('Parado');}
-  combat?.stop();
+  const wasActive=!!combat?.auto||attackPlaying;
+  combat?.stop(); // Trocar de guarda para descanso só depois de desativar Auto.
+  if(wasActive){attackPlaying=false;playClip('Parado');}
 }
 function selectMobileAutoMode(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
@@ -537,11 +556,13 @@ function toggleAutoAttack(){
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto){
     combat.toggle(); // Desativa auto, mas conserva alvo para o ataque manual.
+    if(!attackPlaying)playClip('Parado');
     toast('Ataque automático desligado.');return false;
   }
   keys.clear();touchMove.forward=0;touchMove.sideways=0;
   moverTarget=null;pendingPose=null;waypoint.hide();
   combat.toggle();
+  if(!attackPlaying)playClip('Parado'); // Guarda configurada (quando disponível).
   toast('Ataque automático ligado. Toque no botão grande novamente para parar.');
   return true;
 }
@@ -555,6 +576,7 @@ function manualAttack(){
   return fired;
 }
 function clearAvatar(){
+  weaponHolster?.dispose();weaponHolster=null;
   mixer?.stopAllAction();if(avatar)mixer?.uncacheRoot(avatar);
   if(!avatar)return;
   const geometries=new Set(),materials=new Set(),textures=new Set();
@@ -588,6 +610,9 @@ async function loadCharacter(id){
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;
+    await poseProfilesReady;
+    activePoseProfile=poseProfile(poseProfiles,id,hero.job);
+    weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile):null;
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
@@ -603,7 +628,7 @@ async function loadCharacter(id){
       skillAnimationLocked=false;
       attackPlaying=false;playClip('Parado');
     });
-    playClip('Parado');rpgHud?.setClips(animations);
+    playClip('Parado');weaponHolster?.setStowed(true);rpgHud?.setClips(animations);
     if(mobileSkillCatalog)rpgHud?.setClassSkills(mobileSkillCatalog,hero.job,id,animations);
     rpgHud?.setStats(heroSnapshot(hero));
     void skillVisuals.warm(mobileSkillCatalog?.classes?.[hero.job]?.skills||[]);
@@ -1758,9 +1783,9 @@ function update(dt){
       if(moved){
         playClip('Correr');
         if(runningAction&&currentClip.toLowerCase().includes('correr'))runningAction.setEffectiveTimeScale(running?1.2:1);
-      }else if(currentClip.toLowerCase().includes('correr'))playClip('Parado');
+      }else if(isRunningPose())playClip('Parado');
     }
-  }else if(!seated && !attackPlaying&&currentClip.toLowerCase().includes('correr'))playClip('Parado');
+  }else if(!seated && !attackPlaying&&isRunningPose())playClip('Parado');
   // No movimento puramente lateral, espera soltar o controle antes de girar
   // atrás do personagem: evita transformar A/D em uma órbita infinita.
   if(!MOBILE_UI && wish<=.01 && autoCameraEnabled && !seated && cameraFollowTarget!==null &&
@@ -1772,6 +1797,9 @@ function update(dt){
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
   if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
   if(avatar)avatar.position.copy(playerPos);
+  // Cidade / exploração: arma guardada no osso configurado. Combate/skill
+  // mostram a arma original na mão, sem modificar o GLB histórico.
+  weaponHolster?.setStowed(!combat?.auto&&!attackPlaying&&!skillAnimationLocked&&!combat?.casting);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}

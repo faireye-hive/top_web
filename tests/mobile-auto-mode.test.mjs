@@ -19,7 +19,7 @@ function invoke(source,name,context){
 function fixture(){
   const notifications=[],prefs=[];
   const state={
-    mobileAutoModeEnabled:false,
+    mobileAutoModeEnabled:false,attackPlaying:false,playClip(){return true},
     changingCharacter:false,changingLoadout:false,skillAnimationLocked:false,
     hero:{hp:100},rpgHud:{isOpen:()=>false},seated:null,
     keys:new Set(['KeyW']),touchMove:{forward:1,sideways:0},
@@ -98,7 +98,7 @@ test('HUD reflete modo pequeno e execução apenas no botão principal',()=>{
   assert.match(main,/button\?\.classList\.toggle\('auto-active',autoAction&&!!combat\?\.auto\)/);
   assert.match(main,/label\.textContent=combatAction\?\(mobileAutoModeEnabled\?'Auto':'Atacar'\)/);
   assert.match(html,/id="mobile-auto"/);
-  assert.match(html,/main\.js\?v=41/);
+  assert.match(html,/main\.js\?v=42/);
   assert.match(html,/mobile-landscape\.css\?v=5/);
   assert.match(css,/#mobile-attack\.auto-mode-selected/);
 });

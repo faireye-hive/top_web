@@ -1,3 +1,19 @@
+# TOP Web — Pose & Weapon Studio (31/10/2026)
+
+**Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz
+animações GLB de cidade, guarda, corrida, corrida armada e ataque; permite
+ajustar os ossos e as posições das armas quando guardadas nas costas
+ou na cintura. Os ajustes são aplicados pelo jogo no próximo carregamento
+e podem ser exportados para `assets/poses/overrides.json`.
+
+O conversor `scripts/build_evanescence.py` agora prevê guarda e outros
+movimentos históricos, mas os **GLBs equipados existentes precisam ser
+regenerados com o Client original** para incluir os clipes ausentes.
+
+Instruções e limitações: [docs/POSE_STUDIO.md](docs/POSE_STUDIO.md).
+
+---
+
 # TOP Web 0.14 — 28 skills selecionadas para mobile
 
 As sete classes agora têm um catálogo de quatro skills, com ícones históricos
