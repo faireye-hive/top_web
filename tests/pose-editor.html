@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <base href="../"><meta name="theme-color" content="#071923">
 <title>TOP Web · Pose &amp; Weapon Studio</title>
-<link rel="stylesheet" href="tests/pose-editor.css?v=1">
+<link rel="stylesheet" href="tests/pose-editor.css?v=2">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -30,6 +30,34 @@
  </label>
  <div class="hint">A lista mostra os clipes realmente presentes no GLB. Se uma postura histórica estiver ausente, não será possível reproduzi-la até reconverter o modelo.</div>
  <div id="clip-info" class="info">Escolha um personagem.</div>
+ <div class="divider"></div>
+ <h2>Catálogo histórico completo · 54 ações por arma</h2>
+ <p class="hint">Lista original CharacterPoseInfo + CharacterAction: inclui também as ações básicas 016 (sentar no chão), 030 (banco), 031 (parede) e seus equivalentes armados. Ações sem clipe GLB aparecem como não exportadas, nunca como disponíveis.</p>
+ <label>Banco de animações <select id="catalog-bank">
+  <option value="both">Com arma + ações compartilhadas</option>
+  <option value="armed">Somente arma selecionada (54)</option>
+  <option value="base">Somente ações base (54)</option>
+ </select></label>
+ <label>Buscar número ou descrição <input id="catalog-search" type="search" placeholder="Ex.: 016, 030, guarda, banco, 169"></label>
+ <div class="catalog-filters">
+  <select id="catalog-category" aria-label="Categoria de movimento">
+   <option value="all">Todas as categorias</option>
+   <option value="postures">Posturas</option><option value="movement">Movimento</option>
+   <option value="combat">Combate</option><option value="skills">Skills</option>
+   <option value="social">Sociais</option><option value="emotes">Emotes</option>
+   <option value="interaction">Interações</option>
+  </select>
+  <select id="catalog-status" aria-label="Disponibilidade no GLB">
+   <option value="all">Todas as disponibilidades</option>
+   <option value="exported">✓ Exportadas no GLB</option>
+   <option value="not-exported">⚠ Históricas não exportadas</option>
+   <option value="no-source-frames">— Sem frames para este ator</option>
+  </select>
+ </div>
+ <div id="catalog-summary" class="small" aria-live="polite">Carregando catálogo...</div>
+ <div id="catalog-list" class="catalog-list" role="listbox" aria-label="Ações históricas do personagem"></div>
+ <div id="catalog-detail" class="info">Clique em uma ação para ver sua descrição, frames e disponibilidade.</div>
+ <button id="catalog-use" type="button" disabled>Usar ação no estado selecionado</button>
  <div class="divider"></div>
  <h2>Animação</h2>
  <div class="row"><button id="play">❚❚ Pausar</button><button id="restart">↺ Reiniciar</button><label class="small">Velocidade <select id="speed"><option value=".5">0,5×</option><option value="1" selected>1×</option><option value="1.5">1,5×</option></select></label></div>
@@ -64,5 +92,5 @@
  <div class="info" id="source-note">As posições iniciais são aproximações para edição, não os dummies históricos da cintura/costas.</div>
 </aside>
 </main>
-<script type="module" src="tests/pose-editor.mjs?v=1"></script>
+<script type="module" src="tests/pose-editor.mjs?v=2"></script>
 </body></html>
