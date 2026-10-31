@@ -48,7 +48,8 @@ test('teleporte e mudanças diretas de posição centralizam sem dt indefinido',
   assert.match(teleport,/mobileCameraFocus\.copy\(playerPos\)/);
   assert.doesNotMatch(teleport,/updateFollowTarget\(|\bdt\b/);
   assert.match(teleport,/if\(avatar\)avatar\.position\.copy\(playerPos\)/);
-  const mobileChange=code.slice(code.indexOf("mobileQuery.addEventListener('change'"),code.indexOf("window.addEventListener('resize'"));
+  const mobileStart=code.indexOf("mobileQuery.addEventListener('change'");
+  const mobileChange=code.slice(mobileStart,code.indexOf("window.addEventListener('resize'",mobileStart));
   assert.match(mobileChange,/mobileCameraFocus\.copy\(playerPos\)/);
   const sit=code.slice(code.indexOf('function sitDown('),code.indexOf('function standUp(){'));
   const stand=code.slice(code.indexOf('function standUp(){'),code.indexOf('function indexScenePlaces(){'));
