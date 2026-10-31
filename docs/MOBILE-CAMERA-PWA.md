@@ -98,14 +98,17 @@ e conferindo que o bloqueio só é removido no segundo.
 
 - **Alvo** (pequeno, embaixo): seleciona/cicla monstros próximos, sem
   iniciar combate automático.
-- **Auto** (pequeno, imediatamente acima de Alvo): liga/desliga o combate
-  contínuo. Ao desligar, conserva o alvo, permitindo voltar ao manual.
-  A borda do botão se ilumina quando o Auto está ativo.
-- **Atacar** (grande): executa apenas **um golpe básico manual por toque**,
-  exige alvo ao alcance (seleciona o mais próximo quando nenhum está
-  selecionado), respeita intervalo entre ataques, e fica desabilitado
-  enquanto o Auto estiver ativo. Interações contextuais com NPCs e bancos
-  continuam disponíveis.
+- **Auto** (pequeno, imediatamente acima de Alvo): **seleciona o modo
+  do botão grande**, mas NÃO inicia ataques ao ser pressionado. Quando
+  selecionado, fica iluminado. Se o jogador desmarcar Auto durante combate,
+  o ataque automático é interrompido. A escolha persiste em
+  `topweb_mobile_attack_mode` (padrão: manual).
+- **Botão grande**: no modo manual mostra **Atacar** e executa apenas um
+  golpe básico por toque, respeitando alcance e cooldown; no modo Auto
+  mostra **Auto** e **só então**, ao ser tocado, ativa o combate contínuo.
+  Um novo toque no botão grande interrompe o combate. O estado de ataque
+  realmente ativo é destacado no botão grande, separado da seleção do
+  modo Auto. Interações contextuais com NPCs e bancos continuam disponíveis.
 - A movimentação continua cancelando o ataque automático; uma seleção
   manual não ativa o Auto. Os ataques manuais em preparação também podem
   ser cancelados por movimento, como antes.

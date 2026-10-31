@@ -37,6 +37,14 @@ body.mobile-ui #mobile-auto.auto-active{
  border-color:#b5f8df;outline:2px solid #a1f5d5;box-shadow:0 0 13px #70e8cba6!important;
 }
 body.mobile-ui #mobile-auto:disabled{opacity:.45;filter:saturate(.5)}
+/* O pequeno Auto marca o modo; o botão grande é o único que inicia combate. */
+body.mobile-ui #mobile-attack.auto-mode-selected:not(:disabled){
+ border-color:#95eedb;box-shadow:0 0 0 3px #172a35,0 0 14px #3ad9b870,inset 0 2px 10px #d6fff23d;
+}
+body.mobile-ui #mobile-attack.auto-mode-selected.auto-active:not(:disabled){
+ border-color:#c2ffea;background:radial-gradient(circle at 32% 18%,#4f9c7b,#236f5c 55%,#0d382f 91%);
+ box-shadow:0 0 0 3px #172a35,0 0 22px #72f7c9a8,inset 0 3px 15px #c1ffe88c!important;
+}
 body.mobile-ui #mobile-attack.manual-unavailable{opacity:.48;filter:saturate(.5)}
 
 body.mobile-ui .mobile-nav-button:disabled{display:none}
