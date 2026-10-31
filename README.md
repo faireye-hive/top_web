@@ -6,6 +6,14 @@ ajustar os ossos e as posições das armas quando guardadas nas costas
 ou na cintura. Os ajustes são aplicados pelo jogo no próximo carregamento
 e podem ser exportados para `assets/poses/overrides.json`.
 
+O Pose Studio agora inclui o catálogo dos **378 IDs históricos** da tabela
+`referencias/characterposeinfo.txt` (54 por tipo de arma), com descrição
+legível, categoria, frames do `CharacterAction.tx` e indicação se o clipe
+foi exportado para o GLB atual. Para Lance Crusader, pesquise `016`,
+`030`, `031` (compartilhadas) ou `166`, `168`, `169`–`171`,
+`178`, `192`, `193` (duas espadas). É possível reproduzir apenas
+ações realmente presentes no GLB.
+
 O conversor `scripts/build_evanescence.py` agora prevê guarda e outros
 movimentos históricos, mas os **GLBs equipados existentes precisam ser
 regenerados com o Client original** para incluir os clipes ausentes.
