@@ -79,7 +79,7 @@ test('editor e exportador não restringem mais catálogo às cinco poses genéri
  assert.match(converter,/"Sentado no chão"/);
  assert.match(converter,/"Sentado no banco"/);
  assert.match(converter,/"Encostado na parede"/);
- assert.match(html,/pose-editor\.mjs\?v=4/);
+ assert.match(html,/pose-editor\.mjs\?v=5/);
 });
 
 test('cada ID e cada faixa de frames coincide com as duas tabelas históricas originais',()=>{
