@@ -13,7 +13,8 @@ import { createCombat, COMBAT } from './combat-state.mjs?v=3';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
 import { calculateMovementSpeed } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
-import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta } from './camera-behavior.mjs?v=2'
+import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta,
+  smoothFollowPosition, mobileShouldFollowYaw } from './camera-behavior.mjs?v=3'
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
@@ -54,6 +55,8 @@ function clampCam(){
 // mesmo vetor; o movimento não recalcula o yaw com outro sin/cos.
 const _fwd=new THREE.Vector3(), _right=new THREE.Vector3();
 const _eye=new THREE.Vector3(), _look=new THREE.Vector3();
+const cameraFocus=new THREE.Vector3();
+let cameraFocusReady=false;
 function cameraBasis(){
   _fwd.set(Math.sin(CAM.yaw),0,Math.cos(CAM.yaw));
   _right.set(-_fwd.z,0,_fwd.x); // frente × cima = direita. yaw π → direita (1,0,0)
@@ -385,15 +388,26 @@ function updateObjectMarkers(){
     objGroup.add(mesh);objectMeshes.push(mesh);
   });
 }
-function placeCamera(){
+function placeCamera(dt=0){
   clampCam();
+  // Desktop permanece com a câmera clássica. Em mobile, suavizar o alvo
+  // seguido (posição do avatar) sem atrasar o personagem nem o joystick.
+  // Chamadas sem dt — início, teleporte e carregamento — sincronizam
+  // imediatamente para não atravessar o mapa com a câmera.
+  if(!MOBILE_UI||!cameraFocusReady||dt<=0||
+    cameraFocus.distanceToSquared(playerPos)>20*20){
+    cameraFocus.copy(playerPos);cameraFocusReady=true;
+  }else{
+    const p=smoothFollowPosition(cameraFocus,playerPos,dt,8);
+    cameraFocus.set(p.x,p.y,p.z);
+  }
   const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
   const desiredFov=cameraFovAtDistance(CAM.dist);
   if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
   const {fwd}=cameraBasis();
-  _look.set(playerPos.x,playerPos.y+LOOK_H,playerPos.z);
+  _look.set(cameraFocus.x,cameraFocus.y+LOOK_H,cameraFocus.z);
   let dist=CAM.dist;
-  const eyeY=playerPos.y+CAM.dist*pitch;
+  const eyeY=cameraFocus.y+CAM.dist*pitch;
   const steps=12;
   for(let i=1;i<=steps;i++){
     const t=i/steps;
@@ -402,7 +416,7 @@ function placeCamera(){
     const y=_look.y+(eyeY-_look.y)*t;
     if(sampleHeight(x,z)+.55>y){dist=Math.max(2.4,CAM.dist*(i-1)/steps);break;}
   }
-  _eye.set(_look.x-fwd.x*dist,playerPos.y+dist*pitch,_look.z-fwd.z*dist);
+  _eye.set(_look.x-fwd.x*dist,cameraFocus.y+dist*pitch,_look.z-fwd.z*dist);
   camera.position.copy(_eye);
   camera.lookAt(_look);
 }
@@ -1632,6 +1646,16 @@ function update(dt){
     if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
     faceTravel(dx,dz,dt);
     cameraFollowTarget=Math.atan2(dx,dz);
+    // O mobile acompanha a DIREÇÃO quando o joystick avança e ninguém
+    // está girando a visão manualmente. Não orbitar durante strafing ou
+    // marcha a ré: o rumo deve permanecer sob controle do jogador.
+    if(MOBILE_UI&&mobileShouldFollowYaw({
+      enabled:autoCameraEnabled,moving:moved,forward:Math.max(touchMove.forward,keyFw),
+      chasing:chasing||!!(moverTarget&&!(keyFw||keySide)),seated:!!seated,
+      manualActive:performance.now()<=cameraManualUntil
+    })){
+      mobileOrbitYaw=followAngle(mobileOrbitYaw,cameraFollowTarget,dt,1.75);
+    }
     // O rumo do avatar guia a câmera quando caminha para a frente.
     // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
     if(!MOBILE_UI && autoCameraEnabled && performance.now()>cameraManualUntil &&
@@ -1654,7 +1678,7 @@ function update(dt){
   playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
-  placeCamera();
+  placeCamera(dt);
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}
   if(sceneObjs3D && (playerPos.distanceToSquared(lastScenePosition)>20*20 || performance.now()-lastObjUpdate>1100)){
     updateSceneInstances(false);
