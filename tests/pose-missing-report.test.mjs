@@ -62,5 +62,5 @@ test('editor mostra os nomes faltantes antes do catálogo e oferece copiar e TXT
  assert.match(source,/row\.code\+' · '\+row\.label\+' — '\+row\.groupName/);
  assert.match(source,/downloadMissingList\(\)/);
  assert.match(source,/navigator\.clipboard\.writeText\(report\)/);
- assert.match(html,/pose-editor\.mjs\?v=5/);
+ assert.match(html,/pose-editor\.mjs\?v=6/);
 });
