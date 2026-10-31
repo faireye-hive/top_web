@@ -2,10 +2,24 @@
 
 ## Câmera mobile
 A câmera mantém a órbita ajustada pelo jogador, mas seu **foco acompanha o
-personagem** com uma interpolação exponencial independente de FPS. O controle
-de órbita por toque continua disponível e não é substituído pelo giro
-automático. A suavização usa resposta 6,5 por segundo e faz snap para
+personagem** com uma interpolação exponencial independente de FPS. Em **Configurações → Câmera no celular**, há dois modos:
+
+- **Atrás do personagem · suave** (padrão): ao mover o joystick, a câmera
+  gira suavemente para acompanhar a direção de deslocamento. O rumo usado
+  pelo joystick é fixado no início de cada toque, evitando que um joystick
+  lateral mantido cause rotação contínua/caminhada em círculos. Ao soltar o
+  joystick e tocar novamente, a nova direção da câmera vira a referência.
+- **Livre · giro manual**: a câmera só acompanha a **posição** do avatar;
+  o ângulo pode ser girado manualmente sem correção automática.
+
+Mesmo no modo suave, arrastar o cenário para olhar em volta suspende por
+2,5 s o giro automático; movimentar o joystick depois faz a câmera voltar
+gradualmente para trás da direção percorrida. O modo escolhido fica salvo
+em `topweb_mobile_camera_mode` no armazenamento local do navegador.
+
+A suavização da **posição** usa resposta 6,5 por segundo e faz snap para
 distâncias grandes (por exemplo, teleporte), evitando uma câmera perdida.
+O giro usa `gentleOrbit` com até 2,1 rad/s no modo suave.
 
 A regra só é aplicada em `MOBILE_UI`; no desktop, o enquadramento permanece
 instantâneo. O cálculo puro pode ser testado em

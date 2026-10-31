@@ -82,3 +82,19 @@ test('PWA instalável com manifest, serviço worker e alternativa mobile',()=>{
   assert.match(worker,/req.mode!=='navigate'/);
   assert.doesNotMatch(worker,/cache\.addAll\(\['\.\/assets/);
 });
+
+test('opção mobile segue direção ou mantém órbita livre, persistida nas configurações',()=>{
+  const code=read('js/main.js'),page=read('index.html');
+  assert.match(page,/id="mobile-camera-mode"/);
+  assert.match(page,/option value="follow"/);
+  assert.match(page,/option value="free"/);
+  assert.match(code,/getPref\('topweb_mobile_camera_mode','follow'\)/);
+  assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
+  assert.match(page,/main\.js\?v=36/);
+  assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
+  assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)mobileSteeringReferenceYaw=CAM\.yaw/);
+  assert.match(code,/if\(!steering\)mobileSteeringReferenceYaw=null/);
+  assert.match(code,/mobileCameraMode==='follow'&&moved&&!seated/);
+  assert.match(code,/performance\.now\(\)>cameraManualUntil/);
+  assert.match(code,/mobileOrbitYaw=Math\.atan2\(playerPos\.x-beforeX,playerPos\.z-beforeZ\)/);
+});

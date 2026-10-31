@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { wrapAngle, followAngle, cameraLiftAtDistance, cameraFovAtDistance } from '../js/camera-behavior.mjs';
+import { wrapAngle, followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, movementFromYaw } from '../js/camera-behavior.mjs';
 import { seatCenter, findSafeExit } from '../js/pose-utils.mjs';
 test('câmera contorna a borda -PI/PI pelo caminho mais curto', () => {
   const a = followAngle(Math.PI - .08, -Math.PI + .08, .1);
@@ -30,4 +30,29 @@ test('órbita mobile limita velocidade angular e respeita proporção da tela',a
   let yaw=0;
   for(let i=0;i<240;i++)yaw=gentleOrbit(yaw,1,1/60);
   assert.ok(Math.abs(yaw-1)<.001);
+});
+
+test('joystick mantém rumo no mundo enquanto câmera gira atrás do personagem',()=>{
+  const capturedYaw=0; // joystick começou com a câmera olhando para +Z
+  let cameraYaw=0,positionX=0,positionZ=0;
+  for(let i=0;i<120;i++){
+    // Joystick segurado para a esquerda por 2 s, sem liberar o toque.
+    const move=movementFromYaw(capturedYaw,0,-1);
+    positionX+=move.dx/60;positionZ+=move.dz/60;
+    const heading=Math.atan2(move.dx,move.dz);
+    cameraYaw=gentleOrbit(cameraYaw,heading,1/60,2.1);
+  }
+  assert.ok(positionX>1.9,'movimento deve continuar em linha reta');
+  assert.ok(Math.abs(positionZ)<1e-6,'a câmera não pode provocar marcha em círculos');
+  assert.ok(Math.abs(wrapAngle(cameraYaw-Math.PI/2))<.025,'a câmera deve ficar atrás da direção percorrida');
+});
+test('joystick retoma a frente da nova câmera após soltar e pressionar novamente',()=>{
+  const cameraYaw=Math.PI/2;
+  const move=movementFromYaw(cameraYaw,1,0);
+  assert.ok(move.dx>.99 && Math.abs(move.dz)<.01);
+});
+test('giro automático usa caminho mais curto cruzando a borda de -π / π',()=>{
+  let yaw=Math.PI-.05;
+  for(let i=0;i<120;i++)yaw=gentleOrbit(yaw,-Math.PI+.05,1/60,2.1);
+  assert.ok(Math.abs(wrapAngle(yaw-(-Math.PI+.05)))<.001);
 });

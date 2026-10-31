@@ -14,7 +14,7 @@ import { createCombat, COMBAT } from './combat-state.mjs?v=3';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
 import { calculateMovementSpeed } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
-import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta } from './camera-behavior.mjs?v=2'
+import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw } from './camera-behavior.mjs?v=3';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
@@ -41,6 +41,9 @@ const CAM={yaw:Math.PI-0.35,dist:15,lift:1.85};
 const getPref=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
 const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
 let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
+// Modo novo por padrão; o jogador pode escolher a órbita livre e o valor fica salvo.
+let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'free':'follow';
+let mobileSteeringReferenceYaw=null; // travado enquanto o joystick estiver pressionado
 let cameraManualUntil=0;
 let cameraFollowTarget=null;
 let mobileOrbitYaw=CAM.yaw,mobileOrbitLift=CAM.lift;
@@ -431,6 +434,7 @@ function teleport(x,z){
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
   // Teleporte é uma descontinuidade: centralizar imediatamente, sem rastro.
   mobileCameraFocus.copy(playerPos);
+  mobileSteeringReferenceYaw=null;
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
@@ -1571,7 +1575,8 @@ function update(dt){
   if(keys.has('ArrowDown')){if(MOBILE_UI)mobileOrbitLift=Math.max(1.35,mobileOrbitLift-dt*.55);else CAM.lift-=dt*.55;}
   if(keys.has('ArrowUp')){if(MOBILE_UI)mobileOrbitLift=Math.min(2.4,mobileOrbitLift+dt*.55);else CAM.lift+=dt*.55;}
   if(MOBILE_UI){
-    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt);
+    // Acompanhar a direção com um limite angular; órbita livre mantém a velocidade antiga.
+    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,mobileCameraMode==='follow'?2.1:1.1);
     CAM.lift=THREE.MathUtils.lerp(CAM.lift,mobileOrbitLift,1-Math.exp(-dt*7));
   }
   clampCam();
@@ -1580,8 +1585,18 @@ function update(dt){
   const keySide=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
   const fw=keyFw+touchMove.forward;
   const sideways=keySide+touchMove.sideways;
+  // Congelar o referencial do joystick durante uma mesma pressão.
+  // Sem isto, o giro da câmera muda o vetor de deslocamento a cada frame
+  // e segurar 'esquerda' faria o personagem andar em círculos.
+  const steering=MOBILE_UI&&mobileCameraMode==='follow'&&Math.hypot(fw,sideways)>.04;
+  if(steering&&mobileSteeringReferenceYaw===null)mobileSteeringReferenceYaw=CAM.yaw;
+  if(!steering)mobileSteeringReferenceYaw=null;
   let dx=fwd.x*fw+right.x*sideways;
   let dz=fwd.z*fw+right.z*sideways;
+  if(steering){
+    const move=movementFromYaw(mobileSteeringReferenceYaw,fw,sideways);
+    dx=move.dx;dz=move.dz;
+  }
   if(combat?.auto&&npcManager?.nearest(playerPos.x,playerPos.z))stopCombat();
   const manualMove=!!(dx||dz||moverTarget);
   if(manualMove)stopCombat();
@@ -1623,6 +1638,7 @@ function update(dt){
     const sub=Math.max(1,Math.ceil(travel/.2));
     const sx=dx*travel/sub,sz=dz*travel/sub;
     let moved=false;
+    const beforeX=playerPos.x,beforeZ=playerPos.z;
     for(let i=0;i<sub;i++){
       const h0=playerPos.y;
       const step=(nx,nz)=>{
@@ -1640,6 +1656,12 @@ function update(dt){
     if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
     faceTravel(dx,dz,dt);
     cameraFollowTarget=Math.atan2(dx,dz);
+    // Modo mobile "Seguir direção": a câmera gira atrás do rumo REAL percorrido.
+    // Arrastar a câmera suspende o giro automático temporariamente.
+    if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&
+       performance.now()>cameraManualUntil){
+      mobileOrbitYaw=Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ);
+    }
     // O rumo do avatar guia a câmera quando caminha para a frente.
     // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
     if(!MOBILE_UI && autoCameraEnabled && performance.now()>cameraManualUntil &&
@@ -1899,6 +1921,17 @@ $('autocamera').addEventListener('change',e=>{
   autoCameraEnabled=e.target.checked;
   setPref('topweb_auto_camera',autoCameraEnabled?'1':'0');
 });
+const mobileCameraModeSelect=$('mobile-camera-mode');
+if(mobileCameraModeSelect){
+  mobileCameraModeSelect.value=mobileCameraMode;
+  mobileCameraModeSelect.addEventListener('change',e=>{
+    mobileCameraMode=e.target.value==='free'?'free':'follow';
+    mobileSteeringReferenceYaw=null;
+    mobileOrbitYaw=CAM.yaw;
+    setPref('topweb_mobile_camera_mode',mobileCameraMode);
+    toast(mobileCameraMode==='follow'?'Câmera acompanha a direção do personagem.':'Câmera livre ativada.');
+  });
+}
 $('seatdirection').value=seatFacingReversed?'reverse':'original';
 $('seatdirection').addEventListener('change',e=>{
   seatFacingReversed=e.target.value==='reverse';
@@ -1977,6 +2010,7 @@ configureMobileControls();
 mobileQuery.addEventListener('change',()=>{
   MOBILE_UI=mobileQuery.matches;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;document.body.classList.toggle('mobile-ui',MOBILE_UI);
   mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
+  mobileSteeringReferenceYaw=null;
   maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
