@@ -195,7 +195,7 @@ test('arma guardada usa matriz do dummy das costas e não valores inventados na 
 
 test('GLB reconstruído usa diretamente o nó animado TOP Dummy 22, sem duplicar inverseBind',()=>{
  const bones=Array.from({length:27},(_,i)=>({isBone:true,name:'Bone '+i}));
- const socket={name:'TOP Dummy 22',children:[],add(o){o.parent=this;this.children.push(o)}};
+ const socket={name:'TOP Dummy 22',children:[],add(o){o.parent=this;this.children.push(o)},remove(o){this.children=this.children.filter(child=>child!==o);o.parent=null}};
  const calls=[];
  const geom={getAttribute(k){return k==='skinIndex'?{count:1,getX:()=>18}:
    k==='skinWeight'?{count:1,getX:()=>1}:null},
