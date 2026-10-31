@@ -271,3 +271,45 @@ carrega essas espadas: isso muda o visual, **não cria novo equipamento**.
 
 A orientação exata deve ainda ser conferida em jogo e no navegador real,
 porque testes de código não substituem comparação visual lado a lado.
+
+## Modelo Lance Crusader reconstruído com sockets LAB (31/10/2026)
+
+A versão original do `Lance/converter.py` descartava os registros
+`dummy_count * 72` do LAB. A conversão agora mantém **todos os dummies**:
+cada registro contém ID, índice do osso pai e matriz DirectX 4×4.
+A saída GLB recebe nós `TOP Dummy N`, filhos dos ossos correspondentes,
+com `extras.topDummy`, `extras.topParentBone` e `extras.source="LAB"`.
+A matriz local é calculada em convenção DirectX como
+`dummyMatrix @ inverseBind[parent]`, serializada em ordem column-major
+glTF. Assim, o nó acompanha a animação com o movimento skin original,
+sem transformação duplicada.
+
+O `WeaponHolster` reconhece esses nós no GLB e usa diretamente
+`TOP Dummy 22` (espada esquerda, slot 6) e `TOP Dummy 21`
+(espada direita, slot 9). A cópia da arma remove a matriz do dummy da mão;
+durante combate a arma skinned original reaparece. O fallback dos
+GLBs antigos continua disponível quando não há nós `TOP Dummy`.
+
+O arquivo versionado `assets/equipment/models/lance-crusader.glb`
+foi regenerado na branch com o script
+`scripts/rebuild_lance_glb_sockets.py`, partindo do GLB que já continha
+todas as 72 animações e das matrizes históricas do `0000.lab`
+extraídas do ZIP original. Essa reconstrução **preserva o BIN original**
+(malhas, texturas, clipes) e acrescenta os nós e metadados de slots.
+Ela não é uma reconversão completa de texturas e malhas `.lgo`.
+A reconversão completa de um Client original agora também exporta
+esses sockets por meio de `scripts/build_evanescence.py`.
+
+Validação:
+```sh
+python3 scripts/rebuild_lance_glb_sockets.py --verify-only
+python3 scripts/verify_pose_glb.py assets/equipment/models/lance-crusader.glb --actor lance --job crusader
+python3 -m unittest discover -s tests -p 'test_lance_socket_rebuilder.py'
+node --test tests/pose-studio.test.mjs tests/pose-action-catalog.test.mjs tests/pose-missing-report.test.mjs
+```
+
+O Pose Studio agora mostra quantos sockets GLB foram efetivamente detectados.
+Para `lance:crusader` equipado, espera-se **2 sockets** usados pelas
+espadas. Limpe ou redefina eventuais perfis locais antigos caso tenha
+salvado uma corrida no estado de descanso; a mudança de GLB não altera
+automaticamente uma escolha manual de clipe.
