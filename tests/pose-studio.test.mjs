@@ -1,3 +1,4 @@
+import {LANCE_LAB_DUMMIES,historicalWeaponDummies} from '../js/historical-weapon-dummies.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -121,9 +122,73 @@ test('arma original reaparece no combate e cópia guardada fica oculta',()=>{
  holster.dispose();
  assert.equal(mesh.visible,true);
 });
+test('encaixes históricos no Lance provêm do LAB e mantêm cada mão na espada certa',()=>{
+ const left=historicalWeaponDummies('lance','crusader',6);
+ const right=historicalWeaponDummies('lance','crusader',9);
+ assert.equal(left.hand.parent,18);
+ assert.equal(left.back.parent,4);
+ assert.equal(left.back,LANCE_LAB_DUMMIES[22]);
+ assert.equal(right.hand.parent,26);
+ assert.equal(right.back,LANCE_LAB_DUMMIES[21]);
+ assert.notDeepEqual(left.back.matrix,right.back.matrix);
+ assert.equal(historicalWeaponDummies('phyllis','crusader',6),null);
+ assert.equal(historicalWeaponDummies('lance','hunter',6),null);
+ for(const dummy of Object.values(LANCE_LAB_DUMMIES)){
+   assert.equal(dummy.matrix.length,16);
+   assert.equal(dummy.matrix[15],1);
+ }
+});
+test('arma guardada usa matriz do dummy das costas e não valores inventados na coluna',()=>{
+ const back={name:'Osso 4 · Spine',isBone:true,add(o){o.parent=this},remove(o){o.parent=null}};
+ const leftHand={name:'Osso 18 · LeftHand',isBone:true};
+ const bones=Array.from({length:27},(_,i)=>({isBone:true,name:'Bone '+i}));
+ bones[4]=back;bones[18]=leftHand;
+ const matrices=Array.from({length:27},(_,i)=>({inverseIndex:i}));
+ const ops=[];
+ const geom={getAttribute:k=>k==='skinIndex'?{count:1,getX:()=>18}:
+   k==='skinWeight'?{count:1,getX:()=>1}:null,
+   clone(){return {applyMatrix4(m){ops.push(['geometry',m.from||''])},dispose(){}}}};
+ const mesh={isSkinnedMesh:true,name:'Parte 5 · 01010021.lgo',geometry:geom,
+   skeleton:{bones,boneInverses:matrices},material:{},visible:true,userData:{}};
+ const root={traverse(fn){fn(mesh);for(const bone of bones)fn(bone)},
+   getObjectByName(name){return bones.find(x=>x.name===name)}};
+ const THREE={
+  Matrix4:class{
+    fromArray(values){this.from=values;return this}
+    invert(){ops.push(['invert',this.from]);return this}
+    multiplyMatrices(a,b){ops.push(['holder',a,b.from]);return this}
+    decompose(){return this}
+  },
+  Mesh:class{constructor(g,m){this.geometry=g;this.material=m}},
+  Group:class{constructor(){
+    this.position={set(){}};
+    this.quaternion={};
+    this.rotation={set(){},order:'XYZ'};
+    this.scale={setScalar(){}};
+    this.matrix=new THREE.Matrix4();
+   }
+   add(o){o.parent=this}
+   updateMatrixWorld(){}
+  }
+ };
+ const holster=new WeaponHolster(THREE,root,'crusader',{stowOnIdle:true,weapons:{}},'lance');
+ assert.equal(holster.parts.length,1);
+ assert.equal(holster.parts[0].historical.slot,6);
+ assert.equal(holster.parts[0].holder.parent,back);
+ assert.deepEqual(holster.defaultSettings(holster.parts[0]).position,[0,0,0]);
+ assert.equal(ops.find(x=>x[0]==='invert')[1],LANCE_LAB_DUMMIES[6].matrix);
+ assert.equal(ops.find(x=>x[0]==='holder')[1],matrices[4]);
+ assert.equal(ops.find(x=>x[0]==='holder')[2],LANCE_LAB_DUMMIES[22].matrix);
+ holster.setStowed(true);
+ assert.equal(mesh.visible,false);
+ holster.setStowed(false);
+ assert.equal(mesh.visible,true);
+ holster.dispose();
+});
+
 test('jogo/editor usam o mesmo módulo e editor permite exportação para arquivo versionado',()=>{
  const game=file('js/main.js'),page=file('tests/pose-editor.html'),editor=file('tests/pose-editor.mjs');
- assert.match(game,/new WeaponHolster\(THREE,avatar,hero\.job,activePoseProfile\)/);
+ assert.match(game,/new WeaponHolster\(THREE,avatar,hero\.job,activePoseProfile,id\)/);
  assert.match(game,/weaponHolster\?\.setStowed\(!combat\?\.auto/);
  assert.match(game,/poseResolvedName\(match\)/);
  assert.match(game,/function isRunningPose\(\)/);
