@@ -19,7 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=1';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=2';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -496,15 +496,19 @@ function tryPose(){
   }
   toast('Chegue perto de um banco, parede ou NPC.');return false;
 }
+function currentWeaponPoseBank(){
+  const bank=hero.equipped?Number(equipmentManifest?.sets?.[hero.job]?.pose):0;
+  return Number.isInteger(bank)&&bank>=0&&bank<=6?bank:0;
+}
 function isRunningPose(){
   return currentClip.toLowerCase().includes('correr') ||
-    ['run','armedRun'].some(state=>selectPoseName(state,activePoseProfile,animations)===currentClip);
+    ['run','armedRun'].some(state=>selectPoseName(state,activePoseProfile,animations,currentWeaponPoseBank())===currentClip);
 }
 function poseResolvedName(match){
   const state=match==='Parado'?(combat?.auto?'guard':'idle'):
     match==='Correr'?(combat?.auto?'armedRun':'run'):
     match==='Ataque 1'?'attack':null;
-  return state?selectPoseName(state,activePoseProfile,animations):match;
+  return state?selectPoseName(state,activePoseProfile,animations,currentWeaponPoseBank()):match;
 }
 function playClip(match,once=false){
   if(!mixer||!animations.length)return false;

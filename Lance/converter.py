@@ -313,6 +313,12 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
         for path in lgolist:
             geom=parse_lgo(read_entry(path),Path(path).name, flip_v=flip_v)
             geom.update((geometry_overrides or {}).get(path, {}))
+            # These meshes contain weapons from slots 6/9. Save explicit
+            # role metadata: the original filename is not "weapon".
+            if path in (geometry_overrides or {}):
+                match=re.search(r'(?:^|/)slot-(6|9)/',path)
+                if match:
+                    geom['equipment_slot']=int(match.group(1))
             geoms.append(geom)
         for geom in geoms:
             bad=geom['joints'][geom['weights']>0]>=(lab['bones'])
@@ -390,8 +396,11 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
                       'material':len(g['materials'])-1,'mode':4}
                 primitives.append(prim)
             g['meshes'].append({'name':part['name'],'primitives':primitives})
-            node_id=len(g['nodes']);g['nodes'].append({'name':f'Parte {part_index} · {part["name"]}',
-                                                   'mesh':len(g['meshes'])-1,'skin':0})
+            node={'name':f'Parte {part_index} · {part["name"]}',
+                  'mesh':len(g['meshes'])-1,'skin':0}
+            if part.get('equipment_slot') in (6,9):
+                node['extras']={'topRole':'weapon','equipmentSlot':part['equipment_slot']}
+            node_id=len(g['nodes']);g['nodes'].append(node)
             g['nodes'][0]['children'].append(node_id)
         for title,start,end in clipdefs:
             # Arquivo CharacterAction: end e fim inclusivo (a animacao exporta ate ele).

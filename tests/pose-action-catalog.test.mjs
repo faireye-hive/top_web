@@ -75,15 +75,16 @@ test('editor e exportador não restringem mais catálogo às cinco poses genéri
  assert.match(editor,/catalogForActor\(historicalCatalog,actorEl\.value,bank,clips/);
  assert.match(editor,/fetch\('assets\/poses\/historical-catalog\.json\?v=1'\)/);
  assert.match(editor,/option\.textContent=record\?record\.code/);
- assert.match(build,/base_ids=range\(1,55\) if not args\.compact/);
+ assert.match(build,/actions=selected_action_ids\(spec\['pose'\],args\.compact\)/);
  assert.match(converter,/"Sentado no chão"/);
  assert.match(converter,/"Sentado no banco"/);
  assert.match(converter,/"Encostado na parede"/);
- assert.match(html,/pose-editor\.mjs\?v=3/);
+ assert.match(html,/pose-editor\.mjs\?v=4/);
 });
 
 test('cada ID e cada faixa de frames coincide com as duas tabelas históricas originais',()=>{
- const original=text('referencias/characterposeinfo.txt').split(/\r?\n/).filter(line=>/^\d+\t/.test(line));
+ const original=readFileSync(new URL('../referencias/characterposeinfo.txt',import.meta.url),'latin1')
+    .split(/\r?\n/).filter(line=>/^\d+\t/.test(line));
  assert.equal(original.length,54);
  for(let i=0;i<54;i++){
    const cells=original[i].split('\t');

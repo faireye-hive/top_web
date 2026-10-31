@@ -202,3 +202,41 @@ no manifesto. O arquivo GLB deve ser testado no Pose Studio e no jogo antes de
 ser publicado; este comando grava o modelo em
 `assets/equipment/models/lance-crusader.glb`. Os arquivos binários antigos
 **não são atualizados apenas ao modificar o script de conversão**.
+
+## Diagnóstico OpenGL (último_sources29): caminhada na cidade e espadas guardadas
+
+A investigação do cliente OpenGL anterior identificou duas camadas distintas:
+
+1. **Ação do corpo:** `ActorSkin::setPlayerWeaponsDrawn` escolhe ações
+   `1/5` (descanso/corrida, cidade) ou `4/6` (guarda/corrida armada),
+   no banco da arma escolhido por `weaponPoseMode`. Para Crusader com
+   duas espadas (banco 3), são os IDs `163/167` e `166/168`.
+   O GLB contém vários clipes com o mesmo nome em bancos diferentes;
+   o jogo/editor agora escolhem pelo ID, mantendo configurações manuais
+   do Pose Studio prioritárias.
+2. **Posicionamento da arma:** `WeaponPose.h` e `ActorSkin.cpp`
+   usam os dummies dos slots 6/9 nas mãos e os dummies de guarda
+   **22 (esquerda) / 21 (direita)** para armas de tipo 1 (espadas).
+   O `Client/animation/0000.lab` do Lance possui os dummies 21, 22 e 23,
+   porém os GLBs antigos não armazenam esses pontos de encaixe.
+   Os offsets de `WeaponHolster` continuam **aproximados**.
+
+### Falha adicional encontrada nos GLBs antigos
+
+O conversor original escreve nomes como `Parte 5 · 01010021.lgo` para
+as armas, enquanto o runtime antigo só procurava `Parte N · weapon`.
+Por isso, as espadas podiam nem entrar no sistema de armas guardadas.
+O runtime agora detecta os últimos slots `.lgo` dos GLBs equipados já
+publicados; novas conversões anotam `extras.topRole='weapon'` e
+`equipmentSlot=6/9` explicitamente.
+
+A tabela Lance de `CharacterAction.tx` aponta **005 e 167 para os
+mesmos frames, 1921–1937**. Ela não contém uma ação distinta de
+"caminhada lenta" para a exploração; as ações de movimento disponíveis
+são "Normal Run" e "Guarded Run". Portanto, ajustar a pose da cidade
+não cria uma animação de caminhada nova.
+
+**Próxima etapa de fidelidade:** exportar as matrizes dos dummies 21/22/23
+do LAB e aplicar aos meshes das armas, incluindo o inverso do dummy
+de empunhadura do LGO, como no cliente OpenGL. Validar visualmente
+no Lance antes de generalizar as demais classes.

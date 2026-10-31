@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
-  availableBones} from '../js/pose-studio-runtime.mjs?v=1';
+  availableBones} from '../js/pose-studio-runtime.mjs?v=2';
 import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
   missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
@@ -216,7 +216,8 @@ function showClip(){
   $('clip').replaceChildren();renderCatalog();return;
  }
  ensureProfile();
- const chosen=selectPoseName(selectedState,profile,clips);
+ const chosen=selectPoseName(selectedState,profile,clips,
+   $('equipped').checked?weaponBankForJob(jobEl.value,equipment):0);
  $('clip').replaceChildren();
  const automatic=document.createElement('option');automatic.value='';
  automatic.textContent='Automático ('+(chosen||'não disponível')+')';$('clip').append(automatic);

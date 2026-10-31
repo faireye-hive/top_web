@@ -50,26 +50,48 @@ export function savePoseProfiles(data,storage=globalThis.localStorage){
   return clean;
 }
 export function poseProfile(data,actor,job){return data?.profiles?.[profileKey(actor,job)]||null}
-export function selectPoseName(state,profile,clips){
+export function selectPoseName(state,profile,clips,bank=null){
   const configured=profile?.clips?.[state];
   if(configured&&clips.some(c=>c.name===configured))return configured;
+  // Ações dos sete bancos possuem nomes repetidos: preferir o ID histórico
+  // do equipamento. Configurações explícitas do usuário continuam prioritárias.
+  const base={idle:1,guard:4,run:5,armedRun:6,attack:7}[state];
+  if(base&&Number.isInteger(bank)&&bank>=0&&bank<=6){
+    const chosen=clips.find(c=>Number(/^\s*(\d{1,3})\s*[·-]/.exec(c.name)?.[1])===base+bank*54);
+    if(chosen)return chosen.name;
+    if(bank!==0){
+      const common=clips.find(c=>Number(/^\s*(\d{1,3})\s*[·-]/.exec(c.name)?.[1])===base);
+      if(common)return common.name;
+    }
+  }
   const standard=POSE_DEFAULTS[state]||POSE_DEFAULTS.idle;
   const direct=clips.find(c=>c.name.toLowerCase().split('·').pop().trim()===standard.toLowerCase());
   if(direct)return direct.name;
   const partial=clips.find(c=>c.name.toLowerCase().includes(standard.toLowerCase()));
   if(partial)return partial.name;
   if(state==='guard'||state==='armedRun')
-    return selectPoseName(state==='guard'?'idle':'run',profile,clips);
+    return selectPoseName(state==='guard'?'idle':'run',profile,clips,bank);
   return clips[0]?.name||'';
 }
 export function weaponMeshNodes(avatar){
   const result=[];
   avatar?.traverse(o=>{
-    if(!o.isSkinnedMesh||!o.skeleton||!/^Parte\s*\d+\s*·\s*weapon/i.test(o.name))return;
+    if(!o.isSkinnedMesh||!o.skeleton)return;
+    const part=/^Parte\s*(\d+)\s*·\s*(.+)$/i.exec(o.name);
+    if(!part)return;
+    const role=o.userData?.topRole;
+    const labeled=/^weapon(?:\b|$)/i.test(part[2]);
+    // GLBs anteriores nomeiam as armas pelo arquivo LGO, por exemplo
+    // "Parte 5 · 01010021.lgo". Equipamentos gerados têm 5 partes de
+    // corpo seguidas dos slots 6/9 (armas). Esta detecção é compatível
+    // com os modelos binários já publicados, sem precisar reconvertê-los.
+    const legacy=Number(part[1])>=5 && /\.lgo$/i.test(part[2]);
+    if(role!=='weapon'&&!labeled&&!legacy)return;
     result.push(o);
   });
   return result.sort((a,b)=>Number(/Parte\s*(\d+)/.exec(a.name)?.[1]||0)-Number(/Parte\s*(\d+)/.exec(b.name)?.[1]||0));
 }
+
 export function availableBones(avatar){
   const found=[];avatar?.traverse(o=>{if(o.isBone)found.push(o.name)});
   return found;
