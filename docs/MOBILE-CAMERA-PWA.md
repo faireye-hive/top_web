@@ -12,17 +12,28 @@ personagem** com uma interpolação exponencial independente de FPS. Em **Config
   ajustes excessivos. A direção usada pelo joystick é fixada ao iniciar
   cada pressão, evitando caminhada em círculos quando a câmera gira.
   Ao soltar e pressionar novamente, o ângulo atualizado vira a referência.
+  **Andar para trás não gira a câmera automaticamente**, nem mantém uma
+  correção pendente; o foco continua acompanhando a posição do personagem.
 - **Livre · giro manual**: a câmera só acompanha a **posição** do avatar;
-  o ângulo pode ser girado manualmente sem correção automática.
+  o ângulo pode ser girado manualmente sem correção automática. O toque agora
+  acompanha diretamente o dedo, sem a limitação de 1,1 rad/s que deixava
+  o giro atrasado.
 
 Mesmo no modo suave, arrastar o cenário para olhar em volta suspende por
 2,5 s o giro automático; movimentar o joystick depois faz a câmera voltar
 gradualmente para trás da direção percorrida. O modo escolhido e os ajustes ficam salvos no armazenamento local do
 navegador (`topweb_mobile_camera_mode`,
 `topweb_mobile_camera_speed_deg`, `topweb_mobile_camera_turn_deg`).
-O botão **Restaurar** retorna para 24°/s e 24° por movimento. Os controles
-ficam desativados no modo Livre, preservando os valores para quando o
-acompanhamento for reativado.
+O botão **Restaurar** da correção automática retorna para 24°/s e 24°
+por movimento. Esses controles ficam desativados no modo Livre.
+
+A opção separada **Sensibilidade do toque**, com barra e valor numérico,
+vai de **0,5× a 5×**, com **2× de padrão**. Ela funciona em ambos os modos,
+mesmo com a câmera automática desativada. O gesto de arrastar controla
+tanto a rotação horizontal como a inclinação vertical, com resposta
+imediata (sem limite de velocidade aplicado por frame). O botão Restaurar
+ao lado dela retorna para 2×. O valor é salvo na preferência
+`topweb_mobile_touch_sensitivity`.
 
 A suavização da **posição** usa resposta 6,5 por segundo e faz snap para
 distâncias grandes (por exemplo, teleporte), evitando uma câmera perdida.
