@@ -25,6 +25,8 @@
   <button data-state="armedRun">⚔ Corrida armada</button>
   <button data-state="attack">💥 Ataque básico</button>
  </div>
+ <label class="check"><input id="stow" type="checkbox" checked> Guardar espadas na cidade e na corrida normal</label>
+ <p class="hint">Cidade: pose parada (Lance Crusader 163) e espadas nos encaixes das costas. Movimento: escolha <b>Correr</b> (167). Ação 005 é corrida, não descanso. Evanescence muda também a roupa do personagem.</p>
  <label>Clipe GLB utilizado neste estado
   <select id="clip"></select>
  </label>
@@ -86,8 +88,8 @@
 </section>
 <aside class="panel right">
  <h2>Arma guardada</h2>
- <p class="hint">Na cidade e na corrida normal, usa uma cópia estática da arma presa ao osso escolhido. Na guarda e no ataque, mostra a arma original animada na mão.</p>
- <label class="check"><input id="stow" type="checkbox" checked> Guardar armas fora do combate</label>
+ <p class="hint">Na cidade e na corrida normal, as espadas do Lance Crusader usam os dummies originais 22 (esquerda) e 21 (direita). O ajuste XYZ é relativo ao encaixe histórico. No combate, a arma volta à mão. O controle de guardar fica no painel à esquerda.</p>
+
  <label>Peça da arma <select id="part"></select></label>
  <div id="part-alert" class="info">Carregue um personagem com arma equipada.</div>
  <div id="weapon-controls">
@@ -106,5 +108,5 @@
  <div class="info" id="source-note">As posições iniciais são aproximações para edição, não os dummies históricos da cintura/costas.</div>
 </aside>
 </main>
-<script type="module" src="tests/pose-editor.mjs?v=4"></script>
+<script type="module" src="tests/pose-editor.mjs?v=5"></script>
 </body></html>
