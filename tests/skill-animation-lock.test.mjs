@@ -60,11 +60,11 @@ test('mover durante skill não cancela cast nem inicia animação de corrida',()
 });
 test('botões de outras poses e menus não interrompem animação de skill',()=>{
   const code=read('js/main.js');
-  for(const name of ['idle','run','dance','sit']){
-    const anchor=`$('\${name}').addEventListener('click',()=>{if(skillAnimationLocked)return;`;
-    if(name==='sit')assert.match(code,/\$\('sit'\)\)\$\('sit'\)\.addEventListener\('click',\(\)=>\{if\(skillAnimationLocked\)return/);
-    else assert.ok(code.includes(anchor),'botão '+name+' deve preservar skill');
+  for(const name of ['idle','run','dance']){
+    assert.ok(code.includes("$('"+name+"').addEventListener('click',()=>{if(skillAnimationLocked)return;"),
+      'botão '+name+' deve preservar skill');
   }
+  assert.match(code,/if\(\$\('sit'\)\)\$\('sit'\)\.addEventListener\('click',\(\)=>\{if\(skillAnimationLocked\)return/);
   assert.match(code,/onOpen:\(\)=>\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function orderMove\(x,z,pose\)\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function tryPose\(\)\{\s*if\(skillAnimationLocked\)/);
