@@ -25,3 +25,22 @@ export function cameraFovAtDistance(distance) {
   const t = Math.max(0, Math.min(1, (distance - 3.2) / 9.8));
   return 62 - 10.4 * t;
 }
+
+/**
+ * Acompanha a posição do personagem sem atraso dependente do FPS.
+ * O controle de rotação é independente: arrastar a tela não desliga
+ * o seguimento posicional. A posição é um alvo de câmera, não o avatar.
+ */
+export function smoothFollowPosition(current,target,dt,response=8){
+  const blend=1-Math.exp(-Math.max(0,dt)*Math.max(0,response));
+  return {
+    x:current.x+(target.x-current.x)*blend,
+    y:current.y+(target.y-current.y)*blend,
+    z:current.z+(target.z-current.z)*blend
+  };
+}
+/** Não perseguir a direção do joystick lateral, nem combater o toque da câmera. */
+export function mobileShouldFollowYaw({enabled,moving,forward,chasing,manualActive,seated}={}){
+  return !!enabled && !!moving && !manualActive && !seated &&
+    (forward>.22 || !!chasing);
+}
