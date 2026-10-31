@@ -29,7 +29,8 @@ export function parsePoseProfiles(input){
         bone:typeof settings.bone==='string'?settings.bone.slice(0,160):'',
         position:vec(settings.position),
         rotation:vec(settings.rotation),
-        scale:bound(number(settings.scale,1),.1,5)
+        scale:bound(number(settings.scale,1),.1,5),
+        ...(settings.anchor==='historical'?{anchor:'historical'}:{})
       };
     }
     out.profiles[key]={clips,stowOnIdle:value.stowOnIdle!==false,weapons};
@@ -170,7 +171,7 @@ export class WeaponHolster {
   defaultSettings(part){
     if(part?.historical){
       const bone=part.source.skeleton.bones[part.historical.back.parent];
-      return {bone:bone.name,position:[0,0,0],rotation:[0,0,0],scale:1};
+      return {bone:bone.name,position:[0,0,0],rotation:[0,0,0],scale:1,anchor:'historical'};
     }
     return weaponDefaults(this.job,part?.index||0,this.bones);
   }
@@ -179,6 +180,10 @@ export class WeaponHolster {
     for(const part of this.parts){
       const {source,holder,adjust,index,key,historical}=part;
       const defaults=this.defaultSettings(part);
+      // As versões anteriores salvavam offsets aproximados de coluna. Não
+      // aplicá-los por engano sobre o novo dummy histórico (deslocaria a arma).
+      if(historical&&profile?.weapons?.[key]&&profile.weapons[key].anchor!=='historical')
+        profile.weapons[key]=defaults;
       const setting=profile?.weapons?.[key]||defaults;
       const bone=this.avatar.getObjectByName(setting.bone)||
         this.avatar.getObjectByName(defaults.bone);
