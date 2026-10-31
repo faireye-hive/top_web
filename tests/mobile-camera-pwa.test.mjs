@@ -92,8 +92,8 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
   assert.match(page,/main\.js\?v=37/);
   assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
-  assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)mobileSteeringReferenceYaw=CAM\.yaw/);
-  assert.match(code,/if\(!steering\)mobileSteeringReferenceYaw=null/);
+  assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)\{\s*mobileSteeringReferenceYaw=CAM\.yaw/);
+  assert.match(code,/if\(!steering\)\{mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;\}/);
   assert.match(code,/mobileCameraMode==='follow'&&moved&&!seated/);
   assert.match(code,/performance\.now\(\)>cameraManualUntil/);
   assert.match(code,/mobileOrbitYaw=subtleFollowTarget\(mobileFollowAnchorYaw,/);
