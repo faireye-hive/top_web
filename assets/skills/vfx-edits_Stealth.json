@@ -1,0 +1,467 @@
+{
+  "version": 2,
+  "res": {
+    "hide01.par": {
+      "systems": {
+        "0": {
+          "play": 0.35,
+          "delay": 0,
+          "offset": [
+            0,
+            0,
+            2
+          ],
+          "preview": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "opacity": 1,
+            "speed": 1,
+            "delay": 0,
+            "start": null,
+            "duration": 0,
+            "anchor": "actor",
+            "useSocket": true
+          },
+          "life": 1.2,
+          "sizes": [
+            2,
+            1.8
+          ],
+          "step": 0.65,
+          "colors": [
+            [
+              1,
+              1,
+              1,
+              0.9
+            ],
+            [
+              1,
+              1,
+              1,
+              0.5
+            ],
+            [
+              1,
+              1,
+              1,
+              0
+            ]
+          ]
+        },
+        "1": {
+          "texture": "7902ea66daa5.png",
+          "src": 5,
+          "dst": 7,
+          "preview": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "opacity": 1,
+            "speed": 1,
+            "delay": 0,
+            "start": null,
+            "duration": 0,
+            "anchor": "actor",
+            "useSocket": true
+          },
+          "offset": [
+            0,
+            0,
+            2
+          ],
+          "angles": [
+            [
+              0,
+              0,
+              0.017453292519943295
+            ],
+            [
+              0,
+              0,
+              -0.6981317007977318
+            ],
+            [
+              0,
+              0,
+              -2.0943951023931953
+            ],
+            [
+              0,
+              0,
+              -4.1887902047863905
+            ]
+          ],
+          "step": 0.5,
+          "play": 0.4,
+          "colors": [
+            [
+              1,
+              1,
+              1,
+              0.9
+            ],
+            [
+              1,
+              1,
+              1,
+              0.5
+            ],
+            [
+              1,
+              1,
+              1,
+              0
+            ]
+          ]
+        },
+        "2": {
+          "texture": "8af243c01c73.png",
+          "src": 5,
+          "dst": 7,
+          "offset": [
+            0,
+            0,
+            2
+          ],
+          "delay": 0.3,
+          "angles": [
+            [
+              0,
+              0,
+              0.017453292519943295
+            ],
+            [
+              0,
+              0,
+              -0.6981317007977318
+            ],
+            [
+              0,
+              0,
+              -2.0943951023931953
+            ],
+            [
+              0,
+              0,
+              -4.1887902047863905
+            ]
+          ],
+          "preview": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "opacity": 1,
+            "speed": 1,
+            "delay": 0,
+            "start": null,
+            "duration": 0,
+            "anchor": "actor",
+            "useSocket": true
+          },
+          "step": 0.4,
+          "play": 0.2,
+          "colors": [
+            [
+              1,
+              1,
+              1,
+              0.9
+            ],
+            [
+              1,
+              1,
+              1,
+              0.5
+            ],
+            [
+              1,
+              1,
+              1,
+              0
+            ]
+          ]
+        },
+        "3": {
+          "texture": "11d3b9f0c11b.png",
+          "type": 2,
+          "src": 5,
+          "dst": 7,
+          "count": 1,
+          "accel": [
+            0,
+            0,
+            0
+          ],
+          "angles": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          "preview": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ],
+            "opacity": 1,
+            "speed": 1,
+            "delay": 0,
+            "start": null,
+            "duration": 0,
+            "anchor": "actor",
+            "useSocket": false
+          },
+          "sizes": [
+            0.1,
+            15
+          ],
+          "billboard": false,
+          "delay": 0,
+          "offset": [
+            0,
+            0,
+            2
+          ],
+          "dir": [
+            0,
+            0,
+            0
+          ],
+          "life": 0.65,
+          "play": 0.05,
+          "roadom": 1,
+          "step": 0,
+          "range": [
+            0,
+            0,
+            0
+          ],
+          "colors": [
+            [
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              0.5
+            ],
+            [
+              1,
+              1,
+              1,
+              0.25
+            ],
+            [
+              1,
+              1,
+              1,
+              0
+            ]
+          ],
+          "vel": 2
+        }
+      }
+    }
+  },
+  "skills": {
+    "81": {
+      "global": {
+        "duration": 2
+      },
+      "off": {},
+      "extra": [],
+      "rebind": {}
+    },
+    "84": {
+      "global": {
+        "duration": 1.84,
+        "distance": 1,
+        "centerRange": 0
+      },
+      "off": {},
+      "extra": [],
+      "rebind": {}
+    },
+    "123": {
+      "global": {},
+      "off": {
+        "0:hide01.par:s4": false
+      },
+      "extra": [
+        {
+          "key": "xmvwn8gxn1",
+          "channel": "actor",
+          "data": {
+            "type": 2,
+            "name": "00000001a cópia",
+            "count": 1,
+            "texture": "11d3b9f0c11b.png",
+            "model": "hide04.eff",
+            "range": [
+              0,
+              0,
+              0
+            ],
+            "sizes": [
+              0.1,
+              15
+            ],
+            "angles": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "colors": [
+              [
+                1,
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1,
+                0.5
+              ],
+              [
+                1,
+                1,
+                1,
+                0.25
+              ],
+              [
+                1,
+                1,
+                1,
+                0
+              ]
+            ],
+            "billboard": false,
+            "src": 5,
+            "dst": 7,
+            "minFilter": 1,
+            "magFilter": 1,
+            "life": 0.65,
+            "vel": 2,
+            "dir": [
+              0,
+              0,
+              0
+            ],
+            "accel": [
+              0,
+              0,
+              0
+            ],
+            "step": 0,
+            "offset": [
+              0,
+              0,
+              2
+            ],
+            "delay": 0.2,
+            "play": 0.05,
+            "roadom": 1,
+            "path": null,
+            "hitEffect": "",
+            "effect": "hide04.eff",
+            "preview": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "opacity": 1,
+              "speed": 1,
+              "delay": 0,
+              "start": null,
+              "duration": 0,
+              "anchor": "actor",
+              "useSocket": false
+            }
+          }
+        }
+      ],
+      "rebind": {}
+    }
+  },
+  "clones": {},
+  "exportedAt": "2026-10-31T17:11:27.480Z"
+}
