@@ -14,3 +14,17 @@ export function cameraDegrees(value,fallback=24){
 export function cameraRadians(degrees){
   return degrees*Math.PI/180;
 }
+
+export const CAMERA_TOUCH_DEFAULT=2;
+export const CAMERA_TOUCH_MIN=.5;
+export const CAMERA_TOUCH_MAX=5;
+
+// Multiplicador do deslocamento do dedo. Decimal de uma casa para sliders
+// e campos numéricos terem exatamente o mesmo valor e persistência.
+export function cameraTouchSensitivity(value,fallback=CAMERA_TOUCH_DEFAULT){
+  if(value===null||value===undefined||String(value).trim()==='')return fallback;
+  const n=Number(value);
+  return Number.isFinite(n)
+    ?Math.round(Math.min(CAMERA_TOUCH_MAX,Math.max(CAMERA_TOUCH_MIN,n))*10)/10
+    :fallback;
+}

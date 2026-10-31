@@ -90,7 +90,7 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(page,/option value="free"/);
   assert.match(code,/getPref\('topweb_mobile_camera_mode','follow'\)/);
   assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
-  assert.match(page,/main\.js\?v=38/);
+  assert.match(page,/main\.js\?v=39/);
   assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
   assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)\{\s*mobileSteeringReferenceYaw=CAM\.yaw/);
   assert.match(code,/if\(!steering\)\{mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;\}/);
@@ -123,4 +123,36 @@ test('sliders numéricos alteram câmera automaticamente e guardam a preferênci
   assert.match(code,/element\.disabled=mobileCameraMode==='free'/);
   assert.match(code,/setCameraSpeed\?\.\(CAMERA_SPEED_DEFAULT_DEG\)/);
   assert.match(code,/setCameraTurn\?\.\(CAMERA_TURN_DEFAULT_DEG\)/);
+});
+
+test('marcha a ré não provoca novo giro automático de 180 graus',()=>{
+  const code=read('js/main.js');
+  const frame=code.slice(code.indexOf('function update(dt){'),code.indexOf('let qualitySampleTime=0'));
+  const input=frame.indexOf("const walkingBackward=fw<-.12;");
+  const reset=frame.indexOf("if(mobileCameraMode==='follow'&&walkingBackward)");
+  const yawUpdate=frame.indexOf("CAM.yaw=gentleOrbit");
+  const follow=frame.indexOf("if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&!walkingBackward&&");
+  assert.ok(input>=0&&input<reset&&reset<yawUpdate,
+    'cancelar rotação pendente antes de atualizar yaw');
+  assert.ok(follow>yawUpdate,'não recalcular o ângulo para trás no deslocamento');
+  assert.match(frame,/mobileOrbitYaw=CAM\.yaw;\s*mobileFollowAnchorYaw=null/);
+  assert.match(frame,/if\(steering&&!walkingBackward&&mobileFollowAnchorYaw===null\)mobileFollowAnchorYaw=CAM\.yaw/);
+});
+
+test('controle de toque manual funciona também em Câmera livre e responde imediatamente',()=>{
+  const code=read('js/main.js'),page=read('index.html');
+  for(const id of ['mobile-touch-sensitivity','mobile-touch-sensitivity-number','mobile-touch-reset']){
+    assert.match(page,new RegExp('id="'+id+'"'));
+  }
+  assert.match(code,/getPref\('topweb_mobile_touch_sensitivity'/);
+  assert.match(code,/setPref\('topweb_mobile_touch_sensitivity',mobileTouchSensitivity\)/);
+  assert.match(code,/dragOrbitDelta\(dx\*mobileTouchSensitivity,innerWidth\)/);
+  assert.match(code,/dy\*\.0018\*mobileTouchSensitivity/);
+  assert.match(code,/CAM\.yaw=mobileOrbitYaw;CAM\.lift=mobileOrbitLift;clampCam\(\)/);
+  assert.match(code,/setTouchSensitivity\?\.\(CAMERA_TOUCH_DEFAULT\)/);
+  const disabled=code.slice(code.indexOf('function updateCameraTuningDisabled()'),
+    code.indexOf('function bindMobileCameraTuning('));
+  assert.match(disabled,/mobileCameraTuning\.querySelectorAll\('input'\)/);
+  assert.doesNotMatch(disabled,/mobile-touch-sensitivity/);
+  assert.match(page,/main\.js\?v=39/);
 });
