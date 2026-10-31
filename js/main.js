@@ -1892,6 +1892,7 @@ function updateEquipmentUi(){
     'Visuais do tier 55 original, liberados no nível 1. Bônus novos: +4 ataque e +4 defesa pelo conjunto.';
 }
 async function changeLoadout(change){
+  if(skillAnimationLocked){toast('Aguarde a skill terminar para trocar personagem ou equipamento.');updateEquipmentUi();return;}
   if(changingLoadout||changingCharacter)return;
   if(seated&&!standUp())return;
   const previous={job:hero.job,character:hero.character,equipped:hero.equipped};
