@@ -83,3 +83,55 @@ test('save validado conserva classe, equipamento e prática; números inválidos
   assert.equal(restoreHero(saved.replace('"level":2','"level":-2')).level,1);
   assert.equal(restoreHero('not json').level,1);
 });
+
+test('selecionar monstro não liga auto e botão manual executa um golpe por toque',()=>{
+  const {combat,enemies,events}=setup();
+  const pos={x:0,z:0};
+  assert.equal(combat.selectTarget(enemies[0],pos),true);
+  assert.equal(combat.auto,false,'alvo selecionado não deve começar auto ataque');
+  advance(combat,.5,pos);
+  assert.equal(enemies[0].hp,60,'só selecionar não causa dano');
+  assert.equal(combat.manualAttack(pos),true);
+  assert.equal(combat.auto,false);
+  assert.equal(combat.manualAttack(pos),false,'não repetir antes do cooldown');
+  advance(combat,.6,pos);
+  assert.ok(enemies[0].hp<60,'o toque deve causar apenas um golpe');
+  const swings=events.filter(e=>e.type==='swing').length;
+  advance(combat,2,pos);
+  assert.equal(events.filter(e=>e.type==='swing').length,swings,'sem repetição automática');
+  assert.equal(combat.manualAttack(pos),true,'segundo toque pode atacar após o cooldown');
+});
+test('botão Auto separado preserva o alvo ao desligar e desativa ataque manual enquanto ligado',()=>{
+  const {combat,enemies}=setup();const pos={x:0,z:0};
+  combat.selectTarget(enemies[0],pos);
+  assert.equal(combat.toggle(),true);
+  assert.equal(combat.manualAttack(pos),false,'modo auto impede golpe manual independente');
+  assert.equal(combat.toggle(),false);
+  assert.equal(combat.auto,false);
+  assert.equal(combat.target,enemies[0],'ao desligar, alvo deve permanecer para ataque manual');
+  assert.equal(combat.manualAttack(pos),true);
+});
+test('andar mantém alvo manual, mas cancela automático e golpes pendentes',()=>{
+  const {combat,enemies,events}=setup();const pos={x:0,z:0};
+  combat.selectTarget(enemies[0],pos);
+  combat.update(.05,pos,{moving:true});
+  assert.equal(combat.target,enemies[0]);
+  assert.equal(combat.auto,false);
+  assert.equal(combat.manualAttack(pos),true);
+  combat.update(.05,pos,{moving:true});
+  advance(combat,.6,pos);
+  assert.equal(enemies[0].hp,60,'movimentar cancela golpe pendente');
+  assert.equal(combat.target,enemies[0],'movimentar não apaga o alvo manual');
+  combat.toggle();combat.update(.05,pos,{moving:true});
+  assert.equal(combat.auto,false,'movimentar continua cancelando auto');
+});
+test('manual precisa de alcance e escolhe alvo próximo sem ligar auto',()=>{
+  const enemy=monster({x:8});
+  const {combat,events}=setup([enemy]);const pos={x:0,z:0};
+  assert.equal(combat.manualAttack(pos),false);
+  assert.equal(combat.auto,false);
+  assert.equal(combat.target,enemy,'identifica o alvo, mas não ataca de longe');
+  assert.ok(events.some(e=>e.type==='notice'&&/Aproxime-se/.test(e.message)));
+  enemy.x=1;
+  assert.equal(combat.manualAttack(pos),true);
+});
