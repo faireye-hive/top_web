@@ -1,4 +1,5 @@
 import {updateFollowTarget} from './mobile-camera-follow.mjs';
+import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG} from './mobile-camera-settings.mjs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
@@ -43,6 +44,9 @@ const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
 let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
 // Modo novo por padrão; o jogador pode escolher a órbita livre e o valor fica salvo.
 let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'free':'follow';
+// Graus por segundo e graus máximos por gesto, ajustáveis no painel (0–180).
+let mobileCameraSpeedDeg=cameraDegrees(getPref('topweb_mobile_camera_speed_deg',String(CAMERA_SPEED_DEFAULT_DEG)));
+let mobileCameraTurnDeg=cameraDegrees(getPref('topweb_mobile_camera_turn_deg',String(CAMERA_TURN_DEFAULT_DEG)));
 let mobileSteeringReferenceYaw=null; // travado enquanto o joystick estiver pressionado
 let mobileFollowAnchorYaw=null; // limita giro automático a ~24° por gesto
 let cameraManualUntil=0;
@@ -1592,11 +1596,11 @@ function update(dt){
   if(keys.has('ArrowDown')){if(MOBILE_UI)mobileOrbitLift=Math.max(1.35,mobileOrbitLift-dt*.55);else CAM.lift-=dt*.55;}
   if(keys.has('ArrowUp')){if(MOBILE_UI)mobileOrbitLift=Math.min(2.4,mobileOrbitLift+dt*.55);else CAM.lift+=dt*.55;}
   if(MOBILE_UI){
-    // Limitar SOMENTE o giro automático; arrastar o dedo mantém a resposta manual.
-    // A correção automática não ultrapassa ~24°/s nem ~24° por gesto.
+    // O controle de velocidade afeta apenas o acompanhamento AUTOMÁTICO.
+    // Giro manual com o dedo mantém seu próprio limite e sensibilidade.
     const manualOrbit=performance.now()<cameraManualUntil;
     CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,
-      mobileCameraMode==='follow'&&!manualOrbit?.42:1.1);
+      mobileCameraMode==='follow'&&!manualOrbit?cameraRadians(mobileCameraSpeedDeg):1.1);
     CAM.lift=THREE.MathUtils.lerp(CAM.lift,mobileOrbitLift,1-Math.exp(-dt*7));
   }
   clampCam();
@@ -1686,7 +1690,8 @@ function update(dt){
     if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&
        mobileFollowAnchorYaw!==null&&performance.now()>cameraManualUntil){
       mobileOrbitYaw=subtleFollowTarget(mobileFollowAnchorYaw,
-        Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ));
+        Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ),
+        cameraRadians(mobileCameraTurnDeg));
     }
     // O rumo do avatar guia a câmera quando caminha para a frente.
     // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
@@ -1952,13 +1957,48 @@ $('autocamera').addEventListener('change',e=>{
   setPref('topweb_auto_camera',autoCameraEnabled?'1':'0');
 });
 const mobileCameraModeSelect=$('mobile-camera-mode');
+const mobileCameraTuning=$('mobile-camera-tuning');
+function updateCameraTuningDisabled(){
+  if(mobileCameraTuning){
+    mobileCameraTuning.classList.toggle('inactive',mobileCameraMode==='free');
+    for(const element of mobileCameraTuning.querySelectorAll('input'))
+      element.disabled=mobileCameraMode==='free';
+  }
+}
+function bindMobileCameraTuning(rangeId,numberId,key,value,setValue){
+  const slider=$(rangeId),number=$(numberId);
+  if(!slider||!number)return;
+  const apply=raw=>{
+    const degrees=cameraDegrees(raw,value);
+    setValue(degrees);
+    slider.value=String(degrees);
+    number.value=String(degrees);
+    setPref(key,degrees);
+  };
+  apply(value);
+  // Barras respondem enquanto são arrastadas; digitação confirma ao sair.
+  slider.addEventListener('input',e=>apply(e.target.value));
+  number.addEventListener('change',e=>apply(e.target.value));
+  return apply;
+}
+const setCameraSpeed=bindMobileCameraTuning('mobile-camera-speed','mobile-camera-speed-number',
+  'topweb_mobile_camera_speed_deg',mobileCameraSpeedDeg,value=>{mobileCameraSpeedDeg=value;});
+const setCameraTurn=bindMobileCameraTuning('mobile-camera-turn','mobile-camera-turn-number',
+  'topweb_mobile_camera_turn_deg',mobileCameraTurnDeg,value=>{mobileCameraTurnDeg=value;});
+$('mobile-camera-reset')?.addEventListener('click',()=>{
+  setCameraSpeed?.(CAMERA_SPEED_DEFAULT_DEG);
+  setCameraTurn?.(CAMERA_TURN_DEFAULT_DEG);
+  toast('Câmera mobile restaurada para 24°/s e 24° por movimento.');
+});
 if(mobileCameraModeSelect){
   mobileCameraModeSelect.value=mobileCameraMode;
+  updateCameraTuningDisabled();
   mobileCameraModeSelect.addEventListener('change',e=>{
     mobileCameraMode=e.target.value==='free'?'free':'follow';
     mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
     mobileOrbitYaw=CAM.yaw;
     setPref('topweb_mobile_camera_mode',mobileCameraMode);
+    updateCameraTuningDisabled();
     toast(mobileCameraMode==='follow'?'Câmera acompanha a direção do personagem.':'Câmera livre ativada.');
   });
 }

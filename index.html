@@ -35,6 +35,17 @@ font:600 12px system-ui,sans-serif}
 #pwa-install-tip{font-size:10px;font-weight:400;max-width:185px;line-height:1.3}
 @media(hover:hover) and (pointer:fine){#pwa-install-banner{display:none!important}}
 </style>
+<style>
+.camera-tuning{display:grid;gap:7px;padding:10px;border:1px solid rgba(94,226,207,.25);background:rgba(8,31,46,.52);border-radius:11px}
+.camera-tuning.inactive{opacity:.5}
+.camera-tuning label{color:#e1f7f6}
+.camera-tuning-row{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:9px;align-items:center}
+.camera-tuning-row input[type="range"]{width:100%;margin:0;min-height:32px;cursor:pointer}
+.camera-tuning-row input[type="number"]{width:100%;min-width:0;padding:7px 3px;text-align:center;background:#143947;border:1px solid #487583;border-radius:7px;color:#f4fffb;font-size:16px;font-variant-numeric:tabular-nums}
+.camera-tuning-footer{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.camera-tuning-footer .small{flex:1}
+.camera-tuning-footer button{font-size:11px;padding:6px 8px;white-space:nowrap}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -77,7 +88,24 @@ font:600 12px system-ui,sans-serif}
     <option value="follow">Atrás do personagem · giro discreto</option>
     <option value="free">Livre · giro manual</option>
    </select>
-   <div class="small">Giro discreto: a câmera corrige no máximo cerca de 24° por movimento, lentamente (24°/s), sem dar voltas grandes. Arrastar permite olhar ao redor; o ajuste automático é pausado por 2,5 s. Livre: apenas acompanha a posição.</div>
+   <div id="mobile-camera-tuning" class="camera-tuning" aria-label="Ajustes de câmera mobile">
+    <div class="small">Ajuste e teste no jogo: mudanças aplicadas imediatamente e salvas automaticamente.</div>
+    <label class="small" for="mobile-camera-speed"><strong>Velocidade do giro automático (°/s)</strong></label>
+    <div class="camera-tuning-row">
+     <input id="mobile-camera-speed" type="range" min="0" max="180" step="1" value="24" aria-label="Velocidade do giro automático em graus por segundo">
+     <input id="mobile-camera-speed-number" type="number" inputmode="numeric" min="0" max="180" step="1" value="24" aria-label="Valor da velocidade em graus por segundo">
+    </div>
+    <label class="small" for="mobile-camera-turn"><strong>Giro máximo por movimento (°)</strong></label>
+    <div class="camera-tuning-row">
+     <input id="mobile-camera-turn" type="range" min="0" max="180" step="1" value="24" aria-label="Ângulo máximo de correção por movimento em graus">
+     <input id="mobile-camera-turn-number" type="number" inputmode="numeric" min="0" max="180" step="1" value="24" aria-label="Valor do ângulo máximo em graus">
+    </div>
+    <div class="camera-tuning-footer">
+     <span class="small">0 desliga o giro automático · 24 = discreto</span>
+     <button type="button" id="mobile-camera-reset" title="Restaurar valores padrão">Restaurar</button>
+    </div>
+   </div>
+   <div class="small">Câmera livre: segue só a posição. No acompanhamento, arrastar para olhar ao redor pausa o giro automático por 2,5 s.</div>
    <label class="small">Visual do mundo</label>
    <select id="visualmode"><option value="classic">Clássico · cores mais vivas</option><option value="cinematic">Cinemático · tons suaves</option></select>
    <label class="small">Orientação ao sentar</label>
@@ -208,7 +236,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=37"></script>
+<script type="module" src="./js/main.js?v=38"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>
