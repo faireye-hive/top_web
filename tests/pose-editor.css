@@ -35,3 +35,13 @@ main{min-height:0;flex:1;display:grid;grid-template-columns:minmax(260px,304px) 
 .missing-item:hover{background:#394535}
 .missing-item .missing-head{display:block;font-weight:700;color:#ffe2ab}
 .missing-item .missing-sub{display:block;color:#c6d3c9;font-size:10px;margin-top:2px}
+
+/* Instrumentos de diagnóstico da arma: acessíveis sem rolar até o painel direito. */
+.weapon-quick{border:1px solid #2d706b;border-radius:10px;padding:10px;background:#10323b;margin:10px 0}
+.weapon-quick h2{color:#7fe3c8;margin:0 0 7px;font-size:12px}
+.weapon-view-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.weapon-view-grid button{min-width:0;padding:9px 5px;font-size:11px}
+.weapon-view-grid button.active{background:#166b60;color:#f6fffc;border-color:#7fe3c8;box-shadow:0 0 0 1px #7fe3c8}
+.weapon-view-grid button:disabled{opacity:.45;cursor:not-allowed}
+.weapon-diagnostics{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin:8px 0}
+#weapon-mode{border-color:#548b85}

@@ -6,6 +6,11 @@ export const POSE_STATES=['idle','guard','run','armedRun','attack'];
 export const POSE_DEFAULTS={idle:'Parado',guard:'Combate',run:'Correr',
   armedRun:'Correr armado',attack:'Ataque 1'};
 export const WEAPON_STATES=['city','run','guard','armedRun','attack'];
+export const WEAPON_PLACEMENTS=['auto','hidden','hand','back'];
+export function weaponPlacementForState(profile,state,key,fallback='hand'){
+  const stored=profile?.placements?.[state]?.[key];
+  return WEAPON_PLACEMENTS.includes(stored)&&stored!=='auto'?stored:fallback;
+}
 
 const number=(n,or=0)=>Number.isFinite(+n)?+n:or;
 const bound=(n,min,max)=>Math.max(min,Math.min(max,n));
@@ -33,7 +38,18 @@ export function parsePoseProfiles(input){
         ...(settings.anchor==='historical'?{anchor:'historical'}:{})
       };
     }
-    out.profiles[key]={clips,stowOnIdle:value.stowOnIdle!==false,weapons};
+    // Posição/visibilidade independentes do clipe GLB e por arma/estado.
+    // "auto" mantém o comportamento do jogo; não exigir migração dos JSONs v1.
+    const placements={};
+    for(const state of POSE_STATES){
+      const entries=value.placements?.[state];
+      if(!entries||typeof entries!=='object'||Array.isArray(entries))continue;
+      for(const [part,mode] of Object.entries(entries)){
+        if(!/^weapon-\d+$/.test(part)||!WEAPON_PLACEMENTS.includes(mode))continue;
+        (placements[state]??={})[part]=mode;
+      }
+    }
+    out.profiles[key]={clips,stowOnIdle:value.stowOnIdle!==false,weapons,placements};
   }
   return out;
 }
@@ -135,12 +151,26 @@ export class WeaponHolster {
     this.THREE=THREE;this.avatar=avatar;this.job=job;this.actor=actor;this.parts=[];
     this.bones=availableBones(avatar);
     const weapons=weaponMeshNodes(avatar);
+    this.detected=weapons.length;
+    this.issues=[];
     weapons.forEach((source,index)=>{
-      const skinBone=fixedBoneSkin(source);
-      if(skinBone===null)return;
-      const inverse=source.skeleton.boneInverses[skinBone];
-      if(!inverse)return;
       const slot=Number(source.userData?.equipmentSlot)||(index===0?6:index===1?9:0);
+      const key='weapon-'+index;
+      const part={index,key,slot,source,holder:null,adjust:null,view:null,
+        historical:null,socketNode:null,issue:''};
+      this.parts.push(part);
+      const skinBone=fixedBoneSkin(source);
+      if(skinBone===null){
+        part.issue='Malha não está rigidamente presa a um único osso (skinWeight/skinIndex).';
+        this.issues.push(source.name+': '+part.issue);
+        return;
+      }
+      const inverse=source.skeleton.boneInverses[skinBone];
+      if(!inverse){
+        part.issue='Matriz inverseBind ausente.';
+        this.issues.push(source.name+': '+part.issue);
+        return;
+      }
       const sockets=historicalWeaponDummies(actor,job,slot);
       const historical=!!sockets&&sockets.hand.parent===skinBone&&
         !!source.skeleton.bones[sockets.back.parent]&&
@@ -148,16 +178,20 @@ export class WeaponHolster {
       const socketNode=historical
         ?avatar.getObjectByName('TOP Dummy '+(slot===6?22:21)):null;
       const transformed=source.geometry.clone();
-      if(historical){
-        // O conversor aplicou handDummy * inverseGrip * modelLocal;
-        // retirar handDummy recupera a geometria ligada ao grip original.
-        transformed.applyMatrix4(new THREE.Matrix4().fromArray(sockets.hand.matrix).invert());
-      }else{
-        // Fallback para GLBs e atores ainda sem os dummies históricos.
-        transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,source.bindMatrix));
-        transformed.computeBoundingBox();
-        const center=transformed.boundingBox.getCenter(new THREE.Vector3());
-        transformed.translate(-center.x,-center.y,-center.z);
+      try{
+        if(historical){
+          transformed.applyMatrix4(new THREE.Matrix4().fromArray(sockets.hand.matrix).invert());
+        }else{
+          transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,source.bindMatrix));
+          transformed.computeBoundingBox();
+          const center=transformed.boundingBox.getCenter(new THREE.Vector3());
+          transformed.translate(-center.x,-center.y,-center.z);
+        }
+      }catch(err){
+        transformed.dispose();
+        part.issue='Falha ao criar cópia para costas: '+err.message;
+        this.issues.push(source.name+': '+part.issue);
+        return;
       }
       const view=new THREE.Mesh(transformed,source.material);
       view.name='Pose Studio · arma guardada '+index;
@@ -165,8 +199,8 @@ export class WeaponHolster {
       const holder=new THREE.Group();holder.name='Pose Studio · encaixe '+index;
       const adjust=new THREE.Group();adjust.name='Pose Studio · ajuste '+index;
       adjust.add(view);holder.add(adjust);
-      this.parts.push({index,key:'weapon-'+index,source,holder,adjust,view,
-        slot,historical:historical?sockets:null,socketNode});
+      Object.assign(part,{holder,adjust,view,
+        historical:historical?sockets:null,socketNode});
     });
     this.setProfile(profile);
   }
@@ -182,20 +216,21 @@ export class WeaponHolster {
     this.profile=profile||null;
     for(const part of this.parts){
       const {source,holder,adjust,index,key,historical,socketNode}=part;
+      if(!holder)continue;
       const defaults=this.defaultSettings(part);
       // As versões anteriores salvavam offsets aproximados de coluna. Não
       // aplicá-los por engano sobre o novo dummy histórico (deslocaria a arma).
       if(historical&&profile?.weapons?.[key]&&profile.weapons[key].anchor!=='historical')
         profile.weapons[key]=defaults;
       const setting=profile?.weapons?.[key]||defaults;
-      if(socketNode&&setting.anchor==='historical'&&setting.bone!==socketNode.name)
-        setting.bone=socketNode.name;
-      const bone=socketNode||this.avatar.getObjectByName(setting.bone)||
+      // Respeitar o osso escolhido manualmente. O botão "Padrão"
+      // volta a selecionar TOP Dummy 21/22 quando eles existem.
+      const bone=this.avatar.getObjectByName(setting.bone)||
         this.avatar.getObjectByName(defaults.bone);
       if(!bone)continue;
       if(holder.parent!==bone)bone.add(holder);
       if(historical){
-        if(socketNode){
+        if(socketNode&&bone===socketNode){
           // GLB reconstruído: o TOP Dummy é filho do osso e já contém a
           // matriz histórica. Não aplicar inverseBind ou dummy duas vezes.
           holder.matrixAutoUpdate=true;
@@ -206,7 +241,11 @@ export class WeaponHolster {
           // Compatibilidade com GLBs anteriores ao exportador dos sockets.
           const boneIndex=source.skeleton.bones.indexOf(bone);
           const boneInverse=source.skeleton.boneInverses[boneIndex];
-          if(!boneInverse)continue;
+          if(!boneInverse){
+            part.issue='Osso selecionado não pertence ao esqueleto da arma.';
+            this.issues.push(source.name+': '+part.issue);
+            continue;
+          }
           const backMatrix=new this.THREE.Matrix4().fromArray(historical.back.matrix);
           holder.matrixAutoUpdate=false;
           holder.matrix.multiplyMatrices(boneInverse,backMatrix);
@@ -232,18 +271,25 @@ export class WeaponHolster {
     }
     this.setStowed(this.stowed??false);
   }
-  setStowed(value){
+  setStowed(value,state=null){
     this.stowed=!!value&&this.profile?.stowOnIdle!==false;
-    for(const {source,holder} of this.parts){
-      const fitted=!!holder.parent;
-      source.visible=!this.stowed||!fitted;
-      holder.visible=this.stowed&&fitted;
+    for(const part of this.parts){
+      const {source,holder,key}=part;
+      const fallback=this.stowed?'back':'hand';
+      const mode=state?weaponPlacementForState(this.profile,state,key,fallback):fallback;
+      part.mode=mode;
+      // Nunca revelar a espada na mão quando o usuário selecionou
+      // "Ocultar" ou "Nas costas". Sem cópia disponível, ocultar e avisar.
+      source.visible=mode==='hand';
+      if(holder)holder.visible=mode==='back'&&!!holder.parent;
+      part.visualStatus=mode==='back'&&(!holder||!holder.parent)
+        ?'Não foi possível criar/encaixar a arma nas costas':mode;
     }
   }
   dispose(){
     for(const {source,holder,view}of this.parts){
-      source.visible=true;holder.parent?.remove(holder);
-      view.geometry.dispose();
+      source.visible=true;holder?.parent?.remove(holder);
+      view?.geometry?.dispose();
     }
     this.parts=[];
   }

@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <base href="../"><meta name="theme-color" content="#071923">
 <title>TOP Web · Pose &amp; Weapon Studio</title>
-<link rel="stylesheet" href="tests/pose-editor.css?v=3">
+<link rel="stylesheet" href="tests/pose-editor.css?v=4">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -25,7 +25,17 @@
   <button data-state="armedRun">⚔ Corrida armada</button>
   <button data-state="attack">💥 Ataque básico</button>
  </div>
- <label class="check"><input id="stow" type="checkbox" checked> Guardar espadas na cidade e na corrida normal</label>
+ <label class="check"><input id="stow" type="checkbox" checked> Guardar espadas na cidade e na corrida normal (modo automático)</label>
+ <section class="weapon-quick" aria-label="Controles manuais de armas">
+  <h2>⚔ Armas nesta pose</h2>
+  <p class="hint">O corpo e as armas são independentes: experimente qualquer animação com ou sem espadas. Estas opções alteram as duas armas no estado selecionado.</p>
+  <div class="weapon-view-grid" id="weapon-view-all">
+   <button type="button" data-weapon-view="auto" aria-pressed="true">↺ Auto</button>
+   <button type="button" data-weapon-view="hidden" aria-pressed="false">🚫 Sem armas</button>
+   <button type="button" data-weapon-view="hand" aria-pressed="false">⚔ Nas mãos</button>
+   <button type="button" data-weapon-view="back" aria-pressed="false">🎒 Nas costas</button>
+  </div>
+ </section>
  <p class="hint">Cidade: pose parada (Lance Crusader 163) e espadas nos encaixes das costas. Movimento: escolha <b>Correr</b> (167). Ação 005 é corrida, não descanso. Evanescence muda também a roupa do personagem.</p>
  <label>Clipe GLB utilizado neste estado
   <select id="clip"></select>
@@ -91,6 +101,15 @@
  <p class="hint">Na cidade e na corrida normal, as espadas do Lance Crusader usam os dummies originais 22 (esquerda) e 21 (direita). O ajuste XYZ é relativo ao encaixe histórico. No combate, a arma volta à mão. O controle de guardar fica no painel à esquerda.</p>
 
  <label>Peça da arma <select id="part"></select></label>
+ <label>Onde mostrar somente esta arma?
+  <select id="weapon-mode">
+   <option value="auto">↺ Automático (estado do jogo)</option>
+   <option value="hidden">🚫 Ocultar / sem arma</option>
+   <option value="hand">⚔ Mostrar na mão</option>
+   <option value="back">🎒 Guardar nas costas / encaixe</option>
+  </select>
+ </label>
+ <div id="weapon-diagnostics" class="info weapon-diagnostics" aria-live="polite">Os dados das armas aparecem aqui quando o modelo carregar.</div>
  <div id="part-alert" class="info">Carregue um personagem com arma equipada.</div>
  <div id="weapon-controls">
  <label>Osso de destino <select id="bone"></select></label>
@@ -108,5 +127,5 @@
  <div class="info" id="source-note">As posições iniciais são aproximações para edição, não os dummies históricos da cintura/costas.</div>
 </aside>
 </main>
-<script type="module" src="tests/pose-editor.mjs?v=6"></script>
+<script type="module" src="tests/pose-editor.mjs?v=7"></script>
 </body></html>

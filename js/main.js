@@ -19,7 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=4';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=5';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -1803,7 +1803,13 @@ function update(dt){
   if(avatar)avatar.position.copy(playerPos);
   // Cidade / exploração: arma guardada no osso configurado. Combate/skill
   // mostram a arma original na mão, sem modificar o GLB histórico.
-  weaponHolster?.setStowed(!combat?.auto&&!attackPlaying&&!skillAnimationLocked&&!combat?.casting);
+  // O clipe do corpo e a exibição de cada arma são independentes.
+  // Salvos no Pose Studio por estado: auto / sem arma / mão / costas.
+  const weaponAttackState=attackPlaying||skillAnimationLocked||combat?.casting;
+  const weaponMovingState=isRunningPose();
+  const weaponPoseState=weaponAttackState?'attack':
+    combat?.auto?(weaponMovingState?'armedRun':'guard'):(weaponMovingState?'run':'idle');
+  weaponHolster?.setStowed(!combat?.auto&&!weaponAttackState,weaponPoseState);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}

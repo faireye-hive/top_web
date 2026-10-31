@@ -313,3 +313,54 @@ Para `lance:crusader` equipado, espera-se **2 sockets** usados pelas
 espadas. Limpe ou redefina eventuais perfis locais antigos caso tenha
 salvado uma corrida no estado de descanso; a mudança de GLB não altera
 automaticamente uma escolha manual de clipe.
+
+## Diagnóstico manual de armas (independente das poses)
+
+No painel esquerdo, abaixo de **Cidade/Guarda/Correr**, agora há quatro
+opções de **Armas nesta pose**, aplicáveis às duas armas do personagem:
+
+- **Auto**: mantém a regra original — guardadas durante cidade/corrida
+  normal, nas mãos durante combate/ataque.
+- **Sem armas**: esconde as malhas das espadas, mesmo quando a animação
+  do corpo é uma pose do banco armado. Não remove roupa nem altera o GLB.
+- **Nas mãos**: mostra as malhas originais ligadas ao esqueleto.
+- **Nas costas**: mostra somente as cópias anexadas aos encaixes do GLB.
+  Caso algum encaixe não funcione, oculta a malha da mão e avisa no
+  diagnóstico, em vez de deixar uma espada na posição errada.
+
+Esses ajustes são **separados por estado** (Cidade, Guarda, Correr,
+Corrida armada, Ataque), e **por espada**. Para controlar uma arma de
+cada vez, use **Peça da arma** e **Onde mostrar somente esta arma?**
+no painel direito. O campo **Diagnóstico das armas** mostra nome da
+malha, slot 6/9, `TOP Dummy 22/21` encontrado ou não, situação da
+cópia e possíveis erros de skin. A seleção de osso também lista nós
+`TOP Dummy`; XYZ e rotação continuam editáveis para corrigir visualmente
+a posição das cópias nas costas.
+
+As alterações são visualizadas imediatamente. **Salvar no navegador**
+grava os ajustes em `topweb_pose_profiles_v1`, compartilhados com o jogo
+na mesma origem, e **Exportar JSON** permite publicar o perfil como
+`assets/poses/overrides.json`. O formato continua `version:1`, com campo
+opcional novo `placements`:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "lance:crusader": {
+      "clips": {},
+      "stowOnIdle": true,
+      "weapons": {},
+      "placements": {
+        "idle": {"weapon-0": "back", "weapon-1": "hidden"},
+        "guard": {"weapon-0": "hand", "weapon-1": "hand"}
+      }
+    }
+  }
+}
+```
+
+Dica: para descobrir por que uma pose "sem arma" aparece armada, use
+**Sem armas** sem trocar o clipe. Se as armas desaparecem, a animação
+está correta e o problema é somente o modo de exibição/equipamento.
+Para avaliar os encaixes, use **Nas costas** e verifique o diagnóstico.
