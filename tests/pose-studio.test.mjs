@@ -99,6 +99,9 @@ test('jogo/editor usam o mesmo módulo e editor permite exportação para arquiv
  assert.match(game,/new WeaponHolster\(THREE,avatar,hero\.job,activePoseProfile\)/);
  assert.match(game,/weaponHolster\?\.setStowed\(!combat\?\.auto/);
  assert.match(game,/poseResolvedName\(match\)/);
+ assert.match(game,/function isRunningPose\(\)/);
+ assert.match(game,/\['run','armedRun'\]\.some\(state=>selectPoseName/);
+ assert.match(game,/combat\?\.stop\(\); \/\/ Trocar de guarda para descanso/);
  assert.match(page,/id="actor"/);
  assert.match(page,/id="clip"/);
  assert.match(page,/id="part"/);
