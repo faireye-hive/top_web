@@ -122,6 +122,43 @@ test('arma original reaparece no combate e cópia guardada fica oculta',()=>{
  holster.dispose();
  assert.equal(mesh.visible,true);
 });
+test('overrides de arma são independentes do clip e preservados no JSON',()=>{
+ const raw={version:1,profiles:{'lance:crusader':{
+   clips:{idle:'163 · Parado'},stowOnIdle:true,weapons:{},
+   placements:{idle:{'weapon-0':'hidden','weapon-1':'back'},
+     guard:{'weapon-0':'hand','weapon-1':'hidden'},run:{'weapon-0':'auto'},
+     attack:{'weapon-0':'invalid','wrong':'back'}}
+ }}};
+ const profile=parsePoseProfiles(raw).profiles['lance:crusader'];
+ assert.equal(profile.placements.idle['weapon-0'],'hidden');
+ assert.equal(profile.placements.idle['weapon-1'],'back');
+ assert.equal(profile.placements.attack?.['weapon-0'],undefined);
+ assert.equal(profile.placements.attack?.wrong,undefined);
+ assert.equal(profile.clips.idle,'163 · Parado');
+ const db={setItem(k,v){this[k]=v}};
+ savePoseProfiles(raw,db);
+ assert.equal(JSON.parse(db[POSE_STORAGE_KEY]).profiles['lance:crusader'].placements.guard['weapon-1'],'hidden');
+});
+test('ocultar arma funciona sem rigid skin, inclusive se não houver cópia para costas',()=>{
+ const mesh={isSkinnedMesh:true,name:'Parte 5 · weapon',
+   geometry:{getAttribute(){return null}},skeleton:{bones:[],boneInverses:[]},
+   visible:true,userData:{}};
+ const avatar={traverse(fn){fn(mesh)}};
+ const holster=new WeaponHolster({},avatar,'crusader',{
+   stowOnIdle:true,placements:{idle:{'weapon-0':'hidden'},guard:{'weapon-0':'back'}},
+   weapons:{}},'lance');
+ assert.equal(holster.parts.length,1);
+ assert.match(holster.parts[0].issue,/rigidamente/);
+ holster.setStowed(false,'idle');
+ assert.equal(mesh.visible,false);
+ holster.setStowed(false,'guard');
+ assert.equal(mesh.visible,false);
+ assert.match(holster.parts[0].visualStatus,/Não foi possível/);
+ holster.setStowed(false,'attack');
+ assert.equal(mesh.visible,true);
+ holster.dispose();
+ assert.equal(mesh.visible,true);
+});
 test('encaixes históricos no Lance provêm do LAB e mantêm cada mão na espada certa',()=>{
  const left=historicalWeaponDummies('lance','crusader',6);
  const right=historicalWeaponDummies('lance','crusader',9);
@@ -245,5 +282,12 @@ test('jogo/editor usam o mesmo módulo e editor permite exportação para arquiv
  assert.match(page,/id="timeline"/);
  assert.match(editor,/savePoseProfiles\(store\)/);
  assert.match(editor,/a\.download='overrides\.json'/);
+ assert.match(page,/data-weapon-view="hidden"/);
+ assert.match(page,/data-weapon-view="back"/);
+ assert.match(page,/id="weapon-mode"/);
+ assert.match(page,/id="weapon-diagnostics"/);
+ assert.match(editor,/setWeaponMode\\(part.key/);
+ assert.match(editor,/holster.setStowed\\(stowed,selectedState\\)/);
+ assert.match(game,/weaponHolster\\?\\.setStowed\\(!combat\\?\\.auto&&!weaponAttackState,weaponPoseState\\)/);
  assert.match(file('index.html'),/tests\/pose-editor\.html/);
 });
