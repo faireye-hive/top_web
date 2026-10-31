@@ -19,7 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=5';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=6';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
