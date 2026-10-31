@@ -5,11 +5,13 @@ Só utiliza IDs/modelos/poses. Atributos, nível mínimo e prática são novos n
 """
 import argparse
 import json
+import shutil
+import stat
 import struct
 import sys
 import tempfile
-from pathlib import Path
-from zipfile import ZipFile, ZIP_DEFLATED
+from pathlib import Path, PurePosixPath
+from zipfile import ZipFile, ZIP_DEFLATED, is_zipfile
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -66,28 +68,81 @@ def weapon_geometry(raw,lab,slot):
             'joints':joints,'weights':weights}
 
 
+def prepare_client_source(source: Path, workspace: Path) -> Path:
+    """Aceita uma pasta Client, sua pasta-pai ou um ZIP do selecionar_assets.py."""
+    if source.is_dir():
+        nested = source / 'Client'
+        return nested if (nested / 'scripts/table/characterinfo.txt').is_file() else source
+    if not source.is_file() or not is_zipfile(source):
+        raise ValueError(f'Origem não é pasta Client nem ZIP válido: {source}')
+
+    total_bytes = 0
+    with ZipFile(source) as archive:
+        for entry in archive.infolist():
+            name = PurePosixPath(entry.filename)
+            if name.is_absolute() or '..' in name.parts:
+                raise ValueError(f'Caminho inseguro no ZIP: {entry.filename}')
+            if entry.is_dir() or not name.parts or name.parts[0] != 'Client':
+                continue
+            if stat.S_ISLNK(entry.external_attr >> 16):
+                raise ValueError(f'Link simbólico não permitido no ZIP: {entry.filename}')
+            total_bytes += entry.file_size
+            if total_bytes > 256 * 1024 * 1024:
+                raise ValueError('ZIP contém mais de 256 MiB descompactados')
+            destination = workspace.joinpath(*name.parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(entry) as source_file, destination.open('wb') as target:
+                shutil.copyfileobj(source_file, target)
+    client = workspace / 'Client'
+    if not (client / 'scripts/table/characterinfo.txt').is_file():
+        raise ValueError('ZIP sem Client/scripts/table/characterinfo.txt')
+    return client
+
+
+def selected_action_ids(pose: int, compact: bool = False) -> list[int]:
+    """Banco da arma + banco comum, preservando os IDs históricos originais."""
+    armed = range(1, 55) if not compact else (1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    common = range(1, 55) if not compact else (16, 18, 30, 31, 38)
+    return sorted({action + pose * 54 for action in armed} | set(common))
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('client',type=Path)
+    parser.add_argument('client',type=Path,
+      help='Pasta Client original ou ZIP gerado por Lance/selecionar_assets.py')
     parser.add_argument('--classes',nargs='+',choices=list(SETS))
+    parser.add_argument('--characters',nargs='+',choices=sorted(NAMES.values()),
+      help='Limita a conversão aos personagens selecionados (ex.: lance)')
     parser.add_argument('--compact',action='store_true',
-      help='Exportar só animações essenciais; padrão exporta as 54 ações do banco histórico da arma')
-    args=parser.parse_args();client=args.client.expanduser().resolve()
+      help='Exportar subconjunto leve; padrão exporta 54 IDs da arma e 54 IDs compartilhados')
+    args=parser.parse_args()
+    with tempfile.TemporaryDirectory(prefix='top-client-') as workdir:
+        client=prepare_client_source(args.client.expanduser().resolve(),Path(workdir))
+        build(args,client)
+
+
+def build(args,client):
     items=parse_table(client/'scripts/table/iteminfo.txt')
     characters=parse_table(client/'scripts/table/characterinfo.txt')
     out=ROOT/'assets/equipment';(out/'models').mkdir(parents=True,exist_ok=True)
     manifest={'version':1,'minimumLevel':1,'originalTier':55,'sets':{}}
-    if args.classes and (out/'manifest.json').exists():manifest=json.loads((out/'manifest.json').read_text())
+    if (args.classes or args.characters) and (out/'manifest.json').exists():
+        manifest=json.loads((out/'manifest.json').read_text())
     with tempfile.TemporaryDirectory(prefix='top-gear-') as tmp:
         for job,spec in SETS.items():
             if args.classes and job not in args.classes:continue
+            character_ids=[cid for cid in spec['characters']
+                           if not args.characters or NAMES[cid] in args.characters]
+            if not character_ids:continue
             entries=[]
             for slot,item in spec['items'].items():
                 row=items[item]
                 if int(row[24])!=55:raise ValueError(f'{item}: item não é do tier 55')
                 entries.append({'slot':slot,'id':item,'name':row[1],'originalLevel':55,'minimumLevel':1})
-            manifest['sets'][job]={'items':entries,'pose':spec['pose'],'models':{}}
-            for char_id in spec['characters']:
+            old_models=manifest['sets'].get(job,{}).get('models',{})
+            manifest['sets'][job]={'items':entries,'pose':spec['pose'],
+                                   'models':dict(old_models) if args.characters else {}}
+            for char_id in character_ids:
                 row=characters[char_id];framework=int(row[5]);lab=(client/f'animation/{framework:04d}.lab').read_bytes()
                 parts={slot:int(row[8+slot]) for slot in range(5)}
                 parts.update(spec['items']);overrides={}
@@ -102,15 +157,10 @@ def main():
                         raw=source.read_bytes();relative=f'slot-{slot}/{filename}'
                         zipfile.writestr(relative,raw)
                         if slot in (6,9):overrides[relative]=weapon_geometry(raw,lab,slot)
-                # 54 movimentos históricos do banco de arma correspondente,
-                # incluindo poses de guarda, sociais, bancos, paredes, habilidades
-                # e interações — todos os IDs com frames válidos para este ator.
-                # --compact preserva o subconjunto leve para celulares modestos.
-                base_ids=range(1,55) if not args.compact else (1,4,5,6,7,8,9,10,11,12,13,14)
-                actions=[i+spec['pose']*54 for i in base_ids]
-                # Poses comuns de personagem permanecem selecionáveis mesmo
-                # com modelo equipado (016, 030, 031, 038).
-                actions.extend([16,18,30,31,38])
+                # Exportação completa: 54 IDs do banco armado e 54 do banco
+                # compartilhado. convert() ignora os IDs sem frames válidos.
+                # --compact mantém o modo leve da versão anterior.
+                actions=selected_action_ids(spec['pose'],args.compact)
                 filename=f'{NAMES[char_id]}-{job}.glb'
                 result=convert(archive,[client/'texture/character',client/'texture/item'],out/'models'/filename,
                                action_section=int(row[20]),action_ids=sorted(set(actions)),geometry_overrides=overrides)

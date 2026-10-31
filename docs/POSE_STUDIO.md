@@ -175,3 +175,30 @@ dos GLBs; verifique carregamento e FPS no celular após gerar os arquivos.
 - O navegador não tem acesso de escrita ao repositório; a exportação JSON
   precisa ser enviada/commitada via GitHub.
 
+
+## Reconstrução por ZIP do Lance Crusader (bancos completos)
+
+O exportador agora aceita diretamente o ZIP criado pelo
+`Lance/selecionar_assets.py`, sem extrair o Client inteiro.
+Para reconstruir apenas Lance, sem exigir arquivos da Phyllis:
+
+```bash
+python3 -m pip install numpy pillow
+python3 scripts/build_evanescence.py lance-crusader-assets.zip --classes crusader --characters lance
+python3 scripts/verify_pose_glb.py assets/equipment/models/lance-crusader.glb --actor lance --job crusader
+python3 -m unittest discover -s tests -p 'test_pose_export.py'
+```
+
+Sem `--compact`, o exportador seleciona os 54 IDs do banco da arma **e**
+os 54 IDs base/compartilhados. O conversor ignora automaticamente as ações
+sem intervalos de frames válidos. Na tabela do Lance, **72 ações distintas**
+são válidas para os bancos base + duas espadas (35 + 37), incluindo as
+60 ausentes identificadas no GLB anterior. Isso não significa que cada ação
+tenha 72 arquivos separados: os quadros pertencem ao `0000.lab`.
+
+`--compact` continua disponível para preservar apenas o subconjunto leve.
+O novo `--characters` preserva as referências a modelos não reconstruídos
+no manifesto. O arquivo GLB deve ser testado no Pose Studio e no jogo antes de
+ser publicado; este comando grava o modelo em
+`assets/equipment/models/lance-crusader.glb`. Os arquivos binários antigos
+**não são atualizados apenas ao modificar o script de conversão**.
