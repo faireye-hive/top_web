@@ -23,17 +23,47 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
   const visible=m=>m&&m.hp>0&&m.ready!==false;
   const valid=(m,p)=>visible(m)&&distance(m,p)<=COMBAT.targetRadius&&canSee(p,m);
   function notice(message){onEvent({type:'notice',message});return false;}
-  function stop(){auto=false;pending=null;intent=null;casting=null;target=null;manual=false;scan=0;}
-  function toggle(){if(hero.hp<=0)return false;auto=!auto;if(!auto)stop();return auto;}
+  function stop(preserveTarget=false){
+    const selected=preserveTarget&&visible(target)?target:null;
+    auto=false;pending=null;intent=null;casting=null;target=selected;manual=!!selected;scan=0;
+  }
+  function toggle(){
+    if(hero.hp<=0)return false;
+    if(auto){
+      // Desligar auto não apaga o alvo: o jogador pode atacar manualmente.
+      stop(true);return false;
+    }
+    auto=true;return true;
+  }
   function selectTarget(monster,position){
     if(hero.hp<=0||!valid(monster,position))return false;
-    target=monster;manual=true;auto=true;pending=null;intent=null;
+    // Selecionar um alvo NÃO liga o automático.
+    target=monster;manual=true;pending=null;intent=null;
     onEvent({type:'selected',monster});return true;
   }
   function cycleTarget(position){
     const choices=monsters.filter(m=>valid(m,position)).sort((a,b)=>distance(a,position)-distance(b,position)||a.id-b.id);
     if(!choices.length)return notice('Nenhum monstro visível a até 30 m.');
     return selectTarget(choices[(choices.indexOf(target)+1)%choices.length],position);
+  }
+  function startSwing(monster,position){
+    const period=1/stats().attackSpeed;
+    const flight=basicAttackRange(hero)>3?distance(position,monster)/30:0;
+    cooldown=period;pending={monster,time:period*.35+flight};
+    onEvent({type:'swing',monster,period,flight});
+  }
+  function manualAttack(position){
+    if(hero.hp<=0||auto||pending||casting||intent||cooldown>0)return false;
+    if(!valid(target,position)){
+      target=nearestMonster(monsters,position,COMBAT.targetRadius,canSee);
+      manual=!!target;
+      if(target)onEvent({type:'selected',monster:target});
+    }
+    if(!target)return notice('Nenhum monstro próximo. Selecione um alvo.');
+    if(distance(position,target)>basicAttackRange(hero))
+      return notice('Aproxime-se do alvo para atacar manualmente.');
+    startSwing(target,position);
+    return true;
   }
   function queueSkill(entry,position){
     const skill=skillWithRules(entry);
@@ -84,7 +114,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
   }
   function update(dt,position,{paused=false,moving=false,busy=false}={}){
     if(paused){stop();return;}
-    if(moving)stop();
+    if(moving)stop(!auto); // Movimento cancela auto; mantém alvo selecionado no manual.
     cooldown=Math.max(0,cooldown-dt);quiet+=dt;
     for(const id of Object.keys(cooldowns))cooldowns[id]=Math.max(0,cooldowns[id]-dt);
     for(const name of Object.keys(buffs))buffs[name]=Math.max(0,buffs[name]-dt);
@@ -146,11 +176,8 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
         }
       }
     }
-    if(auto&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero)){
-      const period=1/stats().attackSpeed,flight=basicAttackRange(hero)>3?distance(position,target)/30:0;
-      cooldown=period;pending={monster:target,time:period*.35+flight};
-      onEvent({type:'swing',monster:target,period,flight});
-    }
+    if(auto&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
+      startSwing(target,position);
     for(const m of monsters){
       if(!m.engaged||m.hp<=0||m.cooldown>0||m.ready===false||m.status.stun>0||buffs.stealth>0)continue;
       if(distance(position,m)>COMBAT.range+.4||!canSee(position,m))continue;
@@ -166,7 +193,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       hero.mp=Math.min(hero.stats.maxMp,hero.mp+hero.stats.maxMp*.04*dt);
     }
   }
-  return {update,stop,toggle,queueSkill,selectTarget,cycleTarget,cooldowns,buffs,
+  return {update,stop,toggle,manualAttack,queueSkill,selectTarget,cycleTarget,cooldowns,buffs,
     get auto(){return auto;},get target(){return target;},get recovering(){return hero.hp<=0;},
     get approach(){
       if(casting||pending)return null;
