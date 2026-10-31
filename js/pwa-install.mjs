@@ -22,8 +22,8 @@ window.addEventListener('beforeinstallprompt',event=>{
 });
 window.addEventListener('appinstalled',()=>{pendingPrompt=null;hide()});
 if(mobile&&!standalone()){
-  // iOS Safari does not fire beforeinstallprompt.
-  if(ios)setTimeout(show,2500);
+  // iOS and browsers without beforeinstallprompt still offer manual install.
+  setTimeout(show,2500);
 }
 close?.addEventListener('click',()=>{
   hide();try{sessionStorage.setItem('top-pwa-dismissed','1')}catch{}
