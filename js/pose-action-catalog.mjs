@@ -60,3 +60,41 @@ export function filterHistoricalActions(records,{query='',category='all',status=
     return [r.code,String(r.id),r.label,r.original,r.groupName].some(text=>plain(text).includes(search));
   });
 }
+
+/**
+ * Only actions with documented source frames and no exported GLB clip count
+ * as "missing". No-source-frame entries need investigation, not export.
+ */
+export const HISTORICAL_LAB_BY_ACTOR={
+  lance:'0000.lab',carsise:'0001.lab',phyllis:'0002.lab',ami:'0003.lab'
+};
+export function missingHistoricalActions(records){
+  return (records||[]).filter(row=>row.status==='not-exported'&&!row.available&&row.frames?.length>=2);
+}
+export function missingActionReportText({actor,job,modelPath,records}){
+  const actorName={lance:'Lance',carsise:'Carsise',phyllis:'Phyllis',ami:'Ami'}[actor]||actor;
+  const missing=missingHistoricalActions(records);
+  const withoutFrames=(records||[]).filter(row=>row.status==='no-source-frames').length;
+  const lab=HISTORICAL_LAB_BY_ACTOR[actor]||'(verificar framework do ator)';
+  const lines=[
+    'TOP Web — Animações históricas não exportadas',
+    'Personagem: '+actorName,
+    'Classe: '+job,
+    'Modelo verificado: '+(modelPath||'(modelo base / não informado)'),
+    'Ações com frames presentes no arquivo histórico e ausentes da prévia: '+missing.length,
+    'Ações sem frames válidos neste personagem (não entram como faltantes): '+withoutFrames,
+    'Origem das animações: Client/animation/'+lab,
+    'Tabela de IDs / quadros: Client/scripts/txt/CharacterAction.tx',
+    'Referência de nomes: referencias/characterposeinfo.txt',
+    'Observação: cada pose é um intervalo dentro do LAB, não um arquivo separado.',
+    'Para aparecer no jogo, reconverter o GLB incluindo os IDs listados.',
+    ''
+  ];
+  if(!missing.length)lines.push('Nenhuma animação com frames documentados está faltando nesta seleção.');
+  for(const row of missing){
+    const range=row.frames[0]+'–'+row.frames[1];
+    lines.push(row.code+' — '+row.label+' | '+row.groupName+' | frames '+range+
+      ' | ID '+row.id+(row.original?' | Original: '+row.original:''));
+  }
+  return lines.join('\n')+'\n';
+}
