@@ -75,7 +75,7 @@ test('editor e exportador não restringem mais catálogo às cinco poses genéri
  assert.match(editor,/catalogForActor\(historicalCatalog,actorEl\.value,bank,clips/);
  assert.match(editor,/fetch\('assets\/poses\/historical-catalog\.json\?v=1'\)/);
  assert.match(editor,/option\.textContent=record\?record\.code/);
- assert.match(build,/base_ids=range\(1,55\) if not args\.compact/);
+ assert.match(build,/actions=selected_action_ids\(spec\['pose'\],args\.compact\)/);
  assert.match(converter,/"Sentado no chão"/);
  assert.match(converter,/"Sentado no banco"/);
  assert.match(converter,/"Encostado na parede"/);
