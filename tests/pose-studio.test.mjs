@@ -72,7 +72,7 @@ test('reconhece somente partes weapon de GLB e ossos da cena',()=>{
 });
 test('arma original reaparece no combate e cópia guardada fica oculta',()=>{
  const root={children:[],add(o){this.children.push(o);o.parent=this},getObjectByName(n){return bone.name===n?bone:null},traverse(fn){fn(mesh);fn(bone)}};
- const bone={isBone:true,name:'Osso 2 · Bip01 Spine',add(o){o.parent=this}};
+ const bone={isBone:true,name:'Osso 2 · Bip01 Spine',add(o){o.parent=this},remove(o){o.parent=null}};
  const geom={getAttribute(k){return k==='skinIndex'?{count:1,getX:()=>0}:k==='skinWeight'?{count:1,getX:()=>1}:null},
    clone(){return {applyMatrix4(){},computeBoundingBox(){this.boundingBox={getCenter:v=>v}},translate(){},dispose(){}}}};
  const mesh={isSkinnedMesh:true,name:'Parte 5 · weapon',geometry:geom,
