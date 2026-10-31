@@ -1592,9 +1592,11 @@ function update(dt){
   if(keys.has('ArrowDown')){if(MOBILE_UI)mobileOrbitLift=Math.max(1.35,mobileOrbitLift-dt*.55);else CAM.lift-=dt*.55;}
   if(keys.has('ArrowUp')){if(MOBILE_UI)mobileOrbitLift=Math.min(2.4,mobileOrbitLift+dt*.55);else CAM.lift+=dt*.55;}
   if(MOBILE_UI){
-    // Acompanhar a direção com um limite angular; órbita livre mantém a velocidade antiga.
-    // Limite de ~24°/s e correção total de ~24° por gesto: evita enjoo.
-    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,mobileCameraMode==='follow'?.42:1.1);
+    // Limitar SOMENTE o giro automático; arrastar o dedo mantém a resposta manual.
+    // A correção automática não ultrapassa ~24°/s nem ~24° por gesto.
+    const manualOrbit=performance.now()<cameraManualUntil;
+    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,
+      mobileCameraMode==='follow'&&!manualOrbit?.42:1.1);
     CAM.lift=THREE.MathUtils.lerp(CAM.lift,mobileOrbitLift,1-Math.exp(-dt*7));
   }
   clampCam();
