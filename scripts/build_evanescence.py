@@ -100,9 +100,12 @@ def main():
                         raw=source.read_bytes();relative=f'slot-{slot}/{filename}'
                         zipfile.writestr(relative,raw)
                         if slot in (6,9):overrides[relative]=weapon_geometry(raw,lab,slot)
-                # Um banco de arma e as poses sociais básicas; não exporta o LAB inteiro.
-                actions=[1+spec['pose']*54,5+spec['pose']*54,7+spec['pose']*54,
-                         *[i+spec['pose']*54 for i in (11,12,13,14)],18]
+                # Exportar o conjunto de ações de combate históricas por arma.
+                # 1 = descanso, 4 = guarda, 5 = corrida, 6 = corrida armada,
+                # 7/8/9 = ataques básicos, 10 = golpe forte; 11..14 = skills.
+                # Não reinterpreta IDs históricos como poses inventadas.
+                actions=[i+spec['pose']*54 for i in (1,4,5,6,7,8,9,10,11,12,13,14)]
+                actions.append(18)  # Aceno social sem equipamento
                 if char_id==1:actions.extend([16,30,31,38])
                 filename=f'{NAMES[char_id]}-{job}.glb'
                 result=convert(archive,[client/'texture/character',client/'texture/item'],out/'models'/filename,
