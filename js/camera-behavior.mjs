@@ -25,3 +25,14 @@ export function cameraFovAtDistance(distance) {
   const t = Math.max(0, Math.min(1, (distance - 3.2) / 9.8));
   return 62 - 10.4 * t;
 }
+
+// Transforma o joystick (frente/lado) numa direção no mundo.
+// Um yaw fixado no início do toque mantém o rumo estável enquanto a câmera
+// gira para seguir o personagem; sem isso, o input lateral causaria círculos.
+export function movementFromYaw(yaw,forward,sideways){
+  const sin=Math.sin(yaw),cos=Math.cos(yaw);
+  return {
+    dx:sin*forward-cos*sideways,
+    dz:cos*forward+sin*sideways
+  };
+}
