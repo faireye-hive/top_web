@@ -74,10 +74,10 @@ font:600 12px system-ui,sans-serif}
    <label class="check"><input type="checkbox" id="autocamera" checked> Câmera acompanha direção (desktop)</label>
    <label class="small" for="mobile-camera-mode"><strong>Câmera no celular</strong></label>
    <select id="mobile-camera-mode" aria-label="Modo da câmera no celular">
-    <option value="follow">Atrás do personagem · suave</option>
+    <option value="follow">Atrás do personagem · giro discreto</option>
     <option value="free">Livre · giro manual</option>
    </select>
-   <div class="small">No modo suave, a câmera gira atrás da direção em que você anda. Você ainda pode arrastar para olhar ao redor; o acompanhamento retorna depois de 2,5 s de movimento. No modo livre, a câmera só acompanha a posição.</div>
+   <div class="small">Giro discreto: a câmera corrige no máximo cerca de 24° por movimento, lentamente (24°/s), sem dar voltas grandes. Arrastar permite olhar ao redor; o ajuste automático é pausado por 2,5 s. Livre: apenas acompanha a posição.</div>
    <label class="small">Visual do mundo</label>
    <select id="visualmode"><option value="classic">Clássico · cores mais vivas</option><option value="cinematic">Cinemático · tons suaves</option></select>
    <label class="small">Orientação ao sentar</label>
@@ -208,7 +208,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=36"></script>
+<script type="module" src="./js/main.js?v=37"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

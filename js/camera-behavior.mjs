@@ -36,3 +36,13 @@ export function movementFromYaw(yaw,forward,sideways){
     dz:cos*forward+sin*sideways
   };
 }
+
+// Acompanhamento mobile discreto: limita quanto a câmera se afasta do
+// ângulo no INÍCIO de um gesto e ignora pequenas correções de direção.
+// Segurar um joystick lateral não pode provocar uma volta de 90°/180°.
+export function subtleFollowTarget(anchor,target,maxTurn=.42,deadZone=.12){
+  if(!Number.isFinite(anchor)||!Number.isFinite(target))return anchor;
+  const diff=wrapAngle(target-anchor);
+  const angle=Math.max(0,Math.min(Math.max(0,maxTurn),Math.abs(diff)-Math.max(0,deadZone)));
+  return anchor+Math.sign(diff)*angle;
+}

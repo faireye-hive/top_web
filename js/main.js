@@ -14,7 +14,7 @@ import { createCombat, COMBAT } from './combat-state.mjs?v=3';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
 import { calculateMovementSpeed } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
-import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw } from './camera-behavior.mjs?v=3';
+import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
@@ -44,6 +44,7 @@ let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
 // Modo novo por padrão; o jogador pode escolher a órbita livre e o valor fica salvo.
 let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'free':'follow';
 let mobileSteeringReferenceYaw=null; // travado enquanto o joystick estiver pressionado
+let mobileFollowAnchorYaw=null; // limita giro automático a ~24° por gesto
 let cameraManualUntil=0;
 let cameraFollowTarget=null;
 let mobileOrbitYaw=CAM.yaw,mobileOrbitLift=CAM.lift;
@@ -73,6 +74,7 @@ let attackPlaying=false, testing=false;
 let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
+let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
 // Pacote binário opcional: até ser instalado, o jogo conserva o HUD anterior.
 const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
   mobileSkillCatalog=catalog;
@@ -424,7 +426,7 @@ function faceTravel(dx,dz,dt){
   avatar.rotation.y+=THREE.MathUtils.clamp(diff,-dt*12,dt*12);
 }
 function teleport(x,z){
-  stopCombat();
+  stopCombat(true);
   x=THREE.MathUtils.clamp(x,world.ox+.01,world.ox+world.w-1.01);
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
@@ -435,6 +437,7 @@ function teleport(x,z){
   // Teleporte é uma descontinuidade: centralizar imediatamente, sem rastro.
   mobileCameraFocus.copy(playerPos);
   mobileSteeringReferenceYaw=null;
+  mobileFollowAnchorYaw=null;
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
@@ -465,6 +468,7 @@ function primaryAction(){
   return tryPose();
 }
 function tryPose(){
+  if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   stopCombat();
   const context=primaryContext();
   if(context.type==='recovering')return false;
@@ -495,12 +499,17 @@ function playClip(match,once=false){
   if(!once&&match==='Parado')$('idle').classList.add('active');
   return true;
 }
-function stopCombat(){
+function stopCombat(force=false){
+  // Um movimento, clique ou abertura de HUD não deve interromper a skill GLB.
+  // Interrupção explícita só para troca de personagem/teleporte/derrota.
+  if(skillAnimationLocked&&!force)return;
+  if(force)skillAnimationLocked=false;
   skillActionQueue=[];
   if(combat?.auto||attackPlaying){attackPlaying=false;playClip('Parado');}
   combat?.stop();
 }
 function attack(){
+  if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return;}
   if(!combat||changingCharacter||rpgHud?.isOpen()||hero.hp<=0)return;
   if(seated){toast('Levante antes de combater.');return;}
   if(combat.auto){stopCombat();toast('Ataque automático desligado.');return;}
@@ -517,7 +526,7 @@ function clearAvatar(){
 }
 async function loadCharacter(id){
   if(changingCharacter||!CHARACTERS[id])return;
-  changingCharacter=true;stopCombat();
+  changingCharacter=true;stopCombat(true);
   const selector=$('hero-character');if(selector)selector.disabled=true;
   try{
     const relative=hero.equipped?equipmentManifest?.sets?.[hero.job]?.models?.[id]:null;
@@ -541,17 +550,20 @@ async function loadCharacter(id){
       else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
-    animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;
+    animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
     mixer.addEventListener('finished',event=>{
       if(event.action!==runningAction)return;
+      // NÃO finalizar a skill no primeiro clipe: algumas classes têm
+      // uma sequência de ações GLB que deve tocar até o último finished.
       if(skillActionQueue.length&&!seated){
         const next=skillActionQueue.shift();
         if(playClip(next,true))return;
       }
       if(seated){if(seated.role==='sit'&&!currentClip.toLowerCase().includes('sentado'))playClip('Sentado');return;}
+      skillAnimationLocked=false;
       attackPlaying=false;playClip('Parado');
     });
     playClip('Parado');rpgHud?.setClips(animations);
@@ -582,11 +594,16 @@ function combatLineOfSight(a,b){
   return true;
 }
 function playSkillAnimation(skill){
+  if(skillAnimationLocked)return false;
   const clip=resolveSkillClip(skill,hero.character,animations);
   if(!clip)return false;
   const chain=(skill.actions?.[hero.character]||[]).map(item=>animations.find(a=>getActionId(a)===item.id)).filter(Boolean);
   skillActionQueue=chain.slice(1).map(a=>a.name);
-  attackPlaying=playClip(clip.name,true);return attackPlaying;
+  const played=playClip(clip.name,true);
+  if(!played){skillActionQueue=[];return false;}
+  skillAnimationLocked=true;
+  attackPlaying=true;
+  return true;
 }
 let stealthAvatar=null,stealthActive=false;
 function updateStealth(){
@@ -601,7 +618,7 @@ function updateStealth(){
 function combatEvent(event){
   monsterManager?.onEvent(event);
   if(event.type==='notice')toast(event.message);
-  if(event.type==='interrupt'){skillActionQueue=[];attackPlaying=false;playClip('Parado');}
+  if(event.type==='interrupt'&&!skillAnimationLocked){skillActionQueue=[];attackPlaying=false;playClip('Parado');}
   if(event.type==='cast'){
     if(event.monster&&avatar)avatar.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
     playSkillAnimation(event.skill);
@@ -625,7 +642,7 @@ function combatEvent(event){
   if(event.type==='hit'&&feedback)feedback.textContent=event.damage?`${event.monster.name}: −${event.damage} HP`:'O alvo esquivou.';
   if(event.type==='hurt'&&feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
   if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
-  if(event.type==='defeat'){attackPlaying=false;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
+  if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
 }
 function updateCombatHud(){
@@ -1575,8 +1592,11 @@ function update(dt){
   if(keys.has('ArrowDown')){if(MOBILE_UI)mobileOrbitLift=Math.max(1.35,mobileOrbitLift-dt*.55);else CAM.lift-=dt*.55;}
   if(keys.has('ArrowUp')){if(MOBILE_UI)mobileOrbitLift=Math.min(2.4,mobileOrbitLift+dt*.55);else CAM.lift+=dt*.55;}
   if(MOBILE_UI){
-    // Acompanhar a direção com um limite angular; órbita livre mantém a velocidade antiga.
-    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,mobileCameraMode==='follow'?2.1:1.1);
+    // Limitar SOMENTE o giro automático; arrastar o dedo mantém a resposta manual.
+    // A correção automática não ultrapassa ~24°/s nem ~24° por gesto.
+    const manualOrbit=performance.now()<cameraManualUntil;
+    CAM.yaw=gentleOrbit(CAM.yaw,mobileOrbitYaw,dt,
+      mobileCameraMode==='follow'&&!manualOrbit?.42:1.1);
     CAM.lift=THREE.MathUtils.lerp(CAM.lift,mobileOrbitLift,1-Math.exp(-dt*7));
   }
   clampCam();
@@ -1588,19 +1608,24 @@ function update(dt){
   // Congelar o referencial do joystick durante uma mesma pressão.
   // Sem isto, o giro da câmera muda o vetor de deslocamento a cada frame
   // e segurar 'esquerda' faria o personagem andar em círculos.
-  const steering=MOBILE_UI&&mobileCameraMode==='follow'&&Math.hypot(fw,sideways)>.04;
-  if(steering&&mobileSteeringReferenceYaw===null)mobileSteeringReferenceYaw=CAM.yaw;
-  if(!steering)mobileSteeringReferenceYaw=null;
+  const steering=MOBILE_UI&&mobileCameraMode==='follow'&&!skillAnimationLocked&&Math.hypot(fw,sideways)>.04;
+  if(steering&&mobileSteeringReferenceYaw===null){
+    mobileSteeringReferenceYaw=CAM.yaw;
+    mobileFollowAnchorYaw=CAM.yaw;
+  }
+  if(!steering){mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;}
   let dx=fwd.x*fw+right.x*sideways;
   let dz=fwd.z*fw+right.z*sideways;
   if(steering){
     const move=movementFromYaw(mobileSteeringReferenceYaw,fw,sideways);
     dx=move.dx;dz=move.dz;
   }
-  if(combat?.auto&&npcManager?.nearest(playerPos.x,playerPos.z))stopCombat();
-  const manualMove=!!(dx||dz||moverTarget);
+  if(!skillAnimationLocked&&combat?.auto&&npcManager?.nearest(playerPos.x,playerPos.z))stopCombat();
+  // Durante skill, ignorar movimento; não cancelar combate e nem o clip GLB.
+  const manualMove=!skillAnimationLocked&&!!(dx||dz||moverTarget);
   if(manualMove)stopCombat();
-  if(dx||dz){moverTarget=null;pendingPose=null;waypoint.hide();}
+  if(skillAnimationLocked){dx=0;dz=0;}
+  else if(dx||dz){moverTarget=null;pendingPose=null;waypoint.hide();}
   else if(moverTarget){
     dx=moverTarget.x-playerPos.x;dz=moverTarget.z-playerPos.z;
     if(Math.hypot(dx,dz)<.35){
@@ -1614,7 +1639,7 @@ function update(dt){
   let chasing=false;
   const target=combat?.target;
   const approach=combat?.approach;
-  if(approach&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
+  if(approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
     dx=approach.target.x-playerPos.x;dz=approach.target.z-playerPos.z;chasing=true;
   }
   if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
@@ -1659,8 +1684,9 @@ function update(dt){
     // Modo mobile "Seguir direção": a câmera gira atrás do rumo REAL percorrido.
     // Arrastar a câmera suspende o giro automático temporariamente.
     if(MOBILE_UI&&mobileCameraMode==='follow'&&moved&&!seated&&
-       performance.now()>cameraManualUntil){
-      mobileOrbitYaw=Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ);
+       mobileFollowAnchorYaw!==null&&performance.now()>cameraManualUntil){
+      mobileOrbitYaw=subtleFollowTarget(mobileFollowAnchorYaw,
+        Math.atan2(playerPos.x-beforeX,playerPos.z-beforeZ));
     }
     // O rumo do avatar guia a câmera quando caminha para a frente.
     // Não gira durante strafing lateral puro (A/D), para evitar órbitas.
@@ -1822,6 +1848,7 @@ window.__selfTestControls=async function(){
 };
 rpgHud=initRpgHud({
   onOpen:()=>{
+    if(skillAnimationLocked){rpgHud?.dismiss();toast('Aguarde a skill terminar para abrir o menu.');return;}
     stopCombat();
     keys.clear();touchMove.forward=0;touchMove.sideways=0;
     moverTarget=null;pendingPose=null;waypoint.hide();
@@ -1829,16 +1856,18 @@ rpgHud=initRpgHud({
     if(!seated){attackPlaying=false;playClip('Parado');}
   },
   onPlayClip:clip=>{
+    if(skillAnimationLocked){toast('Aguarde a skill terminar.');return false;}
     stopCombat();
     if(hero.hp<=0||changingCharacter)return false;
     if(seated){toast('Levante antes de executar uma skill.');return false;}
     if(attackPlaying)return false;
     const played=playClip(clip,true);
-    if(played)attackPlaying=true;
+    if(played){attackPlaying=true;skillAnimationLocked=true;}
     else toast('A animação não está disponível no personagem atual.');
     return played;
   },
   onPlaySkill:skill=>{
+    if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
     if(!combat||hero.hp<=0||changingCharacter||changingLoadout||seated)return false;
     if(!resolveSkillClip(skill,hero.character,animations)){toast('Animação indisponível para este personagem.');return false;}
     const queued=combat.queueSkill(skill,playerPos);
@@ -1863,6 +1892,7 @@ function updateEquipmentUi(){
     'Visuais do tier 55 original, liberados no nível 1. Bônus novos: +4 ataque e +4 defesa pelo conjunto.';
 }
 async function changeLoadout(change){
+  if(skillAnimationLocked){toast('Aguarde a skill terminar para trocar personagem ou equipamento.');updateEquipmentUi();return;}
   if(changingLoadout||changingCharacter)return;
   if(seated&&!standUp())return;
   const previous={job:hero.job,character:hero.character,equipped:hero.equipped};
@@ -1904,11 +1934,11 @@ $('noclip').addEventListener('change',e=>{allowBlocked=e.target.checked;toast(al
 $('reset').addEventListener('click',()=>{localStorage.removeItem('topweb_garner_position');CAM.yaw=Math.PI-.35;CAM.dist=15;CAM.lift=1.85;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;teleport(2218.5,2776.5);});
 $('toggle').addEventListener('click',()=>document.body.classList.toggle('compact'));
 $('show').addEventListener('click',()=>{document.body.classList.remove('compact');document.body.classList.toggle('nohud');});
-$('idle').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Parado');});
-$('run').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Correr');});
+$('idle').addEventListener('click',()=>{if(skillAnimationLocked)return;stopCombat();attackPlaying=false;playClip('Parado');});
+$('run').addEventListener('click',()=>{if(skillAnimationLocked)return;stopCombat();attackPlaying=false;playClip('Correr');});
 $('atk').addEventListener('click',primaryAction);
-$('dance').addEventListener('click',()=>{stopCombat();attackPlaying=false;playClip('Acenar',true);});
-if($('sit'))$('sit').addEventListener('click',()=>{attackPlaying=false;tryPose();});
+$('dance').addEventListener('click',()=>{if(skillAnimationLocked)return;stopCombat();attackPlaying=false;playClip('Acenar',true);});
+if($('sit'))$('sit').addEventListener('click',()=>{if(skillAnimationLocked)return;attackPlaying=false;tryPose();});
 function setVisualMode(mode){
   visualMode=mode==='cinematic'?'cinematic':'classic';
   renderer.toneMapping=visualMode==='cinematic'?THREE.ACESFilmicToneMapping:THREE.NoToneMapping;
@@ -1926,7 +1956,7 @@ if(mobileCameraModeSelect){
   mobileCameraModeSelect.value=mobileCameraMode;
   mobileCameraModeSelect.addEventListener('change',e=>{
     mobileCameraMode=e.target.value==='free'?'free':'follow';
-    mobileSteeringReferenceYaw=null;
+    mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
     mobileOrbitYaw=CAM.yaw;
     setPref('topweb_mobile_camera_mode',mobileCameraMode);
     toast(mobileCameraMode==='follow'?'Câmera acompanha a direção do personagem.':'Câmera livre ativada.');
@@ -1969,6 +1999,7 @@ function aimMode(point){
   return 'move';
 }
 function orderMove(x,z,pose){
+  if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   stopCombat();
   if(hero.hp<=0||changingCharacter)return false;
   const free=walkable(x,z)?[x,z]:findFree(x,z);
@@ -2010,7 +2041,7 @@ configureMobileControls();
 mobileQuery.addEventListener('change',()=>{
   MOBILE_UI=mobileQuery.matches;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;document.body.classList.toggle('mobile-ui',MOBILE_UI);
   mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
-  mobileSteeringReferenceYaw=null;
+  mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
   maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
