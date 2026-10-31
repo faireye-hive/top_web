@@ -67,6 +67,7 @@ test('botões de outras poses e menus não interrompem animação de skill',()=>
   assert.match(code,/if\(\$\('sit'\)\)\$\('sit'\)\.addEventListener\('click',\(\)=>\{if\(skillAnimationLocked\)return/);
   assert.match(code,/onOpen:\(\)=>\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function orderMove\(x,z,pose\)\{\s*if\(skillAnimationLocked\)/);
+  assert.match(code,/async function changeLoadout\(change\)\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function tryPose\(\)\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function teleport\(x,z\)\{\s*stopCombat\(true\)/);
   assert.match(code,/if\(event\.type==='defeat'\)\{skillAnimationLocked=false/);
