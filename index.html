@@ -116,6 +116,8 @@ font:600 12px system-ui,sans-serif}
      <span class="small">1× = original · 2× = mais rápido · 5× = máximo</span>
      <button type="button" id="mobile-touch-reset">Restaurar</button>
     </div>
+    <label class="check"><input id="mobile-touch-invert-x" type="checkbox"> Inverter giro horizontal (esquerda/direita)</label>
+    <label class="check"><input id="mobile-touch-invert-y" type="checkbox"> Inverter giro vertical (cima/baixo)</label>
    </div>
    <div class="small">O arrasto com o dedo responde imediatamente, nos modos Livre e Acompanhamento. No acompanhamento, olhar ao redor pausa o giro automático por 2,5 s.</div>
    <label class="small">Visual do mundo</label>
@@ -168,14 +170,15 @@ font:600 12px system-ui,sans-serif}
     <div class="mobile-zoom"><button id="mobile-zoom-in" type="button" aria-label="Aproximar câmera">+</button><button id="mobile-zoom-out" type="button" aria-label="Afastar câmera">−</button></div>
     <button id="mobile-run" type="button" aria-label="Alternar corrida" aria-pressed="false"><svg aria-hidden="true"><use href="#ui-run"></use></svg><small>Correr</small></button>
     <button id="mobile-target" type="button" aria-label="Alternar alvo"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 2v9m0 10v9M2 16h9m10 0h9" stroke="currentColor" stroke-width="2"/></svg><small>Alvo</small></button>
-    <button id="mobile-attack" type="button" aria-label="Alternar ataque automático" aria-pressed="false"><svg aria-hidden="true"><use href="#ui-swords"></use></svg><small>Auto</small></button>
+    <button id="mobile-auto" type="button" aria-label="Ativar ataque automático" aria-pressed="false" title="Ativar ou desligar ataque automático"><svg aria-hidden="true"><use href="#ui-swords"></use></svg><small>Auto</small></button>
+    <button id="mobile-attack" type="button" aria-label="Atacar manualmente"><svg aria-hidden="true"><use href="#ui-swords"></use></svg><small>Atacar</small></button>
   </div>
 </div>
 <aside class="combat-panel" aria-label="Combate">
  <strong id="combat-mode">Auto desligado</strong>
  <span id="combat-target">Nenhum alvo próximo</span>
  <div class="combat-health"><i id="combat-target-fill"></i></div>
- <small id="combat-feedback" role="status">Auto seleciona o monstro próximo. Mover interrompe.</small>
+ <small id="combat-feedback" role="status">Selecione alvo e ataque manualmente, ou ative Auto. Mover interrompe o automático.</small>
 
 </aside>
 <button type="button" class="rpg-toggle" id="rpg-open" aria-haspopup="dialog" aria-controls="rpg-panel" aria-expanded="false">☷ Herói</button>
@@ -248,7 +251,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=39"></script>
+<script type="module" src="./js/main.js?v=40"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>
