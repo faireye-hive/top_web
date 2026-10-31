@@ -91,23 +91,49 @@ export function selectPoseName(state,profile,clips,bank=null){
     return selectPoseName(state==='guard'?'idle':'run',profile,clips,bank);
   return clips[0]?.name||'';
 }
+function weaponPartNumber(name){
+  // GLTFLoader may sanitize "Parte 5 · weapon" to "Parte_5__weapon".
+  // Metadata from glTF extras is authoritative; names are legacy fallback.
+  const match=/^Parte[\s_]*(\d+)(?:[\s_.·-]|$)/i.exec(String(name||''));
+  return match?Number(match[1]):null;
+}
+
 export function weaponMeshNodes(avatar){
-  const result=[];
+  const found=[];
   avatar?.traverse(o=>{
-    if(!o.isSkinnedMesh||!o.skeleton)return;
-    const part=/^Parte\s*(\d+)\s*·\s*(.+)$/i.exec(o.name);
-    if(!part)return;
-    const role=o.userData?.topRole;
-    const labeled=/^weapon(?:\b|$)/i.test(part[2]);
-    // GLBs anteriores nomeiam as armas pelo arquivo LGO, por exemplo
-    // "Parte 5 · 01010021.lgo". Equipamentos gerados têm 5 partes de
-    // corpo seguidas dos slots 6/9 (armas). Esta detecção é compatível
-    // com os modelos binários já publicados, sem precisar reconvertê-los.
-    const legacy=Number(part[1])>=5 && /\.lgo$/i.test(part[2]);
-    if(role!=='weapon'&&!labeled&&!legacy)return;
-    result.push(o);
+    // Keep even non-skinned meshes selectable: "Ocultar" must always work.
+    // If a mesh cannot be copied to the back, WeaponHolster reports why.
+    if(!o.isMesh&&!o.isSkinnedMesh)return;
+    const role=String(o.userData?.topRole||'').toLowerCase();
+    const slot=Number(o.userData?.equipmentSlot);
+    const part=weaponPartNumber(o.name);
+    const legacyName=String(o.name||'');
+    const labeled=part!==null&&/(?:^|[\s_·-])weapon(?:$|[\s_.·-])/i.test(legacyName);
+    const legacy=part!==null&&part>=5&&/(?:\.?lgo)(?:$|[\s_.-])/i.test(legacyName);
+    const tagged=(role==='weapon'||(slot===6||slot===9)&&part!==null);
+    if(!tagged&&!labeled&&!legacy)return;
+    found.push(o);
   });
-  return result.sort((a,b)=>Number(/Parte\s*(\d+)/.exec(a.name)?.[1]||0)-Number(/Parte\s*(\d+)/.exec(b.name)?.[1]||0));
+  // Preserve weapon-0/weapon-1 across reexports and saved presets.
+  return found.sort((a,b)=>{
+    const slotA=Number(a.userData?.equipmentSlot),slotB=Number(b.userData?.equipmentSlot);
+    const orderA=slotA===6?0:slotA===9?1:(weaponPartNumber(a.name)??99);
+    const orderB=slotB===6?0:slotB===9?1:(weaponPartNumber(b.name)??99);
+    return orderA-orderB;
+  });
+}
+
+export function findHistoricalDummy(avatar,number){
+  let found=null;
+  avatar?.traverse(o=>{
+    if(found)return;
+    const tagged=Number(o.userData?.topDummy)===number;
+    // Old GLBs without extras and GLTFLoader-sanitized node names.
+    const name=String(o.name||'');
+    const named=new RegExp('^TOP[ _]Dummy[ _]'+number+'$','i').test(name);
+    if(tagged||named)found=o;
+  });
+  return found;
 }
 
 export function availableBones(avatar){
@@ -176,7 +202,7 @@ export class WeaponHolster {
         !!source.skeleton.bones[sockets.back.parent]&&
         !!source.skeleton.boneInverses[sockets.back.parent];
       const socketNode=historical
-        ?avatar.getObjectByName('TOP Dummy '+(slot===6?22:21)):null;
+        ?findHistoricalDummy(avatar,slot===6?22:21):null;
       const transformed=source.geometry.clone();
       try{
         if(historical){
