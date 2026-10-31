@@ -90,7 +90,7 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(page,/option value="free"/);
   assert.match(code,/getPref\('topweb_mobile_camera_mode','follow'\)/);
   assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
-  assert.match(page,/main\.js\?v=40/);
+  assert.match(page,/main\.js\?v=41/);
   assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
   assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)\{\s*mobileSteeringReferenceYaw=CAM\.yaw/);
   assert.match(code,/if\(!steering\)\{mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;\}/);
@@ -154,7 +154,7 @@ test('controle de toque manual funciona também em Câmera livre e responde imed
     code.indexOf('function bindMobileCameraTuning('));
   assert.match(disabled,/mobileCameraTuning\.querySelectorAll\('input'\)/);
   assert.doesNotMatch(disabled,/mobile-touch-sensitivity/);
-  assert.match(page,/main\.js\?v=40/);
+  assert.match(page,/main\.js\?v=41/);
 });
 
 test('eixos de toque podem ser invertidos separadamente com preferência salva',()=>{
@@ -170,19 +170,18 @@ test('eixos de toque podem ser invertidos separadamente com preferência salva',
   assert.match(code,/dragOrbitDelta\(dx\*mobileTouchSensitivity\*horizontalSign,innerWidth\)/);
   assert.match(code,/dy\*\.0018\*mobileTouchSensitivity\*verticalSign/);
   assert.match(code,/setPref\(key,checkbox.checked\?'1':'0'\)/);
-  assert.match(page,/main\.js\?v=40/);
+  assert.match(page,/main\.js\?v=41/);
 });
 test('Auto tem botão pequeno acima do Alvo e o grande é manual',()=>{
   const page=read('index.html'),code=read('js/main.js'),css=read('mobile-landscape.css');
   assert.match(page,/id="mobile-auto"/);
   assert.match(page,/id="mobile-attack"[^>]*aria-label="Atacar manualmente"/);
   assert.match(css,/#mobile-auto\{[\s\S]*?right:84px;bottom:58px/);
-  assert.match(code,/\$\('mobile-auto'\)\.addEventListener\('click',toggleAutoAttack\)/);
-  assert.match(code,/if\(context.type==='attack'\)return manualAttack\(\)/);
+  assert.match(code,/\$\('mobile-auto'\)\.addEventListener\('click',selectMobileAutoMode\)/);
+  assert.match(code,/if\(context.type==='attack'\)return mobileAutoModeEnabled\?toggleAutoAttack\(\):manualAttack\(\)/);
   assert.match(code,/combat\.manualAttack\(playerPos\)/);
   assert.match(code,/if\(combat\.auto\)return false/);
-  assert.match(code,/context.type==='attack'&&!!combat\?\.auto/);
-  assert.match(code,/\['mobile-auto','atk'\]/);
+  assert.match(code,/button\?\.classList\.toggle\('auto-mode-selected',autoAction\)/);
   assert.match(code,/\$\('atk'\)\.addEventListener\('click',toggleAutoAttack\)/);
-  assert.match(page,/mobile-landscape\.css\?v=4/);
+  assert.match(page,/mobile-landscape\.css\?v=5/);
 });
