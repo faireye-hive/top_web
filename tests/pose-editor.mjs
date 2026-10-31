@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
-  availableBones} from '../js/pose-studio-runtime.mjs?v=3';
+  availableBones} from '../js/pose-studio-runtime.mjs?v=4';
 import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
   missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
@@ -258,7 +258,7 @@ async function loadCharacter(){
  if($('equipped').checked&&!url){status('Este conjunto não está disponível para '+actor);return;}
  status('Carregando modelo '+actor+' / '+job+'...');
  try{
-  const asset=await loader.loadAsync(url?'assets/equipment/'+url+'?v=1':
+  const asset=await loader.loadAsync(url?'assets/equipment/'+url+'?v=2':
     'assets/characters/'+actor+'.glb?v=3');
   let extra=null;
   try{extra=await loader.loadAsync('assets/skills/animations/'+actor+'.glb?v=3');}
@@ -286,7 +286,7 @@ async function loadCharacter(){
   if(!holster?.parts.some(part=>part.key===selectedPart))selectedPart=holster?.parts[0]?.key||'';
   $('part').value=selectedPart;
   selectedHistoricalId=null;redrawWeaponFields();showClip();
-  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas reconhecidas · '+(holster?.parts.filter(p=>p.historical).length||0)+' encaixes históricos');
+  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas reconhecidas · '+(holster?.parts.filter(p=>p.socketNode).length||0)+' sockets GLB');
  }catch(error){console.error(error);status('Falha ao carregar modelo: '+error.message);}
 }
 function updateJobs(){
