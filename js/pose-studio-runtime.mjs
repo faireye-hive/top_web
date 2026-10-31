@@ -247,6 +247,18 @@ export class WeaponHolster {
             throw error;
           }
         }
+        if(!historical&&views.length){
+          // Preserve the old centered fallback for other characters.
+          // For multi-primitive weapons, use ONE common center so each
+          // primitive keeps its original alignment with the others.
+          const bounds=views[0].geometry.boundingBox;
+          if(bounds?.getCenter&&typeof THREE.Vector3==='function'){
+            const center=bounds.getCenter(new THREE.Vector3());
+            for(const view of views){
+              view.geometry.translate(-center.x,-center.y,-center.z);
+            }
+          }
+        }
       }catch(error){
         for(const view of views)view.geometry.dispose();
         part.issue='Falha ao criar cópia para costas: '+error.message;
