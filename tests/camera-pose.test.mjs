@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { wrapAngle, followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, movementFromYaw } from '../js/camera-behavior.mjs';
+import { wrapAngle, followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, movementFromYaw, subtleFollowTarget } from '../js/camera-behavior.mjs';
 import { seatCenter, findSafeExit } from '../js/pose-utils.mjs';
 test('câmera contorna a borda -PI/PI pelo caminho mais curto', () => {
   const a = followAngle(Math.PI - .08, -Math.PI + .08, .1);
@@ -55,4 +55,25 @@ test('giro automático usa caminho mais curto cruzando a borda de -π / π',()=>
   let yaw=Math.PI-.05;
   for(let i=0;i<120;i++)yaw=gentleOrbit(yaw,-Math.PI+.05,1/60,2.1);
   assert.ok(Math.abs(wrapAngle(yaw-(-Math.PI+.05)))<.001);
+});
+
+test('giro automático tem limite por gesto e zona morta para não causar tontura',()=>{
+  const anchor=Math.PI/3;
+  assert.equal(subtleFollowTarget(anchor,anchor+.08),anchor,'ignorar pequenas correções');
+  assert.ok(subtleFollowTarget(anchor,anchor+Math.PI/2)-anchor<=.42+1e-10);
+  assert.ok(anchor-subtleFollowTarget(anchor,anchor-Math.PI/2)<=.42+1e-10);
+  let cam=anchor;
+  for(let i=0;i<240;i++){
+    const desired=subtleFollowTarget(anchor,anchor+Math.PI/2);
+    cam=gentleOrbit(cam,desired,1/60,.42);
+  }
+  assert.ok(cam-anchor<=.42+1e-10,'não permitir virada de 90 graus mesmo após 4s');
+  assert.ok(cam-anchor>.30,'um ajuste de direção deve continuar perceptível');
+});
+test('giro sutil usa caminho angular mais curto e não ultrapassa 24° por gesto',()=>{
+  const anchor=Math.PI-.06;
+  const target=-Math.PI+.06;
+  const capped=subtleFollowTarget(anchor,target);
+  assert.ok(capped>anchor,'deve girar no sentido positivo cruzando ±π');
+  assert.ok(capped-anchor<=.42);
 });
