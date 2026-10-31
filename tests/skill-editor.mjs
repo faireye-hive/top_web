@@ -4,10 +4,11 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {clone as skeletonClone} from 'three/addons/utils/SkeletonUtils.js';
 import {FxPlayer,GLOBAL_DEFAULTS,globals,normalizeStore,layerData,resolveEff,skillRec,
-  TYPE_NAMES,BLEND_NAMES,BLEND_PRESETS,curve1,clone} from '../js/skill-fx-core.mjs';
-import * as ED from '../js/skill-fx-edit.mjs';
-import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs';
+  TYPE_NAMES,BLEND_NAMES,BLEND_PRESETS,curve1,clone} from '../js/skill-fx-core.mjs?v=manual2';
+import * as ED from '../js/skill-fx-edit.mjs?v=manual2';
+import {buildTimeline,effSegments,parCurveKeys} from '../js/skill-fx-timing.mjs?v=manual2';
 import {poseForSkill} from '../js/skill-fx-pose.mjs';
+import {layerPreview,previewDuration} from '../js/skill-fx-preview.mjs';
 import {stripSwing} from '../js/skill-fx-strip.mjs';
 import {socketFromSkeleton,socketDescription} from '../js/skill-fx-sockets.mjs';
 
@@ -44,6 +45,7 @@ let selectedKey=null,layers=[],avatar=null,mixer=null,clips=[],texNames=[],effNa
 let phase=0,playing=false,loading=false,lastNow=performance.now(),loopPlay=true,token=0,toastTimer;
 let undoStack=[],redoStack=[],lastSnap=0,saveTimer=0;
 let classMods={},equipmentManifest=null,equipmentPromise=null,equippedActive=false;
+let copiedKey=null,controlSerial=0;
 const loader=new GLTFLoader();
 
 function readStore(){try{return normalizeStore(JSON.parse(localStorage.getItem(STORE_KEY)||'null'));}catch{return normalizeStore(null);}}
@@ -60,7 +62,7 @@ function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('sho
 function status(msg){$('status').textContent=msg;}
 function invalidateTimeline(){timelineCache=null;}
 function currentPose(){return poseForSkill(currentSkill,$('actor').value,clipFor());}
-function poseAdjustments(){return store.skills[skillId()]?.timingByActor?.[$('actor').value]||{};}
+function poseAdjustments(){return store.skills[skillId()]?.timingByActor?.[$('actor').value]||manifest.skills[skillId()]?.preview?.timingByActor?.[$('actor').value]||{};}
 function timelineInfo(){
   if(!currentSkill||!manifest)return null;
   if(!timelineCache){const g=globalsNow(),clip=clipFor();
@@ -72,11 +74,12 @@ function timelineInfo(){
 function playbackGlobals(){
   const g=globalsNow();if(timingMode==='manual')return g;
   const t=timelineInfo();return {...g,speed:1,castDelay:0,
-    timelineMode:'historical',timelineStarts:t?.stage?.starts||{},duration:t?.duration||g.duration};
+    timelineMode:'historical',timelineStarts:t?.stage?.starts||{},
+    duration:previewDuration(timingMode,clipFor()?.duration,t?.duration,g.duration)};
 }
 function drawTimeline(){
   const root=$('source-events');if(!root||!currentSkill)return;root.replaceChildren();
-  const info=timelineInfo(), duration=timingMode==='historical'?(info?.duration||5):globalsNow().duration;
+  const info=timelineInfo(), duration=playbackGlobals().duration;
   $('time-range').max=String(Math.round(duration*1000));
   const badge=$('timing-badge');badge.classList.toggle('warn',timingMode==='historical'&&!!info?.stage.warnings.length);
   badge.textContent=timingMode==='historical'?('AUTO · '+(info?.tracks.length||0)+' camadas · '+(info?.visibleKeyCount||0)+' chaves PAR/EFF'):'MANUAL · valores do painel';
@@ -147,9 +150,9 @@ const player=new FxPlayer({scene,camera,textureBase:assetPrefix+'textures/',mode
 function numControl(label,value,o,onChange){
   const{min=0,max=1,step=.01}=o;
   const wrap=h('div',{class:'control'});
-  const cap=h('label',{text:label});
-  const box=h('input',{type:'number',class:'num',step:String(step),value:fmt(value,step)});
-  const rng=h('input',{type:'range',min:String(min),max:String(max),step:String(step),value:String(clamp(value,min,max))});
+  const id='control-'+(++controlSerial),cap=h('label',{text:label,for:id});
+  const box=h('input',{id,type:'number',class:'num',step:String(step),value:fmt(value,step)});
+  const rng=h('input',{'aria-label':label+' · deslizar',type:'range',min:String(min),max:String(max),step:String(step),value:String(clamp(value,min,max))});
   const apply=(v,live)=>{if(!Number.isFinite(v))return;touch();onChange(v,live);};
   rng.addEventListener('input',()=>{box.value=fmt(rng.value,step);apply(Number(rng.value),true);});
   box.addEventListener('input',()=>{const v=Number(box.value);if(box.value!==''&&Number.isFinite(v)){rng.value=String(clamp(v,min,max));apply(v,true);}});
@@ -167,7 +170,7 @@ function selectControl(label,value,options,onChange){
   return h('label',{class:'row-sel'},label,sel);}
 function vecControl(label,arr,o,onChange){
   const a=[...(arr||[0,0,0])];const row=h('div',{class:'vec'},h('span',{text:label}));
-  a.forEach((v,i)=>{const inp=h('input',{type:'number',step:String(o.step||.1),value:fmt(v,o.step||.1)});
+  a.forEach((v,i)=>{const inp=h('input',{'aria-label':label+' '+['X','Y','Z'][i],title:['X','Y','Z'][i],type:'number',step:String(o.step||.1),value:fmt(v,o.step||.1)});
     inp.addEventListener('input',()=>{const n=Number(inp.value);if(inp.value!==''&&Number.isFinite(n)){touch();a[i]=n;onChange([...a]);}});row.append(inp);});
   return row;}
 function section(title,open,...kids){return h('details',{class:'sec',open},h('summary',{text:title}),h('div',{class:'sec-body'},kids));}
@@ -178,7 +181,7 @@ const hexRgb=s=>[1,3,5].map(i=>parseInt(s.slice(i,i+2),16)/255);
 const sel=()=>layers.find(l=>l.key===selectedKey)||null;
 const skillId=()=>String(currentSkill?.id??'');
 let currentSkill=null;
-function globalsNow(){return globals(store,skillId());}
+function globalsNow(){return globals(store,skillId(),manifest);}
 function enabledMap(){const rec=store.skills[skillId()];const m={};if(rec)for(const[k,v]of Object.entries(rec.off||{}))if(v)m[k]=false;return m;}
 function setField(layer,field,value,needRebuild=false){
   ED.setLayerField(store,layer,field,value);persist();
@@ -192,7 +195,7 @@ function structural(keepPanel=false){// reconstrói objetos 3D + listas
 /* -------------------------------------------------- painel: parâmetros skill */
 const GF=[['scale','Escala geral',.1,4,.05],['opacity','Opacidade geral',0,2,.05],['speed','Velocidade do tempo (manual)',.1,4,.05],
   ['particles','Limite global de partículas',1,400,1],['height','Altura global (m)',-5,6,.1],['distance','Distância do alvo (m)',1,12,.1],
-  ['castDelay','Atraso do disparo (manual, s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (manual, s)',1,30,.5]];
+  ['castDelay','Atraso do disparo (manual, s)',0,2,.05],['flightSpeed','Velocidade do projétil (0 = original)',0,40,.5],['duration','Duração da prévia (manual, s)',.001,30,.001]];
 function drawGlobals(){
   const root=$('global-controls');root.replaceChildren();const g=globalsNow();
   for(const[name,label,min,max,step]of GF){
@@ -204,14 +207,14 @@ function drawGlobals(){
           if(name==='distance'){targetDummy.position.x=v;drawHistorical();}
           updateTimeline();});
       if(autoDuration)control.querySelectorAll('input').forEach(input=>{
-        input.disabled=true;input.title='Calculada automaticamente pelos tempos DX9/GLB/PAR/EFF. Altere para Manual para editar.';});
+        input.disabled=true;input.title='Usa a duração do clipe GLB em Animação 3D. Sem clipe, usa a linha do tempo dos efeitos.';});
       control.dataset.field=name;
       if(autoDuration){const slider=control.querySelector('input[type="range"]');
         if(slider)slider.max=String(Math.max(30,Math.ceil(playbackGlobals().duration)));}
       root.append(control);
     }
   root.append(checkControl('Alcance (range) centralizado',g.centerRange>=.5,v=>{skillRec(store,skillId()).global.centerRange=v?1:0;persist();preview(phase);}));
-  targetDummy.position.x=g.distance;$('time-range').max=String(Math.round((timingMode==='historical'?timelineInfo()?.duration:g.duration||5)*1000));}
+  targetDummy.position.x=g.distance;$('time-range').max=String(Math.round(playbackGlobals().duration*1000));}
 
 /* --------------------------------------------- dados históricos do TOP */
 function historicalSkill(){return historical?.skills?.[skillId()]||null;}
@@ -253,7 +256,7 @@ function drawHistorical(){
     historicalCard('Animação 3D',clip?clip.duration.toFixed(2)+' s':'Indisponível',clip?'Duração do clipe GLB':'Carregue as animações do personagem'),
     historicalCard('Duração de descarga',discharge.text,'Coluna 43 do SkillInfo'),
     historicalCard('Voo (estimativa)',flightDuration!=null?flightDuration.toFixed(2)+' s':'—',flightDuration!=null?'Distância / velocidade visual':'Sem projétil identificado'),
-    historicalCard('Tempo automático (.par/.eff/GLB)',(timelineInfo()?.duration||0).toFixed(2)+' s','Janela de reprodução; não cooldown')
+    historicalCard('Extensão dos efeitos PAR/EFF',(timelineInfo()?.duration||0).toFixed(2)+' s','Use duração manual para ver efeitos após o clipe GLB')
   );
   root.append(stats);
   const pose=currentPose();
@@ -315,8 +318,8 @@ function setHistoricalLevel(n){
 }
 function useClipDuration(){
   const clip=clipFor();if(!clip){toast('Sem clipe 3D para esta skill/personagem');return;}
-  const seconds=Math.max(1,Math.min(30,Math.ceil((clip.duration+.5)*2)/2));
-  touch();skillRec(store,skillId()).global.duration=seconds;persist();timingMode='manual';localStorage.setItem(TIMING_MODE_KEY,timingMode);$('timing-mode').value=timingMode;drawGlobals();updateTimeline();
+  const seconds=clip.duration;
+  touch();const rec=skillRec(store,skillId());rec.global.duration=seconds;rec.previewMode='manual';persist();timingMode='manual';localStorage.setItem(TIMING_MODE_KEY,timingMode);$('timing-mode').value=timingMode;drawGlobals();updateTimeline();
   toast('Prévia ajustada para '+seconds.toFixed(1)+'s com base no clipe 3D (não no cooldown)');
 }
 
@@ -391,14 +394,48 @@ function colorsEditor(arr,onChange){
   render();return root;}
 function anglesEditor(arr,onChange){
   const a=(arr||[]).map(v=>[...v]);const root=h('div',{class:'row-sel'});
-  const render=()=>{root.replaceChildren('Rotação Z ao longo da vida (graus)');
-    a.forEach((v,i)=>{const inp=h('input',{type:'number',class:'mini',step:'5',value:fmt(v[2]*RAD,5)});
-      inp.addEventListener('input',()=>{const n=Number(inp.value);if(inp.value!==''&&Number.isFinite(n)){touch();a[i][2]=n/RAD;onChange(a.map(x=>[...x]));}});
+  const render=()=>{root.replaceChildren('Rotação XYZ ao longo da vida (graus)');
+    a.forEach((v,i)=>{
       const del=h('button',{type:'button',class:'mini-btn',text:'×'});del.onclick=()=>{touch();a.splice(i,1);onChange(a.map(x=>[...x]));render();};
-      root.append(h('div',{class:'curve-row sz'},h('span',{text:String(i+1)}),inp,del));});
+      root.append(vecControl('Chave '+(i+1)+' (°)',v.map(n=>n*RAD),{step:.01},angles=>{a[i]=angles.map(n=>n/RAD);onChange(clone(a));}),del);});
     const add=h('button',{type:'button',class:'mini-btn',text:'＋ chave'});add.onclick=()=>{touch();a.push([0,0,(a[a.length-1]?.[2]||0)]);onChange(a.map(x=>[...x]));render();};
     root.append(add);};
   render();return root;}
+
+function rgbaControl(label,value,onChange){
+  let color=[...(value||[1,1,1,1])];
+  const picker=h('input',{type:'color','aria-label':label+' · seletor',value:rgbHex(color)});
+  const hex=h('input',{type:'text','aria-label':label+' · hexadecimal',value:rgbHex(color),maxlength:'7'});
+  const inputs=color.map((v,i)=>h('input',{type:'number',min:'0',max:'1',step:'.001',value:fmt(v,.001),
+    'aria-label':label+' '+['R','G','B','A'][i],title:['R','G','B','Alfa'][i]}));
+  const sync=()=>{picker.value=rgbHex(color);hex.value=picker.value;inputs.forEach((el,i)=>el.value=fmt(color[i],.001));onChange([...color]);};
+  picker.addEventListener('input',()=>{touch();color=[...hexRgb(picker.value),color[3]];sync();});
+  hex.addEventListener('change',()=>{if(/^#[0-9a-f]{6}$/i.test(hex.value)){touch();color=[...hexRgb(hex.value),color[3]];sync();}else hex.value=rgbHex(color);});
+  inputs.forEach((el,i)=>el.addEventListener('input',()=>{if(el.value!==''&&Number.isFinite(Number(el.value))){touch();color[i]=clamp(Number(el.value),0,1);picker.value=rgbHex(color);hex.value=picker.value;onChange([...color]);}}));
+  return h('div',{class:'rgba-control'},h('span',{text:label}),h('div',{class:'color-code'},picker,hex),
+    h('div',{class:'rgba-values'},inputs.map((el,i)=>h('label',{},['R','G','B','A'][i],el))));
+}
+
+function manualLayerControls(L,data){
+  const p=layerPreview(data.preview);
+  const set=(field,value)=>{p[field]=value;
+    if(L.kind==='eff'){ED.setEffTop(store,L.file,'preview',p);persist();updateTimeline();}
+    else setField(L,'preview',p);
+  };
+  return section('Transformação e tempo da camada',true,
+    vecControl('Posição (m)',p.position,{step:.001},v=>set('position',v)),
+    vecControl('Rotação (°)',p.rotation,{step:.01},v=>set('rotation',v)),
+    vecControl('Escala XYZ',p.scale,{step:.001},v=>set('scale',v)),
+    numControl('Opacidade da camada',p.opacity,{min:0,max:2,step:.01},v=>set('opacity',v)),
+    selectControl('Origem da camada',p.anchor,[['auto','Origem atual'],['actor','Centro do personagem'],['target','Centro do alvo'],['ground','Chão do alvo']],v=>set('anchor',v)),
+    checkControl('Usar conexão animada (socket)',p.useSocket,v=>set('useSocket',v)),
+    numControl('Atraso adicional (s)',p.delay,{min:-5,max:10,step:.001},v=>set('delay',v)),
+    checkControl('Definir início absoluto da camada',p.start!==null,v=>{set('start',v?0:null);drawLayerPanel();}),
+    p.start===null?null:numControl('Início absoluto (s)',p.start,{min:0,max:30,step:.001},v=>set('start',v)),
+    numControl('Velocidade da camada',p.speed,{min:.05,max:5,step:.01},v=>set('speed',v)),
+    numControl('Cortar camada após (s) · 0 = livre',p.duration,{min:0,max:30,step:.001},v=>set('duration',v)),
+    h('p',{class:'hint',text:'Posição: X/Y no chão e Z para cima. Os ajustes são salvos e exportados com o efeito.'}));
+}
 
 function effEditor(layer,effFile,{canRename}={}){
   const eff=resolveEff(manifest,store,effFile);if(!eff)return h('p',{class:'hint',text:'EFF "'+effFile+'" não encontrado no visuals.json.'});
@@ -410,9 +447,18 @@ function effEditor(layer,effFile,{canRename}={}){
   body.push(checkControl('Girar o modelo inteiro (rotating)',eff.rotating,v=>{ED.setEffTop(store,effFile,'rotating',v);persist();preview(phase);}));
   body.push(vecControl('Eixo',eff.rotation||[0,0,1],{step:.1},v=>{ED.setEffTop(store,effFile,'rotation',v);persist();preview(phase);}));
   body.push(numControl('Velocidade de giro (rad/s)',eff.rotationSpeed??1,{min:-20,max:20,step:.1},v=>{ED.setEffTop(store,effFile,'rotationSpeed',v);persist();preview(phase);}));
+  const replaceParts=parts=>{touch();ED.setEffParts(store,effFile,parts);persist();structural();};
+  body.push(h('button',{type:'button',text:'＋ Nova peça EFF',onclick:()=>{
+    const part=clone(eff.parts[0]||{model:'RectPlane',texture:'',src:5,dst:2,billboard:false});
+    part.name='nova peça';part.enabled=true;part.keys=[{d:.5,s:[1,1,1],a:[0,0,0],p:[0,0,0],c:[1,1,1,1]}];
+    replaceParts([...resolveEff(manifest,store,effFile).parts,part]);}}));
   eff.parts.forEach((part,pi)=>{
     const set=(f,v)=>{ED.setEffPart(store,effFile,pi,f,v);persist();updateTimeline();};
     const sub=[];
+    sub.push(checkControl('Exibir peça '+(pi+1),part.enabled!==false,v=>set('enabled',v)));
+    sub.push(h('div',{class:'row2'},
+      h('button',{type:'button',text:'Duplicar peça',onclick:()=>{const parts=clone(resolveEff(manifest,store,effFile).parts);parts.splice(pi+1,0,clone(parts[pi]));replaceParts(parts);}}),
+      h('button',{type:'button',text:'Excluir peça',disabled:eff.parts.length<=1,onclick:()=>{const parts=clone(resolveEff(manifest,store,effFile).parts);parts.splice(pi,1);replaceParts(parts);}})));
     sub.push(selectControl('Modelo',part.model,[['RectPlane','RectPlane (plano no chão)'],['Rect','Rect (plano vertical)'],['Cylinder','Cylinder'],['Cone','Cone'],...lgoNames.map(n=>[n,n])],v=>{set('model',v);structural(true);}));
     sub.push(texturePicker(part.texture,v=>set('texture',v)));
     sub.push(blendControls(part.src,part.dst,(s,d)=>{set('src',s);set('dst',d);}));
@@ -420,28 +466,39 @@ function effEditor(layer,effFile,{canRename}={}){
     sub.push(checkControl('Repetir a animação (loop)',part.loop!==false,v=>set('loop',v)));
     const keys=clone(part.keys||[]);
     const keyHost=h('div',{class:'row-sel'});
-    const commit=()=>{set('keys',keys);};
+    const total=h('p',{class:'hint'});
+    const updateTotal=()=>total.textContent='Duração desta peça: '+keys.reduce((n,k)=>n+k.d,0).toFixed(3)+' s';
+    const commit=()=>{set('keys',keys);updateTotal();};
     const renderKeys=()=>{keyHost.replaceChildren('Keyframes ('+keys.length+')');
       keys.forEach((k,ki)=>{
-        const mk=(arr,i,step,conv)=>{const inp=h('input',{type:'number',step:String(step),value:fmt(conv?arr[i]*RAD:arr[i],step)});
+        const prefix='Peça '+(pi+1)+' · Chave '+(ki+1);
+        const mk=(arr,i,step,conv,label)=>{const inp=h('input',{'aria-label':prefix+' · '+label+' '+['X','Y','Z'][i],title:['X','Y','Z'][i],type:'number',step:String(step),value:fmt(conv?arr[i]*RAD:arr[i],step)});
           inp.addEventListener('input',()=>{const n=Number(inp.value);if(inp.value!==''&&Number.isFinite(n)){touch();arr[i]=conv?n/RAD:n;commit();}});return inp;};
         const del=h('button',{type:'button',class:'mini-btn',text:'× chave',disabled:keys.length<=1});del.onclick=()=>{touch();keys.splice(ki,1);commit();renderKeys();};
-        const col=h('input',{type:'color',value:rgbHex(k.c)});col.addEventListener('input',()=>{touch();const r=hexRgb(col.value);k.c[0]=r[0];k.c[1]=r[1];k.c[2]=r[2];commit();});
-        const alpha=h('input',{type:'number',step:'0.05',min:'0',max:'1',value:fmt(k.c[3],.05)});
-        alpha.addEventListener('input',()=>{const n=Number(alpha.value);if(alpha.value!==''&&Number.isFinite(n)){touch();k.c[3]=clamp(n,0,1);commit();}});
-        const dur=h('input',{type:'number',step:'0.05',min:'0',value:fmt(k.d,.05)});
+        const dur=h('input',{'aria-label':prefix+' · Tempo',type:'number',step:'0.001',min:'0',value:fmt(k.d,.001)});
         dur.addEventListener('input',()=>{const n=Number(dur.value);if(dur.value!==''&&Number.isFinite(n)){touch();k.d=Math.max(0,n);commit();}});
         keyHost.append(h('div',{class:'key-box'},
           h('div',{class:'key-head'},h('span',{text:'Chave '+(ki+1)}),del),
+          h('div',{class:'key-actions'},
+            h('button',{type:'button',text:'⎘',title:'Duplicar chave','aria-label':prefix+' · Duplicar',onclick:()=>{touch();keys.splice(ki+1,0,clone(k));commit();renderKeys();}}),
+            h('button',{type:'button',text:'↑',title:'Mover chave para cima',disabled:ki===0,onclick:()=>{touch();[keys[ki-1],keys[ki]]=[keys[ki],keys[ki-1]];commit();renderKeys();}}),
+            h('button',{type:'button',text:'↓',title:'Mover chave para baixo',disabled:ki===keys.length-1,onclick:()=>{touch();[keys[ki+1],keys[ki]]=[keys[ki],keys[ki+1]];commit();renderKeys();}}),
+            h('button',{type:'button',text:'Copiar',onclick:()=>{copiedKey=clone(k);toast('Chave copiada');}}),
+            h('button',{type:'button',text:'Colar',onclick:()=>{if(!copiedKey)return toast('Copie uma chave primeiro');touch();keys[ki]=clone(copiedKey);commit();renderKeys();}}),
+            h('button',{type:'button',text:'Ver',title:'Buscar instante desta chave',onclick:()=>{const track=timelineInfo()?.tracks.find(t=>t.key===layer.key);const time=track?.keys.find(x=>x.kind==='eff'&&x.part===pi&&x.index===ki)?.time;if(time!=null){if(playing)playToggle();preview(time);}}})),
           h('div',{class:'key-grid'},h('span',{text:'tempo'}),dur,h('span',{text:'s'}),h('span')),
-          h('div',{class:'key-grid'},h('span',{text:'escala'}),mk(k.s,0,.1),mk(k.s,1,.1),mk(k.s,2,.1)),
-          h('div',{class:'key-grid'},h('span',{text:'ângulo°'}),mk(k.a,0,5,true),mk(k.a,1,5,true),mk(k.a,2,5,true)),
-          h('div',{class:'key-grid'},h('span',{text:'pos m'}),mk(k.p,0,.1),mk(k.p,1,.1),mk(k.p,2,.1)),
-          h('div',{class:'key-grid'},h('span',{text:'cor'}),col,alpha,h('span',{text:'α'}))));});
+          h('div',{class:'key-grid'},h('span',{text:'escala'}),mk(k.s,0,.001,false,'Escala'),mk(k.s,1,.001,false,'Escala'),mk(k.s,2,.001,false,'Escala')),
+          h('div',{class:'key-grid'},h('span',{text:'ângulo°'}),mk(k.a,0,.01,true,'Ângulo'),mk(k.a,1,.01,true,'Ângulo'),mk(k.a,2,.01,true,'Ângulo')),
+          h('div',{class:'key-grid'},h('span',{text:'pos m'}),mk(k.p,0,.001,false,'Posição'),mk(k.p,1,.001,false,'Posição'),mk(k.p,2,.001,false,'Posição')),
+          rgbaControl(prefix+' · Cor',k.c,v=>{k.c=v;commit();}),
+          selectControl('Interpolação',k.interpolation||'linear',[['linear','Interpolar para a próxima'],['hold','Segurar este valor']],v=>{k.interpolation=v;commit();})));
+      });
       const add=h('button',{type:'button',class:'mini-btn',text:'＋ chave'});
       add.onclick=()=>{touch();keys.push(clone(keys[keys.length-1]||{d:.5,s:[1,1,1],a:[0,0,0],p:[0,0,0],c:[1,1,1,1]}));commit();renderKeys();};
       keyHost.append(add);};
-    renderKeys();sub.push(h('p',{class:'hint',text:'EFF: campo tempo = duração DESTA chave, não tempo absoluto. As barras amarelas na linha do tempo mostram o início acumulado de cada chave.'}));sub.push(keyHost);
+    let timeFactor=1;sub.push(numControl('Multiplicar tempos desta peça',1,{min:.05,max:5,step:.01},v=>timeFactor=v),
+      h('button',{type:'button',text:'Aplicar multiplicador aos tempos',onclick:()=>{touch();keys.forEach(k=>k.d=Math.max(0,k.d*timeFactor));commit();renderKeys();}}));
+    renderKeys();updateTotal();sub.push(total,h('p',{class:'hint',text:'Tempo = duração desta chave. Escala e posição seguem X/Y/Z; ângulos em graus. Use Copiar/Colar entre peças ou skills.'}));sub.push(keyHost);
     body.push(section('Peça '+(pi+1)+' · '+part.model,pi===0,sub));});
   return h('div',{class:'sec-body',style:'display:grid;gap:9px'},body);}
 
@@ -459,6 +516,7 @@ function drawLayerPanel(){
   if(!L.custom){const b=h('button',{type:'button',text:'↺ Restaurar camada'});b.onclick=()=>{touch();ED.resetLayer(store,L);persist();structural();};actions.append(b);}
   else{const b=h('button',{type:'button',text:'🗑 Excluir camada'});b.onclick=()=>{touch();ED.removeExtra(store,skillId(),L.key);selectedKey=null;persist();structural();};actions.append(b);}
   root.append(actions);
+  root.append(manualLayerControls(L,data));
   const origin=socketDescription(manifest,$('actor').value,$('job').value,L,{equipped:equippedActive});
   if(['item','itemExtra','flight','actor'].includes(L.channel))
     root.append(h('p',{class:'hint socket-origin',text:origin&&avatar?.getObjectByName(origin.bone)
@@ -480,7 +538,7 @@ function drawLayerPanel(){
       h('button',{type:'button',text:'◩ Inclinada (−45° X)',onclick:()=>rotationPreset([-45,0,0])}));
     root.append(section('Trilha da lâmina',true,
       texturePicker(data.texture,v=>set('texture',v)),blendControls(data.src,data.dst,(s,d)=>{set('src',s);set('dst',d);}),
-      h('div',{class:'row-sel'},'Cor',h('input',{type:'color',value:rgbHex(data.color||[1,1,1,1]),oninput:e=>{touch();const r=hexRgb(e.target.value);set('color',[r[0],r[1],r[2],(data.color||[1,1,1,1])[3]]);}})),
+      rgbaControl('Cor da trilha',data.color||[1,1,1,1],v=>set('color',v)),
       numControl('Vida da trilha (s)',data.life,{min:.05,max:3,step:.05},v=>set('life',v)),
       numControl('Passo de amostra (s)',data.step,{min:.005,max:.2,step:.005},v=>set('step',v))));
     root.append(section('Orientação da trilha · 3D (prévia)',true,
@@ -526,7 +584,7 @@ function drawLayerPanel(){
   if(!isMesh||data.type===15||true){
     root.append(section('Curvas ao longo da vida',true,
       sizesEditor(data.sizes||[1],v=>set('sizes',v)),colorsEditor(data.colors||[[1,1,1,1]],v=>set('colors',v)),
-      isMesh?null:anglesEditor(data.angles||[],v=>set('angles',v))));}
+      anglesEditor(data.angles||[],v=>set('angles',v))));}
   if(isMesh){
     const file=data.effect||data.model;
     root.append(section('Modelo EFF ('+file+')',true,
@@ -598,6 +656,8 @@ async function pickSkill(){
   const job=$('job').value,id=Number($('skill').value);
   const raw=catalog.classes[job].skills.find(s=>s.id===id);if(!raw)return;
   currentSkill=classMods.rules?.skillWithRules?.(raw)||raw;
+  const savedMode=store.skills[String(id)]?.previewMode||manifest.skills[String(id)]?.preview?.mode;
+  if(savedMode){timingMode=savedMode;$('timing-mode').value=timingMode;}
   $('skill-name').textContent=currentSkill.name;$('skill-icon').src=assetPrefix+currentSkill.icon;
   selectedKey=null;player.solo=null;
   layers=player.setSkill(manifest,store,String(id),$('actor').value);selectedKey=layers[0]?.key||null;invalidateTimeline();
@@ -622,6 +682,8 @@ function preview(t){
   }
   const n=player.update(phase,g,enabledMap());
   $('time-range').value=String(Math.round(phase*1000));$('time-label').textContent=phase.toFixed(2)+' / '+g.duration.toFixed(2)+' s';
+  if(document.activeElement!==$('time-exact'))$('time-exact').value=String(+phase.toFixed(3));
+  $('time-exact').max=String(g.duration);
   $('perf').textContent=n+' objetos FX';}
 function playToggle(){playing=!playing;$('play').textContent=playing?'Ⅱ Pausar':'▶ Reproduzir';}
 
@@ -639,7 +701,8 @@ async function importFile(file){
   if(!file)return;
   try{const obj=JSON.parse(await file.text());
     if(!obj||obj.version!==2||typeof obj.res!=='object')throw Error('use um arquivo "vfx-edits.json" exportado por este editor');
-    touch();store=normalizeStore(obj);writeStoreNow();selectedKey=null;structural();toast('Edições importadas ✓');}
+    touch();store=normalizeStore(obj);store.baseline=manifest.keyframeSource?.revision;
+    writeStoreNow();selectedKey=null;structural();toast('Edições importadas ✓');}
   catch(e){toast('Erro de importação: '+e.message);}}
 function resetSkill(){
   if(!currentSkill||!confirm('Descartar todas as edições desta skill? (arquivos compartilhados com outras skills também voltam ao original)'))return;
@@ -652,6 +715,7 @@ function bind(){
   $('historical-level').onchange=e=>setHistoricalLevel(e.target.value);
   $('timing-mode').value=timingMode;
   $('timing-mode').onchange=e=>{timingMode=e.target.value==='manual'?'manual':'historical';
+    touch();skillRec(store,skillId()).previewMode=timingMode;persist();
     localStorage.setItem(TIMING_MODE_KEY,timingMode);drawGlobals();drawTimeline();preview(phase);};
   $('historical-sync').onclick=useClipDuration;
   $('job').onchange=()=>{classSelected();skillSelected();void loadActor();};
@@ -661,6 +725,10 @@ function bind(){
   $('skill').onchange=()=>{playing=false;$('play').textContent='▶ Reproduzir';void pickSkill();};
   $('play').onclick=playToggle;$('restart').onclick=()=>{phase=0;preview(0);};
   $('time-range').oninput=e=>{if(playing)playToggle();preview(Number(e.target.value)/1000);};
+  $('time-exact').oninput=e=>{if(e.target.value==='')return;if(playing)playToggle();preview(Number(e.target.value));};
+  const stepFrame=direction=>{if(playing)playToggle();preview(phase+direction/30);};
+  $('frame-back').onclick=()=>stepFrame(-1);$('frame-next').onclick=()=>stepFrame(1);
+  $('loop-play').onchange=e=>loopPlay=e.target.checked;
   $('save').onclick=()=>{writeStoreNow();toast('Edições salvas no navegador ✓ ('+ED.editedCount(store)+' alterações)');};
   $('export-timing').onclick=exportTiming;
   $('export').onclick=exportMerged;$('export-edits').onclick=exportEdits;
@@ -690,8 +758,8 @@ function animate(now){
   const c=$('preview'),r=c.getBoundingClientRect(),w=Math.max(1,Math.floor(r.width)),hh=Math.max(1,Math.floor(r.height));
   if(c.width!==Math.floor(w*renderer.getPixelRatio())||c.height!==Math.floor(hh*renderer.getPixelRatio())){
     renderer.setSize(w,hh,false);camera.aspect=w/hh;camera.updateProjectionMatrix();}
-  if(playing&&!loading&&currentSkill){
-    const g=playbackGlobals();let t=phase+dt;if(t>=g.duration)t=loopPlay?0:g.duration;preview(t);}
+    if(playing&&!loading&&currentSkill){
+    const g=playbackGlobals();let t=phase+dt;if(t>=g.duration){t=loopPlay?0:g.duration;if(!loopPlay)playToggle();}preview(t);}
   orbit.update();renderer.render(scene,camera);}
 
 async function start(){
@@ -699,7 +767,7 @@ async function start(){
   try{
     const[cat,vis]=await Promise.all([
       fetch(assetPrefix+'catalog.json').then(r=>{if(!r.ok)throw Error('catalog.json HTTP '+r.status);return r.json();}),
-      fetch(assetPrefix+'visuals.json').then(r=>{if(!r.ok)throw Error('visuals.json HTTP '+r.status);return r.json();})]);
+      fetch(assetPrefix+'visuals.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('visuals.json HTTP '+r.status);return r.json();})]);
     catalog=cat;manifest=vis;usage=ED.usageMap(manifest);
     try{const resp=await fetch(assetPrefix+'historical.json');if(resp.ok)historical=await resp.json();}
     catch(err){console.warn('Sem histórico SkillInfo (prévia sem alteração):',err);}

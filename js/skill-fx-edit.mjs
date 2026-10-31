@@ -1,5 +1,5 @@
 // skill-fx-edit.mjs — operações de edição + exportação do Skill FX Studio.
-import {clone,layerData,buildLayers,skillRec,NEW_SYSTEM,normalizeStore} from './skill-fx-core.mjs';
+import {clone,layerData,buildLayers,skillRec,NEW_SYSTEM,normalizeStore} from './skill-fx-core.mjs?v=manual2';
 
 const resPatch=(store,file)=>store.res[file]||={};
 
@@ -14,9 +14,13 @@ export function setLayerField(store,layer,field,value){
 }
 export const setEffPart=(store,file,i,field,value)=>{((resPatch(store,file).parts||={})[i]||={})[field]=clone(value);};
 export const setEffTop=(store,file,field,value)=>{(resPatch(store,file).top||={})[field]=clone(value);};
+export function setEffParts(store,file,parts){
+  const patch=resPatch(store,file);patch.parts={};(patch.top||={}).parts=clone(parts);
+}
 
 export function resetLayer(store,layer){
   if(layer.custom)return;const p=store.res[layer.file];if(!p)return;
+  if(layer.kind==='eff'){delete store.res[layer.file];return;}
   if(layer.kind==='system')delete p.systems?.[layer.idx];
   if(layer.kind==='strip')delete p.strips?.[layer.idx];}
 
@@ -61,7 +65,8 @@ export function duplicateLayer(m,store,skillId,layer){
 export function editedCount(store){
   let n=0;for(const p of Object.values(store.res)){
     n+=Object.keys(p.systems||{}).length+Object.keys(p.strips||{}).length+Object.keys(p.parts||{}).length+(p.top?1:0);}
-  for(const s of Object.values(store.skills))n+=(s.extra||[]).length+Object.keys(s.off||{}).filter(k=>s.off[k]).length;
+  for(const s of Object.values(store.skills))n+=(s.extra||[]).length+Object.keys(s.off||{}).filter(k=>s.off[k]).length+
+    Object.keys(s.global||{}).length+Object.values(s.timingByActor||{}).reduce((n,v)=>n+Object.keys(v).length,0);
   return n;}
 
 /** visuals.json final: aplica edições, clones por skill, camadas novas e desligadas. */
@@ -70,12 +75,13 @@ export function bakeMerged(m,store){
   for(const [name,base] of Object.entries(store.clones))if(m.resources[base])out.resources[name]=clone(m.resources[base]);
   for(const [file,p] of Object.entries(store.res)){
     const r=out.resources[file];if(!r)continue;
+    if(p.top&&r.kind==='eff')Object.assign(r,clone(p.top));
     for(const [i,patch] of Object.entries(p.systems||{}))if(r.systems?.[i])Object.assign(r.systems[i],clone(patch));
     // swing/rotation são metadados da prévia Three.js no visuals.json, não campos nativos do .par.
     // Preservar na exportação para que os ajustes não desapareçam ao recarregar o catálogo.
     for(const [i,patch] of Object.entries(p.strips||{}))if(r.strips?.[i])Object.assign(r.strips[i],clone(patch));
     for(const [i,patch] of Object.entries(p.parts||{}))if(r.parts?.[i])Object.assign(r.parts[i],clone(patch));
-    if(p.top&&r.kind==='eff')Object.assign(r,clone(p.top));}
+  }
   const remap=(sk,map)=>{
     if(!Object.keys(map).length)return;
     const fix=v=>{if(v.files)v.files=v.files.map(f=>map[f]||f);if(v.result&&map[v.result])v.result=map[v.result];
@@ -83,6 +89,8 @@ export function bakeMerged(m,store){
     for(const ch of sk.channels)for(const v of ch.visual||[])fix(v);};
   for(const [id,rec] of Object.entries(store.skills)){
     const sk=out.skills[id];if(!sk)continue;
+    sk.preview={...(sk.preview||{}),...(rec.previewMode?{mode:rec.previewMode}:{}),global:{...(sk.preview?.global||{}),...(rec.global||{})},
+      timingByActor:clone(rec.timingByActor||sk.preview?.timingByActor||{})};
     remap(sk,rec.rebind||{});
     const off=Object.keys(rec.off||{}).filter(k=>rec.off[k]);
     if(off.length){

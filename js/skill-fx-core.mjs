@@ -9,6 +9,8 @@
 //  - o curso das curvas segue LegacyParticleCurves.h (o último intervalo segura a última chave).
 import * as THREE from 'three';
 import {stripSwing,stripRotationRadians} from './skill-fx-strip.mjs';
+import {effFramePhase} from './skill-fx-keyframes.mjs';
+import {layerPreview,layerStart} from './skill-fx-preview.mjs';
 
 /* ------------------------------------------------------------------ tabelas */
 export const BLEND_NAMES = {1:'ZERO',2:'ONE',3:'SRCCOLOR',4:'INVSRCCOLOR',5:'SRCALPHA',6:'INVSRCALPHA',
@@ -50,9 +52,12 @@ export function normalizeStore(o){
   const s=newStore();if(!o||typeof o!=='object')return s;
   if(o.res&&typeof o.res==='object')s.res=o.res;
   if(o.skills&&typeof o.skills==='object')s.skills=o.skills;
-  if(o.clones&&typeof o.clones==='object')s.clones=o.clones;return s;}
-export const skillRec=(store,id)=>store.skills[id]||={global:{},off:{},extra:[],rebind:{}};
-export const globals=(store,id)=>({...GLOBAL_DEFAULTS,...(store.skills[id]?.global||{})});
+  if(o.clones&&typeof o.clones==='object')s.clones=o.clones;
+  if(typeof o.baseline==='string')s.baseline=o.baseline;
+  return s;}
+export const skillRec=(store,id)=>{
+  const rec=store.skills[id]||={};rec.global||={};rec.off||={};rec.extra||=[];rec.rebind||={};return rec;};
+export const globals=(store,id,manifest=null)=>({...GLOBAL_DEFAULTS,...(manifest?.skills?.[id]?.preview?.global||{}),...(store.skills[id]?.global||{})});
 const baseRes=(m,store,file)=>m.resources[store.clones[file]||file];
 
 export function resolveSystem(m,store,file,idx){
@@ -217,16 +222,18 @@ class ParticleLayer{
         const gl=d3d2gl(pos[0]*g.scale,pos[1]*g.scale,pos[2]*g.scale);
         m.position.set(anchor[0]+gl[0],anchor[1]+gl[1]+g.height,anchor[2]+gl[2]);
         const sz=curve1(s.sizes,k,1)*g.scale*(s.type===13&&s.billboard===false?1:1);
-        const col=curveN(s.colors,k,4);const rot=curveN(s.angles,k,3,[0,0,0])[2];
+      const col=curveN(s.colors,k,4);const angles=curveN(s.angles,k,3,[0,0,0]);
         if(s.billboard){
           // Os FX de combate usam uma raiz girada para apontar ao alvo.
           // Compensar essa rotação para o billboard olhar para a câmera no MUNDO,
           // exatamente como no editor (onde a raiz fica em identidade).
           this.group.getWorldQuaternion(_q).invert();
           m.quaternion.copy(_q).multiply(this.p.camera.getWorldQuaternion(_q2));
-          m.rotateZ(rot);
+          m.quaternion.multiply(_q2.setFromEuler(_e.set(...angles,'YXZ')));
+          const rotation=this.p.previewRotation||[0,0,0];
+          m.quaternion.multiply(_q2.setFromEuler(_e.set(...rotation.map(v=>v*Math.PI/180),'XYZ')));
         }
-        else{m.quaternion.copy(Q_FLAT);m.rotateZ(rot);}
+        else{m.quaternion.copy(Q_FLAT).multiply(_q2.setFromEuler(_e.set(...angles,'YXZ')));}
         m.scale.set(sz,sz,sz);tintMaterial(m.material,col,col[3]*g.opacity,s.src);m.visible=sz>1e-4;
       }}
     for(let i=used;i<this.pool.length;i++)this.pool[i].visible=false;
@@ -256,12 +263,12 @@ class EffInstance{
     this.parts.forEach((pm,i)=>{
       const part=E.parts[i]||pm.part,mesh=pm.mesh,keys=part.keys||[];
       const tex=this.p.tex.get(part.texture);syncMaterial(mesh.material,tex,part.src,part.dst);
-      if(!keys.length){mesh.visible=false;return;}
+      if(!keys.length||part.enabled===false){mesh.visible=false;return;}
       const total=keys.reduce((a,k)=>a+Math.max(0,k.d),0)||1;
       if(stopAtKeysEnd && age>=total && part.loop!==true){mesh.visible=false;return;}
       let ph=age;if(part.loop!==false&&loopLen!==0)ph=age%total;else ph=Math.min(age,total-1e-4);
-      let acc=0,ki=0;for(;ki<keys.length-1;ki++){if(ph<acc+keys[ki].d)break;acc+=keys[ki].d;}
-      const A=keys[ki],B=keys[Math.min(ki+1,keys.length-1)],f=A.d>1e-6&&ki<keys.length-1?clamp((ph-acc)/A.d,0,1):0;
+      const keyPhase=effFramePhase(keys,ph);
+      const A=keys[keyPhase.from],B=keys[keyPhase.to],f=A.interpolation==='hold'?0:keyPhase.fraction;
       const mix=(a,b)=>a.map((x,j)=>x+(b[j]-x)*f);
       const sc=mix(A.s,B.s),an=mix(A.a,B.a),po=mix(A.p,B.p),co=mix(A.c,B.c);
       const sm=sizeMul;
@@ -269,7 +276,9 @@ class EffInstance{
       mesh.scale.set(sc[0]*sm,sc[1]*sm,sc[2]*sm);
       if(part.billboard){
         this.wrap.updateWorldMatrix(true,false);this.wrap.getWorldQuaternion(_q);_q.invert();
-        mesh.quaternion.copy(_q).multiply(this.p.camera.quaternion);mesh.rotateZ(an[2]);}
+        mesh.quaternion.copy(_q).multiply(this.p.camera.quaternion);mesh.rotateZ(an[2]);
+        const rotation=this.p.previewRotation||[0,0,0];
+        mesh.quaternion.multiply(_q2.setFromEuler(_e.set(...rotation.map(v=>v*Math.PI/180),'XYZ')));}
       else{mesh.rotation.order='YXZ';mesh.rotation.set(an[0],an[1],an[2]);}
       const rgb=[co[0]*colorMul[0],co[1]*colorMul[1],co[2]*colorMul[2]];
       tintMaterial(mesh.material,rgb,co[3]*colorMul[3]*alphaMul,part.src);
@@ -294,7 +303,7 @@ class EffLayer{
       const eff=resolveEff(ctx.m,ctx.store,L.file);if(!eff)return hide();
       const age=t-start,dist=g.distance;
       const socket=ctx.socketAt?.(L,t);
-      const origin=socket||[0,1,0];
+      const origin=socket||(layerPreview(eff.preview).anchor!=='auto'?ctx.anchorAt(L,t):[0,1,0]);
       const spd=(g.flightSpeed||L.vis?.speed||L.flightSpeed||10);
       if(g.timelineMode==='historical'&&age>dist/spd)return hide();
       const travel=Math.min(1,age*spd/Math.max(.1,dist));
@@ -318,8 +327,12 @@ class EffLayer{
       let groundZ=pos[2];if(s.type===15&&groundZ<0){groundZ=0;pos[2]=0;}
       const gl=d3d2gl(pos[0]*g.scale,pos[1]*g.scale,pos[2]*g.scale);
       const kk=s.type===6?0:k,sizeMul=curve1(s.sizes,kk,1),col=curveN(s.colors,kk,4);
+      const angles=curveN(s.angles,k,3,[0,0,0]);
+      const parentRotation=new THREE.Quaternion().copy(Q_FLAT)
+        .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...angles,'YXZ')))
+        .multiply(Q_FLAT.clone().invert());
       it.update(itm.age,{pos:[anchor[0]+gl[0],anchor[1]+gl[1]+g.height,anchor[2]+gl[2]],sizeMul,
-        colorMul:[col[0],col[1],col[2],col[3]],alphaMul:g.opacity,scale:g.scale,quat:null,eff,stopAtKeysEnd:g.timelineMode==='historical'});}
+        colorMul:[col[0],col[1],col[2],col[3]],alphaMul:g.opacity,scale:g.scale,quat:parentRotation,eff,stopAtKeysEnd:g.timelineMode==='historical'});}
     return hide();}
   dispose(){for(const i of this.insts)i.dispose();}
 }
@@ -346,7 +359,10 @@ class StripLayer{
     this.mesh.rotation.set(rot[0],rot[1],rot[2]);
     const socket=ctx.socketAt?.(L,t);
     if(socket)this.mesh.position.set(socket[0],socket[1]+(swing.h-1.1)*g.scale+g.height,socket[2]);
-    else this.mesh.position.set(0,swing.h*g.scale+g.height,0);
+    else{
+      const p=layerPreview(s.preview),anchor=p.anchor==='auto'?[0,0,0]:ctx.anchorAt(L,t);
+      this.mesh.position.set(anchor[0],anchor[1]+swing.h*g.scale+g.height,anchor[2]);
+    }
     this.mesh.visible=true;syncMaterial(this.mat,this.p.tex.get(s.texture),s.src,s.dst);
     const life=Math.max(.05,s.life||.5),pos=this.geo.getAttribute('position'),uv=this.geo.getAttribute('uv'),col=this.geo.getAttribute('color');
     let n=0;const steps=Math.min(this.N,Math.max(2,Math.floor(life/Math.max(.005,s.step||.03))+1));
@@ -376,13 +392,22 @@ export class FxPlayer{
     this.clear();this.m=manifest;this.store=store;this.skillId=skillId;this.actor=actor;
     this.layers=buildLayers(manifest,store,skillId);
     this.layers.forEach(l=>{l.skillId=skillId;});
-    this.render=this.layers.map(l=>l.kind==='strip'?new StripLayer(this,l):(l.kind==='eff'||MESH_TYPES.has(l.type))?new EffLayer(this,l):new ParticleLayer(this,l));
+    this.render=this.layers.map(l=>{
+      const container=new THREE.Group();this.root.add(container);
+      const owner={root:container,camera:this.camera,models:this.models,tex:this.tex};
+      const render=l.kind==='strip'?new StripLayer(owner,l):(l.kind==='eff'||MESH_TYPES.has(l.type))?new EffLayer(owner,l):new ParticleLayer(owner,l);
+      render.container=container;return render;
+    });
     return this.layers;}
   /** reconstrói só os objetos 3D (depois de mudar o tipo de uma camada) */
   rebuild(){if(this.m)return this.setSkill(this.m,this.store,this.skillId,this.actor);}
-  clear(){for(const r of this.render)r.dispose();this.render=[];this.layers=[];}
+  clear(){for(const r of this.render){r.dispose();r.container?.removeFromParent();}this.render=[];this.layers=[];}
   setSocketResolver(resolver){this.socketResolver=typeof resolver==='function'?resolver:null;}
   anchorFor(L,t,ctx){
+    const preview=layerPreview(layerData(this.m,this.store,L)?.preview);
+    if(preview.anchor==='actor')return[0,0,0];
+    if(preview.anchor==='target')return[ctx.g.distance,1,0];
+    if(preview.anchor==='ground')return[ctx.g.distance,0,0];
     const resolved=ctx.socketAt?.(L,t);
     if(resolved)return resolved;
     const g=ctx.g,dist=g.distance;let x=0,y=0,z=0;
@@ -403,6 +428,8 @@ export class FxPlayer{
     // O cálculo da matriz animada é caro em sistemas com muitas partículas.
     const socketCache=new Map();
     const socketAt=(L,tt)=>{
+      const preview=layerPreview(layerData(this.m,this.store,L)?.preview);
+      if(!preview.useSocket||preview.anchor!=='auto')return null;
       if(!this.socketResolver)return null;
       if(socketCache.has(L.key))return socketCache.get(L.key);
       const a=this.socketResolver(L,tt,this);
@@ -411,13 +438,27 @@ export class FxPlayer{
     };
     const ctx={m:this.m,store:this.store,g,
       enabled:L=>{if(this.solo&&this.solo!==L.key)return false;return!(enabledMap?.[L.key]===false)&&!this.hidden.has(L.key);},
-      startFor:L=>{const c=L.channel;if(g.timelineMode==='historical' && g.timelineStarts)
-        return Math.max(0,Number(g.timelineStarts[c])||0);
+      startFor:L=>{const c=L.channel,preview=layerPreview(layerData(this.m,this.store,L)?.preview);
+        if(g.timelineMode==='historical' && g.timelineStarts)
+          return layerStart(Math.max(0,Number(g.timelineStarts[c])||0),preview);
         const base=g.castDelay;
         const late=(c==='target'||c==='ground')?(hasFlight?dist/spd:0):0;
         const own=c==='actor'||c==='item'||c==='itemExtra'?0:base;
-        return(c==='actor'||c==='item'||c==='itemExtra'?0:own+late);},
+        return layerStart(c==='actor'||c==='item'||c==='itemExtra'?0:own+late,preview);},
       anchorAt:(L,tt)=>this.anchorFor(L,tt,ctx),
        socketAt};
-    let n=0;this.render.forEach(r=>{n+=r.update(t*(g.speed||1),ctx)||0;});return n;}
+    let n=0;this.render.forEach(r=>{
+      const data=layerData(this.m,this.store,r.layer),p=layerPreview(data?.preview);
+      const start=ctx.startFor(r.layer),now=t*(g.speed||1),local=start+(now-start)*p.speed;
+      r.container.visible=!(p.duration>0&&now>start+p.duration);
+      if(!r.container.visible)return;
+      const pivot=this.anchorFor(r.layer,local,ctx),container=r.container;
+      r.p.previewRotation=p.rotation;
+      container.rotation.set(...p.rotation.map(v=>v*Math.PI/180),'XYZ');container.scale.set(...p.scale);
+      const point=new THREE.Vector3(...pivot).multiply(container.scale).applyEuler(container.rotation);
+      const offset=d3d2gl(...p.position);
+      container.position.set(pivot[0]+offset[0]-point.x,pivot[1]+offset[1]-point.y,pivot[2]+offset[2]-point.z);
+      container.updateMatrixWorld(true);
+      n+=r.update(local,{...ctx,g:{...g,opacity:g.opacity*p.opacity}})||0;
+    });return n;}
 }

@@ -2,8 +2,8 @@
 // Skill FX Studio em tests/, em vez de simplificar cada PAR/EFF como um sprite.
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {FxPlayer,GLOBAL_DEFAULTS,normalizeStore,layerData,resolveEff} from './skill-fx-core.mjs';
-import {buildTimeline} from './skill-fx-timing.mjs';
+import {FxPlayer,GLOBAL_DEFAULTS,normalizeStore,layerData,resolveEff} from './skill-fx-core.mjs?v=manual2';
+import {buildTimeline} from './skill-fx-timing.mjs?v=manual2';
 import {poseForSkill} from './skill-fx-pose.mjs';
 import {skillWorldTransform,skillPlaybackLimit} from './skill-fx-world.mjs';
 import {socketFromSkeleton} from './skill-fx-sockets.mjs';
@@ -89,7 +89,8 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     const clip=options.clip||null;
     const world=skillWorldTransform(from,to,options.facing);
     const dist=Math.max(.15,world.distance);
-    const preset=defaultSettings(skill,overrides);
+    const published=manifest.skills[String(skill.id)]?.preview||{};
+    const preset={...defaultSettings(skill,overrides),...(published.global||{})};
     const g={...GLOBAL_DEFAULTS,
       scale:preset.scale,opacity:preset.opacity,
       speed:Math.max(.1,Math.min(4,Number(preset.speed)||1)),
@@ -111,8 +112,9 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
       resolve:L=>layerData(manifest,edits,L),
       resolveEff:file=>resolveEff(manifest,edits,file),
       historical:source,clip,clipDuration:clip?.duration||0,
-      pose,distance:dist,flightSpeed:flight>0&&dist>0?dist/flight:0});
-    const duration=skillPlaybackLimit(timeline.duration/g.speed,isMobile);
+      pose,distance:dist,flightSpeed:flight>0&&dist>0?dist/flight:0,
+      overrides:{manualKeyframes:published.timingByActor?.[chosenActor]||{}}});
+    const duration=skillPlaybackLimit((published.mode==='manual'&&preset.duration>0?preset.duration:timeline.duration)/g.speed,isMobile);
     const entry={player,skillId:Number(skill.id),elapsed:0,duration,
       settings:{...g,flightSpeed:flight>0&&dist>0?dist/flight:0,
         timelineMode:'historical',timelineStarts:timeline.stage.starts},

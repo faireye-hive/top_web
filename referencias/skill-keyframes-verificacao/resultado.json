@@ -1,0 +1,426 @@
+{
+  "method": "4 instantes por entrada do catálogo (.4, .8, 1.4 e 2s; limitado pela prévia), confrontados com quadros dos vídeos. Os vídeos têm pré-roll e não são relógio dos eventos de cast.",
+  "dataVerification": {
+    "effResources": 107,
+    "effKeyframes": 714,
+    "sourceDecoder": "LegacyEffFormat.h do sources, compilado localmente",
+    "comparison": "41.276 bytes de campos float32 exatamente iguais; Python também verificou os 160 recursos PAR/EFF",
+    "parity": true
+  },
+  "visualParity": false,
+  "missingEditorSkill": {
+    "id": 458,
+    "name": "Holy Judgement",
+    "reference": "Cleric/Holy Judgement.mp4"
+  },
+  "skills": [
+    {
+      "class": "crusader",
+      "id": 81,
+      "name": "Illusion Slash",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 4.25 s",
+        "0.80 / 4.25 s",
+        "1.40 / 4.25 s",
+        "2.00 / 4.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Trilha segue arco de prévia; o projétil/impacto não coincide integralmente."
+    },
+    {
+      "class": "crusader",
+      "id": 84,
+      "name": "Berseker",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 11.90 s",
+        "0.80 / 11.90 s",
+        "1.40 / 11.90 s",
+        "2.00 / 11.90 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Aura dourada presente; volumes e emissão diferem."
+    },
+    {
+      "class": "crusader",
+      "id": 123,
+      "name": "Steath",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 4.65 s",
+        "0.80 / 4.65 s",
+        "1.40 / 4.65 s",
+        "2.00 / 4.65 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "O personagem permanece opaco; o anel verde do vídeo não se reproduz nos instantes amostrados."
+    },
+    {
+      "class": "crusader",
+      "id": 86,
+      "name": "Shadow Slash",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 3.35 s",
+        "0.80 / 3.35 s",
+        "1.40 / 3.35 s",
+        "2.00 / 3.35 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Fita e expansão do impacto diferem."
+    },
+    {
+      "class": "cleric",
+      "id": 99,
+      "name": "Bolt",
+      "actor": "ami",
+      "sampleTimes": [
+        "0.40 / 4.25 s",
+        "0.80 / 4.25 s",
+        "1.40 / 4.25 s",
+        "2.00 / 4.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Círculos presentes; a coluna de luz do vídeo não é reproduzida com a mesma forma."
+    },
+    {
+      "class": "cleric",
+      "id": 97,
+      "name": "Heal",
+      "actor": "ami",
+      "sampleTimes": [
+        "0.40 / 4.25 s",
+        "0.80 / 4.25 s",
+        "1.40 / 4.25 s",
+        "2.00 / 4.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "O editor aplica a cura ao alvo separado; o vídeo mostra autocura."
+    },
+    {
+      "class": "cleric",
+      "id": 106,
+      "name": "Energy",
+      "actor": "ami",
+      "sampleTimes": [
+        "0.40 / 4.45 s",
+        "0.80 / 4.45 s",
+        "1.40 / 4.45 s",
+        "2.00 / 4.45 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Círculos/escudo presentes; altura e volume diferem."
+    },
+    {
+      "class": "cleric",
+      "id": 255,
+      "name": "Crystalline Blessing",
+      "actor": "ami",
+      "sampleTimes": [
+        "0.40 / 7.75 s",
+        "0.80 / 7.75 s",
+        "1.40 / 7.75 s",
+        "2.00 / 7.75 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Partículas presentes; aparece mancha escura e falta o anel dourado do vídeo."
+    },
+    {
+      "class": "sharpshooter",
+      "id": 94,
+      "name": "Cripple",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 1.95 s",
+        "0.80 / 1.95 s",
+        "1.40 / 1.95 s",
+        "1.94 / 1.95 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Carga e impacto presentes; composição e ligação à arma diferem."
+    },
+    {
+      "class": "sharpshooter",
+      "id": 95,
+      "name": "Enfeeble",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 1.95 s",
+        "0.80 / 1.95 s",
+        "1.40 / 1.95 s",
+        "1.94 / 1.95 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "O efeito roxo/raio aparece no editor, mas não coincide com a composição do vídeo."
+    },
+    {
+      "class": "sharpshooter",
+      "id": 96,
+      "name": "Headshot",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 2.35 s",
+        "0.80 / 2.35 s",
+        "1.40 / 2.35 s",
+        "2.00 / 2.35 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Disparo e marcas presentes; orientação/forma do disparo diferem."
+    },
+    {
+      "class": "sharpshooter",
+      "id": 456,
+      "name": "Red Thunder Cannon",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 5.55 s",
+        "0.80 / 5.55 s",
+        "1.40 / 5.55 s",
+        "2.00 / 5.55 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Feixe presente; orientação, volume e material diferem."
+    },
+    {
+      "class": "hunter",
+      "id": 90,
+      "name": "Dual Shot",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 3.75 s",
+        "0.80 / 3.75 s",
+        "1.40 / 3.75 s",
+        "2.00 / 3.75 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Círculo e projéteis presentes; enquadramento e sequência visual diferem."
+    },
+    {
+      "class": "hunter",
+      "id": 93,
+      "name": "Frozen Arrow",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 5.55 s",
+        "0.80 / 5.55 s",
+        "1.40 / 5.55 s",
+        "2.00 / 5.55 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Carga e impacto de gelo presentes; volume e composição diferem."
+    },
+    {
+      "class": "hunter",
+      "id": 224,
+      "name": "Venom Arrow",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 5.55 s",
+        "0.80 / 5.55 s",
+        "1.40 / 5.55 s",
+        "2.00 / 5.55 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Carga violeta presente; falta reproduzir a composição completa do projétil/impacto."
+    },
+    {
+      "class": "hunter",
+      "id": 112,
+      "name": "Meteor Shower",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 9.10 s",
+        "0.80 / 9.10 s",
+        "1.40 / 9.10 s",
+        "2.00 / 9.10 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "O grande selo branco do vídeo não aparece completo; queda/impactos diferem."
+    },
+    {
+      "class": "voyager",
+      "id": 216,
+      "name": "Conch Ray",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 1.85 s",
+        "0.80 / 1.85 s",
+        "1.40 / 1.85 s",
+        "1.84 / 1.85 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Efeito de lançamento presente; não coincide com o caminho/composição do vídeo."
+    },
+    {
+      "class": "voyager",
+      "id": 214,
+      "name": "Lightning Bolt",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 2.45 s",
+        "0.80 / 2.45 s",
+        "1.40 / 2.45 s",
+        "2.00 / 2.45 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Carga elétrica e raio no alvo presentes; volume e luz diferem."
+    },
+    {
+      "class": "voyager",
+      "id": 213,
+      "name": "Tornado",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 5.95 s",
+        "0.80 / 5.95 s",
+        "1.40 / 5.95 s",
+        "2.00 / 5.95 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Partículas verticais presentes; falta a forma volumétrica do tornado."
+    },
+    {
+      "class": "voyager",
+      "id": 454,
+      "name": "Super consciousness",
+      "actor": "lance",
+      "sampleTimes": [
+        "0.40 / 1.65 s",
+        "0.80 / 1.65 s",
+        "1.40 / 1.65 s",
+        "1.64 / 1.65 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Sem correspondência visual conclusiva nas amostras; vídeo e efeito são discretos."
+    },
+    {
+      "class": "seal-master",
+      "id": 99,
+      "name": "Spiritual Bolt",
+      "actor": "phyllis",
+      "sampleTimes": [
+        "0.40 / 4.25 s",
+        "0.80 / 4.25 s",
+        "1.40 / 4.25 s",
+        "2.00 / 4.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Círculos presentes; a coluna de luz do vídeo não é reproduzida com a mesma forma."
+    },
+    {
+      "class": "seal-master",
+      "id": 97,
+      "name": "Heal",
+      "actor": "phyllis",
+      "sampleTimes": [
+        "0.40 / 4.55 s",
+        "0.80 / 4.55 s",
+        "1.40 / 4.55 s",
+        "2.00 / 4.55 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "O editor aplica a cura ao alvo separado; o vídeo mostra autocura."
+    },
+    {
+      "class": "seal-master",
+      "id": 256,
+      "name": "Intense Magic",
+      "actor": "phyllis",
+      "sampleTimes": [
+        "0.40 / 3.25 s",
+        "0.80 / 3.25 s",
+        "1.40 / 3.25 s",
+        "2.00 / 3.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Onda radial branca presente; dimensão aparente e perfil visual diferem."
+    },
+    {
+      "class": "seal-master",
+      "id": 105,
+      "name": "Shadow Insignia",
+      "actor": "phyllis",
+      "sampleTimes": [
+        "0.40 / 9.05 s",
+        "0.80 / 9.05 s",
+        "1.40 / 9.05 s",
+        "2.00 / 9.05 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Símbolos presentes; posição/orientação e composição diferem."
+    },
+    {
+      "class": "champion",
+      "id": 107,
+      "name": "Howl",
+      "actor": "carsise",
+      "sampleTimes": [
+        "0.40 / 3.25 s",
+        "0.80 / 3.25 s",
+        "1.40 / 3.25 s",
+        "2.00 / 3.25 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Lobo e onda presentes; planos e volumes diferem."
+    },
+    {
+      "class": "champion",
+      "id": 243,
+      "name": "Roar",
+      "actor": "carsise",
+      "sampleTimes": [
+        "0.40 / 2.55 s",
+        "0.80 / 2.55 s",
+        "1.40 / 2.55 s",
+        "2.00 / 2.55 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "Onda e partículas presentes; composição de símbolos/poeira difere."
+    },
+    {
+      "class": "champion",
+      "id": 83,
+      "name": "Primal Rage",
+      "actor": "carsise",
+      "sampleTimes": [
+        "0.40 / 5.60 s",
+        "0.80 / 5.60 s",
+        "1.40 / 5.60 s",
+        "2.00 / 5.60 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "A malha gigante é substituída/mostrada como cilindro; não corresponde ao pé do vídeo."
+    },
+    {
+      "class": "champion",
+      "id": 455,
+      "name": "Beast Legion Smash",
+      "actor": "carsise",
+      "sampleTimes": [
+        "0.40 / 16.35 s",
+        "0.80 / 16.35 s",
+        "1.40 / 16.35 s",
+        "2.00 / 16.35 s"
+      ],
+      "keyframes": "originais conferidos",
+      "visual": "A malha e a nuvem de poeira não correspondem ao pé dourado do vídeo."
+    }
+  ],
+  "checks": {
+    "originalKeyframes": "passou",
+    "poseTiming": "passou",
+    "timing": "passou",
+    "catalogTiming": "passou, com canal de Heal sem arquivo",
+    "skillVfxData": "passou",
+    "gameVisualsParity": "falha preexistente em skillWorldTransform: comparação estrita entre -0 e 0; arquivos desse cálculo e teste não foram alterados"
+  },
+  "missingResource": {
+    "skill": 97,
+    "channel": "actor",
+    "effect": 113,
+    "tableFile": "heallight.pa",
+    "availableFile": "heallight.par",
+    "note": "O catálogo gerado contém null para este canal; não foi inventada uma correção de nome durante a restauração das chaves."
+  }
+}

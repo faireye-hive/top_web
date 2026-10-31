@@ -4,6 +4,25 @@
 
 ## Usar
 
+### Edição manual ampliada
+
+A duração automática da prévia usa exatamente o clipe mostrado em **Animação 3D**.
+O modo Manual permite escolher uma janela maior para efeitos longos.
+O editor preserva as edições locais ao abrir; não restaura presets automaticamente.
+
+- Cada camada tem posição, rotação e escala XYZ, opacidade, origem/socket,
+  atraso, início absoluto, velocidade e limite de duração.
+- Peças EFF podem ser criadas, duplicadas, ocultadas e excluídas.
+- Keyframes podem ser duplicados, reordenados e copiados/colados entre peças;
+  há multiplicador de tempo, interpolação linear ou valor fixo e campos RGBA/hexadecimal.
+- A prévia aceita tempo numérico, passos de 1/30 s e reprodução sem repetição.
+- **Salvar** mantém o trabalho no navegador. **↓ Edições** permite reimportar;
+  **↓ visuals.json** incorpora os controles e parâmetros globais para publicar o arquivo.
+
+O ajuste da Illusion Slash anterior à restauração dos dados históricos foi
+recuperado de `referencias/skill-keyframes-backup/visuals.json`. Edições mais
+recentes já salvas no navegador continuam tendo prioridade sobre esse arquivo.
+
 Em uma cópia do repositório com o PR incorporado:
 
 ```bash

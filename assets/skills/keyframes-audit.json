@@ -1,0 +1,1101 @@
+{
+  "revision": "client-original-keyframes-v1",
+  "verified": false,
+  "fields": {
+    "d": "duration of this key in seconds (not absolute time)",
+    "s": "XYZ scale",
+    "a": "XYZ radians; editor displays degrees",
+    "p": "XYZ metres, D3D axes: Z up",
+    "c": "RGBA float32"
+  },
+  "interpolation": "current -> next, including last -> first; PAR life / key count",
+  "resources": {
+    "01000014.par": {
+      "file": "effect/01000014.par",
+      "sha256": "1121879783e01635f05c8b0a90760d79cdf3bcd579f58fbae6b38844ca6eadd1"
+    },
+    "swordlight02.par": {
+      "file": "effect/swordlight02.par",
+      "sha256": "96d05b44aa197d7a6628d3ff709beea6170ea72e159901102f7a6b964fc665aa"
+    },
+    "04000009.eff": {
+      "file": "effect/04000009.eff",
+      "sha256": "c8ccc07fbb7a0fb284807c0b8b21013ddd94e0f9c3e200b765786d26ef43c825"
+    },
+    "01020028.par": {
+      "file": "effect/01020028.par",
+      "sha256": "0b0336762f106dd3f78c5d5b79929c032ab3f071f12e1f04413f5da4a57e851d"
+    },
+    "01010003.eff": {
+      "file": "effect/01010003.eff",
+      "sha256": "c31feb003c152c59a8cdde1dadf49c7d076a6927b3b63b0ab3e357f6dee9709a"
+    },
+    "foot02.par": {
+      "file": "effect/foot02.par",
+      "sha256": "19be2088c73f74133a04b74f95dfbcb6250f8d07df025c457d6e796002b539d7"
+    },
+    "beast03.eff": {
+      "file": "effect/beast03.eff",
+      "sha256": "c02d0582b431eaffa64e3820506eb19bdd00e3332f678540f27f64c60f77672f"
+    },
+    "foot.par": {
+      "file": "effect/foot.par",
+      "sha256": "d325b16d50930eafe12c8478064c98caf81c50117c903214399f5a26edbbbdc3"
+    },
+    "foot.eff": {
+      "file": "effect/foot.eff",
+      "sha256": "abc881bcbf2c8f1451c0322757bfeb5e8c55c618a204ab83a293ad222857c3f9"
+    },
+    "beast01.eff": {
+      "file": "effect/beast01.eff",
+      "sha256": "1fb96d9d5842b11eba49a4ef380aacc76314c11c5abe25a26b57c92b6e361f6a"
+    },
+    "beast02.eff": {
+      "file": "effect/beast02.eff",
+      "sha256": "4f3e494db1af09e8fae85b0662fa882b7044e6750e3bb593af14dea146173365"
+    },
+    "spire01.par": {
+      "file": "effect/spire01.par",
+      "sha256": "d75813047ff86137c10c20ed77a3552c32d33d44ddc6ff2cac805649173f1d63"
+    },
+    "01000028(b).eff": {
+      "file": "effect/01000028(b).eff",
+      "sha256": "c2d83a297ee2f66fd2be1d9131f2562ac5b875ab845a0a7c879fa395fb8609ab"
+    },
+    "01000028(a).eff": {
+      "file": "effect/01000028(a).eff",
+      "sha256": "a10235bf2f2930e53745c2f84fcb63eec0fe4634c76ac3c83feb9129512332a8"
+    },
+    "spirea00.eff": {
+      "file": "effect/spirea00.eff",
+      "sha256": "98f1ac17ffd9358a18aac9e604c40a7e23ed5764588193e8e405a6ea1156adc3"
+    },
+    "spirec00.eff": {
+      "file": "effect/spirec00.eff",
+      "sha256": "e4a18c8908529c651099924df16bc5cd5c6b39274740ff5826a9705b68502fa4"
+    },
+    "spirei00.eff": {
+      "file": "effect/spirei00.eff",
+      "sha256": "471eea87e5eaf9fc813753cd8fb2f0a9b62bc634f86390a280890e29196b18b2"
+    },
+    "spireh00.eff": {
+      "file": "effect/spireh00.eff",
+      "sha256": "16c8b4cdf95ddeff4e0ef5c64f6ebf4250b636b30151b2f6965a54145fa8749f"
+    },
+    "spirej00.eff": {
+      "file": "effect/spirej00.eff",
+      "sha256": "8abc5d2f255575489ef20efead3f3c7f9ec142ab699d40bba902d0e744e38411"
+    },
+    "firegush.par": {
+      "file": "effect/firegush.par",
+      "sha256": "6a8d14bd3f0b21f4de4cdcfee348fbc18765a9150c09196a54a50723f2c44c01"
+    },
+    "ragefire.eff": {
+      "file": "effect/ragefire.eff",
+      "sha256": "294bd56668aa5adc6939a1e76d64121564150c0142588babc14b00f088cee9d3"
+    },
+    "firegush01.eff": {
+      "file": "effect/firegush01.eff",
+      "sha256": "13aefab9ff261ffacbcbe02966b769ced1b6eb2dd73299eda3e338690fdcd67a"
+    },
+    "firegush02.eff": {
+      "file": "effect/firegush02.eff",
+      "sha256": "fa1045079285b07324294a183fea9d1af7c47bf77be45f3bf0cbfe4e20fb08a3"
+    },
+    "firegush04.eff": {
+      "file": "effect/firegush04.eff",
+      "sha256": "0d210dcfdcc7dc033e176d888961dd8ff49db97c8b2380880778d3055566209d"
+    },
+    "firegush03.eff": {
+      "file": "effect/firegush03.eff",
+      "sha256": "528eedd22244889e3d1d9fc6adebb2918da676df8a086402728282cd24924498"
+    },
+    "firegush05.eff": {
+      "file": "effect/firegush05.eff",
+      "sha256": "29377d50cb77190687fcccbcc4ec3493576000e50176f8593eba5234854d3b77"
+    },
+    "dancef.par": {
+      "file": "effect/dancef.par",
+      "sha256": "46e51c3d792a7590e3f871b7c23882cd4893f369c4146f2c453ff3c4f4c12bea"
+    },
+    "dance04.eff": {
+      "file": "effect/dance04.eff",
+      "sha256": "a579c626d1b4131047768916effb69881fdfb971bb53a27c54a8efa3ccfbead9"
+    },
+    "ring.eff": {
+      "file": "effect/ring.eff",
+      "sha256": "4da68daa18005375e0f9d54655cdd6ba9c39f80cbeffb7a2b7d8c33cfa6eddb9"
+    },
+    "dancet.par": {
+      "file": "effect/dancet.par",
+      "sha256": "bcbc48eda36c280fc5eaaf8e366f98fa97f0a9eb2870d650b8a9a9e38cf5188a"
+    },
+    "dance03.eff": {
+      "file": "effect/dance03.eff",
+      "sha256": "b9b00752dbdb031117237becff9f046d3f4d139862cd9d524af01cca0ddca97e"
+    },
+    "dance01.eff": {
+      "file": "effect/dance01.eff",
+      "sha256": "4a7c862ef47eedbea85f6ebfde2eb00bf2a94c3f0561b9c5e587f2d168a43d13"
+    },
+    "dance02.eff": {
+      "file": "effect/dance02.eff",
+      "sha256": "b2b03431f1bb868a3d883de62e1436b934b09458f9b02371a6a5c7ee792c251b"
+    },
+    "yfire.par": {
+      "file": "effect/yfire.par",
+      "sha256": "aae42c5bc65038b330c1f9b57de7545525627a0a03f8d3b18feecf3d0c43b63b"
+    },
+    "yfire.eff": {
+      "file": "effect/yfire.eff",
+      "sha256": "adad1b28fc7f4e99b7aab6a6dd103a993403b74b81adfb7889867cc2d68e9676"
+    },
+    "inline.eff": {
+      "file": "effect/inline.eff",
+      "sha256": "a6e79c1ba3c86a94b08e80e606601bdcf0a78cddaa6468688335176a5bc1cba4"
+    },
+    "runningattack.eff": {
+      "file": "effect/runningattack.eff",
+      "sha256": "31488780cb2febe4dea81a2c5cfbc4feb263571b8db9b385f7a2caab0335fe1f"
+    },
+    "runningattack2.eff": {
+      "file": "effect/runningattack2.eff",
+      "sha256": "2d9a31bba1ee8056b8ae5cd96a978f7aa8d9979d4161531d35271d47ac2d728c"
+    },
+    "runningattack3.eff": {
+      "file": "effect/runningattack3.eff",
+      "sha256": "18d5e3abf43497f7219c168f4c304381186d1b6969994abffc4c5cfc720851be"
+    },
+    "runatktarget.par": {
+      "file": "effect/runatktarget.par",
+      "sha256": "5eafd9bbbb88c26f65a195436d3f4f055a9bec5157fa74af037a22d54ae4cc8b"
+    },
+    "runatktarget.eff": {
+      "file": "effect/runatktarget.eff",
+      "sha256": "6b14a88e3608a1ab05db4456b05d8141e6b747e76567357182028b23025a43d6"
+    },
+    "icearrow.par": {
+      "file": "effect/icearrow.par",
+      "sha256": "98125044bced759961b8bf290c2ecbdc02e1db67b0b72d39e0913ee29437ecbf"
+    },
+    "icearrow.eff": {
+      "file": "effect/icearrow.eff",
+      "sha256": "c2f96b1df772d9032ed12b88d2899bd9af6da6e6743060d9d8337e523f7fad56"
+    },
+    "icearrowf.eff": {
+      "file": "effect/icearrowf.eff",
+      "sha256": "bb9d34eea9c178e1cb581ecae3792c05db75a61a74822203779abf6556f82bde"
+    },
+    "icearrowf(a).eff": {
+      "file": "effect/icearrowf(a).eff",
+      "sha256": "3800d6b489823a115e51d4641387fc4b3d068278c0a160a6ad524f819d143b2c"
+    },
+    "icearrowf.par": {
+      "file": "effect/icearrowf.par",
+      "sha256": "de1a3f2546b5a6695d1aceb854533c506c34f9d2f5148fa5b39f7590ae72379b"
+    },
+    "icearrowh.par": {
+      "file": "effect/icearrowh.par",
+      "sha256": "9e28f5fd65d7b5724069c1a6a0cfb26cd689ca3dea5499d9d2aeb797a0c190ca"
+    },
+    "icearrowh.eff": {
+      "file": "effect/icearrowh.eff",
+      "sha256": "f2de9fc6e8e2eb5f16f13d2570426d05e6bc213561c36e789c3fd6432878fb96"
+    },
+    "01000016.par": {
+      "file": "effect/01000016.par",
+      "sha256": "18f737774fd3a0f393339181f96f69c0ba0c3a5ea2aeaf31874b56f9f73ce41b"
+    },
+    "01000016.eff": {
+      "file": "effect/01000016.eff",
+      "sha256": "3d1c91ba5c21bdbfdcdd25b44917e8452b3d5b445d1401ea3c7762a00b8c5a6c"
+    },
+    "01000016(a).eff": {
+      "file": "effect/01000016(a).eff",
+      "sha256": "100fd4d99d2af1e9a86b50a2d3c75d0c01e8ed5f7d0454e0b46a131dda44c64b"
+    },
+    "04000010.par": {
+      "file": "effect/04000010.par",
+      "sha256": "104c4f0a915914ba2cb3b3955904e14dad131546dc2863c2262f6758124370a8"
+    },
+    "04000010.eff": {
+      "file": "effect/04000010.eff",
+      "sha256": "ad11574101f641d8f658ac8fcdbccb54c8ec7c2e3ffaa1c966c96c7a3cd103bc"
+    },
+    "01020013.par": {
+      "file": "effect/01020013.par",
+      "sha256": "d603645a5ea955cde262d464f1203d48130dc8babb59f772ef9ce68fa9b13310"
+    },
+    "01020013.eff": {
+      "file": "effect/01020013.eff",
+      "sha256": "0ad0d7c24bc06c0b7780fb79a283308a1c2d72be90b83ddcfb446db7983348fa"
+    },
+    "04000011.par": {
+      "file": "effect/04000011.par",
+      "sha256": "62e4441f5b0000b0bcfbb79b128d572fb3e9b5e814fb0461927d6a8797ded103"
+    },
+    "04000011.eff": {
+      "file": "effect/04000011.eff",
+      "sha256": "5389fcdbc4641088a55dabf1f0f7c7c0ce41e5d52630cced60e22bbd485cd3b5"
+    },
+    "01020013(b).par": {
+      "file": "effect/01020013(b).par",
+      "sha256": "7eba1e1334e40b2f007e4a924c5a36a32476fe3e6d87f30b1d938df7c04673e0"
+    },
+    "01020013(b1).eff": {
+      "file": "effect/01020013(b1).eff",
+      "sha256": "d6340ec0b63a63706b92de11dd425823e0d4d1cac553752545be27558ae5f5f9"
+    },
+    "01020013(b).eff": {
+      "file": "effect/01020013(b).eff",
+      "sha256": "4df09fe07f9e8e82d54bde4295c73ce3de2cd6aaac0f668163836a04d6ef8829"
+    },
+    "01020013(b2).eff": {
+      "file": "effect/01020013(b2).eff",
+      "sha256": "5c9d2550cae672d4d8bdf9ea5afc91210e0d7e8b500675a24e0f650f28e8e65c"
+    },
+    "04000008.par": {
+      "file": "effect/04000008.par",
+      "sha256": "ebf964c83590020f71e4a6074f9a8c08b6af7deadd32106a0209f334383de642"
+    },
+    "04000008.eff": {
+      "file": "effect/04000008.eff",
+      "sha256": "d0590a3878515684e2efb08d282c94ecf39fb8e7bcab21fa1201461f713a63ef"
+    },
+    "01020013(a).par": {
+      "file": "effect/01020013(a).par",
+      "sha256": "c2fe0d08a8e79c791ce6eef173440c588d98b0a0f2f948aaceaece0f192cad18"
+    },
+    "01020013(a1).eff": {
+      "file": "effect/01020013(a1).eff",
+      "sha256": "51e62d04c6f78ac42513d9614a6a2cc5f42f1493f309ba171b0004c96522c739"
+    },
+    "01020013(a).eff": {
+      "file": "effect/01020013(a).eff",
+      "sha256": "eedd33dfaf443cb54e77d9560c4e0dc4765e609d9996e3575c2f2bb3e7058c9e"
+    },
+    "01020007.par": {
+      "file": "effect/01020007.par",
+      "sha256": "9202101b3bb204002a1831114ef58d230f9c48ed1acf4506dd7f66461c470f81"
+    },
+    "01020007.eff": {
+      "file": "effect/01020007.eff",
+      "sha256": "531e6aca97fb6afdc4e7816e27b0392335f7685d62dc5a271c814e8cc274a7c3"
+    },
+    "hpushf.par": {
+      "file": "effect/hpushf.par",
+      "sha256": "d6eee7b256d2a789c7557971c57382b3370b4dcf56f9f2b18d3182bb6ff62ea9"
+    },
+    "wolf01.eff": {
+      "file": "effect/wolf01.eff",
+      "sha256": "d8fe5ed528afb71dc617b5add314e62b0e28f2b19a9ef867c51d5b0998821078"
+    },
+    "hpushf01.eff": {
+      "file": "effect/hpushf01.eff",
+      "sha256": "0f61f126803dbe99d609598e17d1a710f6106c2a6f9e3e61a64a778658478f05"
+    },
+    "hpushf02.eff": {
+      "file": "effect/hpushf02.eff",
+      "sha256": "f7b0193d26dc7e13286df6872f67606475ead87a95c97977a6d54d70323f0071"
+    },
+    "hpusht.par": {
+      "file": "effect/hpusht.par",
+      "sha256": "ece776652d59e3b486dcb646f2a459bfcfde1cb85c9e8becbdc9aa082e86a2d3"
+    },
+    "hpusht.eff": {
+      "file": "effect/hpusht.eff",
+      "sha256": "a2956996d795f836e7ebbaa05dfbc244f67aedd6a5bda8efaf360d17c98053a2"
+    },
+    "hpushf03.eff": {
+      "file": "effect/hpushf03.eff",
+      "sha256": "9c1f4affd25c144699f33197948abb824b47c1f1eb43021d431311cb8d268621"
+    },
+    "hpushf04.eff": {
+      "file": "effect/hpushf04.eff",
+      "sha256": "1d476f94071190e6f6d133b1065ea77a6660c11fa6181c646b2996d7ba479191"
+    },
+    "shadowf01.par": {
+      "file": "effect/shadowf01.par",
+      "sha256": "7ddfc074d0b9cc19017859c188ac3f5d9e13941e718528a4a9bebaba6b2e5ef4"
+    },
+    "shadowf04.eff": {
+      "file": "effect/shadowf04.eff",
+      "sha256": "57785b4b33022c8860356ecfa1ca3acab126b08b9ea1692fcc9dcb4bc4644899"
+    },
+    "shadowf01.eff": {
+      "file": "effect/shadowf01.eff",
+      "sha256": "23bb957580590a4900cc0b991d4b586064380df638db44e438352409e713c482"
+    },
+    "shadowf02.eff": {
+      "file": "effect/shadowf02.eff",
+      "sha256": "35e73c5a1988b938d5d5399c837f22dc046d86aa6e5daaf830d8022291a8303a"
+    },
+    "shadowf03.eff": {
+      "file": "effect/shadowf03.eff",
+      "sha256": "e7ae1609f144a1da202e238f8e11f415b87366774a2c8660f97d1861f4d6b4a4"
+    },
+    "shadowi.par": {
+      "file": "effect/shadowi.par",
+      "sha256": "8de268e5583e6f59f607d145d782f094d418d9aefbe09d59494cfd41cb0f9b2e"
+    },
+    "shadow01.par": {
+      "file": "effect/shadow01.par",
+      "sha256": "a7858d4c24cf668aeb79566ff4932398a3f6f35f6ac3ccf7903e2ebe02242c8d"
+    },
+    "shadow04.eff": {
+      "file": "effect/shadow04.eff",
+      "sha256": "7bf41c8a0625ce8c5c7fa2518993c60954d4a2559269095ce25b7d00402f59b8"
+    },
+    "shadow03.eff": {
+      "file": "effect/shadow03.eff",
+      "sha256": "a979d3fb5801ec47e82aa9ac8e892061a70f472960d8e1820ec792cdfd0dd56c"
+    },
+    "shadow05.eff": {
+      "file": "effect/shadow05.eff",
+      "sha256": "10fd638a20b355eb32fae05df72babcbbb79e270fe602cb518c0ad975f8a08c2"
+    },
+    "shadow01.eff": {
+      "file": "effect/shadow01.eff",
+      "sha256": "bcffa5fa4704970fb2b05d5f43d73d2a704c5b77f813659c67edb31b2c1692e3"
+    },
+    "shadow02.eff": {
+      "file": "effect/shadow02.eff",
+      "sha256": "825871c76b2e226c54161e816b3e5abf4bac9783e19c1326f743adeccdb5110f"
+    },
+    "shadow06.eff": {
+      "file": "effect/shadow06.eff",
+      "sha256": "755f68ad214a5d5019f0171566d5d484c20cc4e5d7695af1c6fb8adb7fc52014"
+    },
+    "barrierf.par": {
+      "file": "effect/barrierf.par",
+      "sha256": "e40bd7394b69402dfcc69626becc6e2c59efd5a4344bca64c3a11004ee24f3e7"
+    },
+    "spaf(b).eff": {
+      "file": "effect/spaf(b).eff",
+      "sha256": "c013c708e8ff866843ddc9a4dbf8586119df32d41be652be9f6f4e9f4d6627a9"
+    },
+    "barrier01.eff": {
+      "file": "effect/barrier01.eff",
+      "sha256": "13e585d0d62a27aabcd620558d1c5799aae61849efecc3e76e1fe340b7601a5c"
+    },
+    "barrier02.eff": {
+      "file": "effect/barrier02.eff",
+      "sha256": "4937aa8554b9dd1a06c6c0a1939d06f32e9e604942f18ee00720fe061ed4470d"
+    },
+    "barrieri.par": {
+      "file": "effect/barrieri.par",
+      "sha256": "76f7c1985caa70d8e3e548a2231b669b3a983b609fda75eca809af01238be1ab"
+    },
+    "barriert.par": {
+      "file": "effect/barriert.par",
+      "sha256": "0bc3338672e73798ec7cd0ae3c5e50b7fa88ef1840216bbf75608aa312a9e6fd"
+    },
+    "barrier03.eff": {
+      "file": "effect/barrier03.eff",
+      "sha256": "9ca0d875eb9d4e24a3b3b64fed3574f80b41bd9cb4a94bc082c631fa1f4772f3"
+    },
+    "barrier04.eff": {
+      "file": "effect/barrier04.eff",
+      "sha256": "5881dded44e7aa405b1209f49790eca76dc6fd47f1ef69bd7fedbe1105856ea2"
+    },
+    "wolf.par": {
+      "file": "effect/wolf.par",
+      "sha256": "8b418a00a895e0858f42609593590d4a73a842238f13c53718740930f20bb9d8"
+    },
+    "wolf02.eff": {
+      "file": "effect/wolf02.eff",
+      "sha256": "f212906d0f9656f31342467afd3a8985e074169ea05e1f14d10fb22a6c569c04"
+    },
+    "01030006.par": {
+      "file": "effect/01030006.par",
+      "sha256": "26a835cfaf6be263c6b2fdd268f963d6bedf438ca8b92ca958d244493745b85c"
+    },
+    "01030006.eff": {
+      "file": "effect/01030006.eff",
+      "sha256": "7511a6ec28fdcca3b42d9fd5bd73bf417599db400a64661cd5da50469e414752"
+    },
+    "fallstar01.par": {
+      "file": "effect/fallstar01.par",
+      "sha256": "01489b3adcd630d47df7152bd5c6da874073cd0c2e75f04d995c83a5444bf526"
+    },
+    "fallstar01.eff": {
+      "file": "effect/fallstar01.eff",
+      "sha256": "cbdaaf09e8c2d074a3ca93aa6caa32c36f28c1ec4932bbfa421d9a1a2942e612"
+    },
+    "fallstar02.par": {
+      "file": "effect/fallstar02.par",
+      "sha256": "e0a70dff6330e31686e0a373e82e595bc22d4daf970c8fe2f5f9eb417d2b3d0f"
+    },
+    "fallstar03.eff": {
+      "file": "effect/fallstar03.eff",
+      "sha256": "3aee204c73c7a2be98211964d1ba093d53c19ef7df2ee5d79b85335a7e089004"
+    },
+    "lightblast.par": {
+      "file": "effect/lightblast.par",
+      "sha256": "7f32aa253286e66b8bc7958f9ab498c5ac1f1a3825f3c5bf6003bebfab895c29"
+    },
+    "heallight03.eff": {
+      "file": "effect/heallight03.eff",
+      "sha256": "653fe6433b598df1e4e903ee860403396c9118398d122f288f5ede4326d2b135"
+    },
+    "littlering.eff": {
+      "file": "effect/littlering.eff",
+      "sha256": "9b56c3923c889b98e440c997929c1096c44b4dfda88925cb55899894b589932d"
+    },
+    "hide01.par": {
+      "file": "effect/hide01.par",
+      "sha256": "98c6e93d5cda5295d856c18967185712e63c7066cba48df1d76c03fd07b1d29a"
+    },
+    "hide01.eff": {
+      "file": "effect/hide01.eff",
+      "sha256": "3398595143fbc8ba877456d70633f9b93ef92c41d51080e965d2138eb9b3d79d"
+    },
+    "hide02.eff": {
+      "file": "effect/hide02.eff",
+      "sha256": "3d87b59c64d9b468ee28a0315b165479505eb739bf9d5979d3a62839450c90f6"
+    },
+    "hide03.eff": {
+      "file": "effect/hide03.eff",
+      "sha256": "659d7c9a1c1a683f9ee29fd6669b42fe5c41a32b500aaf2bf943ba248e029097"
+    },
+    "hide04.eff": {
+      "file": "effect/hide04.eff",
+      "sha256": "24d63173c70fdf2610603d3de9f0fbf83c201ecc307eedb25eeeea0337881ed1"
+    },
+    "wind.par": {
+      "file": "effect/wind.par",
+      "sha256": "7e2d8da50462e62a815c19a93dba98fc3f62c74b8c3d5f178c68aa1257971b73"
+    },
+    "wind.eff": {
+      "file": "effect/wind.eff",
+      "sha256": "0a880b9862e78ed22229c8446811fea9c3b637a7434529ea17523e1071cb8ac3"
+    },
+    "wind(a).eff": {
+      "file": "effect/wind(a).eff",
+      "sha256": "edbe45c46b4a1b7a4c0e913cdc741816a16bc2a64df9f56ea5a829fe40752e12"
+    },
+    "wind(b).eff": {
+      "file": "effect/wind(b).eff",
+      "sha256": "2dc26ac118313b5610331728b0c08538f3773fd6c0f8a1174ba33642124d81d9"
+    },
+    "wind(c).eff": {
+      "file": "effect/wind(c).eff",
+      "sha256": "3d23d61bee2f430ded85f018a1da063c330b034a4fe6c1e6f1dc9155b74e57ff"
+    },
+    "whurt.par": {
+      "file": "effect/whurt.par",
+      "sha256": "8fffad47b0bd491ec6f0e34feed62165f50d4dbeabfd40748de97b89c55a2f25"
+    },
+    "whurt(a).eff": {
+      "file": "effect/whurt(a).eff",
+      "sha256": "fd80b9197f4868b17ea52d4b600fb60fb7ecdb33bc2b386ca8d43ebbc7aada50"
+    },
+    "whurt.eff": {
+      "file": "effect/whurt.eff",
+      "sha256": "0c12ebb8ba6375deb7039cc7b48d4c87f165968943b739d309478f1ead8c0a0f"
+    },
+    "strik.par": {
+      "file": "effect/strik.par",
+      "sha256": "0fc67ff1be617dbbd575fd478622e33d4686be0119b5627153ea9bcfeca2a1b3"
+    },
+    "strik.eff": {
+      "file": "effect/strik.eff",
+      "sha256": "6b658fc12cdf769872827d04469d4f3ab393e278dbcc7329a630b0f50e0d661d"
+    },
+    "strik(a).eff": {
+      "file": "effect/strik(a).eff",
+      "sha256": "591ce296967c1afd39db699855295e22d4f46c7ddba6e9aa1e8798d4f18c23e1"
+    },
+    "strik(c).eff": {
+      "file": "effect/strik(c).eff",
+      "sha256": "465b6dfe019f6522fd97da9625b6110981a77832e4791688dcb1b3bd409830ff"
+    },
+    "strhurt.par": {
+      "file": "effect/strhurt.par",
+      "sha256": "2114dbe1e5e112008f078444b0fb6871f8b7a9206a7b3e61939fa8edd63801d0"
+    },
+    "strhurt(b).eff": {
+      "file": "effect/strhurt(b).eff",
+      "sha256": "d368e4ae7ac422f84aef8a0ef0d53144e1afda1ea3c63b648147158358c1022e"
+    },
+    "strhurt.eff": {
+      "file": "effect/strhurt.eff",
+      "sha256": "5d6248c4fc37cb5ed1e89ae64d300b503a83e4f30b92132817ff8896d100f19d"
+    },
+    "strhurt(c).eff": {
+      "file": "effect/strhurt(c).eff",
+      "sha256": "2646afb62f5ffb116b025308cd3cf418870821117f6e188dc8434519a948d26c"
+    },
+    "strhurt(a).eff": {
+      "file": "effect/strhurt(a).eff",
+      "sha256": "5f9d3bf26db5366d69c19ca9c593b4b062906baa41505671a33ac11c54e66fff"
+    },
+    "cowfire.par": {
+      "file": "effect/cowfire.par",
+      "sha256": "22e233812c3b6b9c0637e6614995ef6201a782bef2edd0112f29b89a04b1890c"
+    },
+    "cowfire.eff": {
+      "file": "effect/cowfire.eff",
+      "sha256": "712f66835961c9723d472a4410cdf35c2b1c95dde28e0a60bbf87decf1315dc9"
+    },
+    "cowdust.par": {
+      "file": "effect/cowdust.par",
+      "sha256": "8cf5e5a7ebc34569a05e603cad96f3c729eadc6561559ab32b0f4f3b0d135df7"
+    },
+    "cowdust.eff": {
+      "file": "effect/cowdust.eff",
+      "sha256": "3659cedd750346e483e859becf52e496ee4d8e28adbd1354f715806712efe069"
+    },
+    "cowtarget.par": {
+      "file": "effect/cowtarget.par",
+      "sha256": "07e5dabaf3d90d08f05eee9653ede24286e89508dd9ebb5fd0550a937ef67ce5"
+    },
+    "cowtarget.eff": {
+      "file": "effect/cowtarget.eff",
+      "sha256": "ab7e1169e5f77fd94135a6a7b8d4330ea84dccddfbdbda20a38f3c924aa30267"
+    },
+    "parrow.par": {
+      "file": "effect/parrow.par",
+      "sha256": "4ebe559ca3d65797bce7fb4c594a50b9938d2c5682fb08546cd9f26d412cb6a2"
+    },
+    "parrow.eff": {
+      "file": "effect/parrow.eff",
+      "sha256": "2a2ff1d14c18764cf845e6a9b791521086ee6d3339075762587e34186eeecf9f"
+    },
+    "parrowf.eff": {
+      "file": "effect/parrowf.eff",
+      "sha256": "d9acefccbf685cbbcd008cb93f256396932d43e815fcacc221b606f0f353ca04"
+    },
+    "parrowh.par": {
+      "file": "effect/parrowh.par",
+      "sha256": "261dd236deb2e73233fd8b01a1567490049287611b525222ef07130e28ad5c95"
+    },
+    "parrowh.eff": {
+      "file": "effect/parrowh.eff",
+      "sha256": "147865f7903f74e619f2e56d3c47f0c6ba5957233256325e7deee885f18df226"
+    },
+    "pxsf.par": {
+      "file": "effect/pxsf.par",
+      "sha256": "7a82791bd43e333522c68b790246c73a038766f90c5e9e5f717547d7a821f874"
+    },
+    "cf.eff": {
+      "file": "effect/cf.eff",
+      "sha256": "5006c9a8fcb39759282912e9bb6161abadd8753d58cce4064db3e1e57795043c"
+    },
+    "cfsj.par": {
+      "file": "effect/cfsj.par",
+      "sha256": "d10de3fdf29e0ea589548384bfbcdaf6251400d963af38536d5d32ebe6c71eb2"
+    },
+    "cfsj.eff": {
+      "file": "effect/cfsj.eff",
+      "sha256": "0ac11b96902ec83a530b755578d85a54d680d23b0a0edb5f066df4d8a7403c4b"
+    },
+    "stoneshieldi.par": {
+      "file": "effect/stoneshieldi.par",
+      "sha256": "4fa86eeac17b1244c922dc31445334ed9dca83fdd94e6bd7e8adafc5d0111adb"
+    },
+    "stoneshield01.eff": {
+      "file": "effect/stoneshield01.eff",
+      "sha256": "514845e07a228d96e0e81900ea5f6d333f162385da1807c8fa4ba4105fc91282"
+    },
+    "stoneshieldt.par": {
+      "file": "effect/stoneshieldt.par",
+      "sha256": "a435b6b243f23d47aededeb23ff7dbaf69e0d7a7bf7fcbd9ebc29e5b4a2bd507"
+    },
+    "mfbdb.par": {
+      "file": "effect/mfbdb.par",
+      "sha256": "0912de0274a98a1b67f5ed0fef0985725158dc8c634f8a8246aea01972ffeb27"
+    },
+    "01010513.eff": {
+      "file": "effect/01010513.eff",
+      "sha256": "f49b9ab39697dd11ab496616972c808c136f647ffba57822ae720fa88c73a814"
+    },
+    "mfbd.eff": {
+      "file": "effect/mfbd.eff",
+      "sha256": "69fd50ff5cde97fbc457ee6dbfd8d6b1a19e1d22ba8573e3a3f9e1b880e94597"
+    },
+    "bsj.par": {
+      "file": "effect/bsj.par",
+      "sha256": "89a28769427f78666de6b57a5abfed2d3d68f5234a4ce12c980b0dd3a2e38165"
+    },
+    "foot6.eff": {
+      "file": "effect/foot6.eff",
+      "sha256": "6214518d1010fb352f302c0440a09ee722d3f90e24a2b72eb870313cbe8ffdb8"
+    },
+    "foot2.eff": {
+      "file": "effect/foot2.eff",
+      "sha256": "cb58ec6c8b7bc884b753595084dcbcd92087f004a4e27baf6fc8f748619e40ad"
+    },
+    "foot3.eff": {
+      "file": "effect/foot3.eff",
+      "sha256": "66b9d0161019d51a9e0685ae244d5f30dcc9c51268b1d8b7fd8a36ec84e08889"
+    },
+    "hamhamha.par": {
+      "file": "effect/hamhamha.par",
+      "sha256": "8ab7e226a3253eab4b34f26843095b838cce1bdd24558f43641ef24c62843e7c"
+    },
+    "jiguang.eff": {
+      "file": "effect/jiguang.eff",
+      "sha256": "9a781f6bb06ccb7dbc127c9df715bb7308389d2b19969d2e957f5587dd95e41e"
+    },
+    "jiguang2.eff": {
+      "file": "effect/jiguang2.eff",
+      "sha256": "56e871fb0c211398d83b4fb29ef6cf562e06130af78c0429ed216c3d70198ffb"
+    },
+    "jiguang3.eff": {
+      "file": "effect/jiguang3.eff",
+      "sha256": "5a042ac6f435261f0267adeb63b10326e849928ce5082c2cdf707dd8e4208832"
+    },
+    "swordlight02__s81.par": {
+      "file": "effect/swordlight02.par",
+      "sha256": "96d05b44aa197d7a6628d3ff709beea6170ea72e159901102f7a6b964fc665aa"
+    }
+  },
+  "skills": [
+    {
+      "class": "crusader",
+      "id": 81,
+      "name": "Illusion Slash",
+      "resources": [
+        "01000014.par",
+        "01010003.eff",
+        "01020028.par",
+        "04000009.eff",
+        "swordlight02__s81.par"
+      ],
+      "effParts": 4,
+      "effKeyframes": 12
+    },
+    {
+      "class": "crusader",
+      "id": 84,
+      "name": "Berseker",
+      "resources": [
+        "01000028(a).eff",
+        "01000028(b).eff",
+        "firegush.par",
+        "firegush01.eff",
+        "firegush02.eff",
+        "firegush03.eff",
+        "firegush04.eff",
+        "firegush05.eff",
+        "ragefire.eff",
+        "spire01.par",
+        "spirea00.eff",
+        "spirec00.eff",
+        "spireh00.eff",
+        "spirei00.eff",
+        "spirej00.eff"
+      ],
+      "effParts": 16,
+      "effKeyframes": 54
+    },
+    {
+      "class": "crusader",
+      "id": 123,
+      "name": "Steath",
+      "resources": [
+        "hide01.eff",
+        "hide01.par",
+        "hide02.eff",
+        "hide03.eff",
+        "hide04.eff",
+        "ring.eff"
+      ],
+      "effParts": 5,
+      "effKeyframes": 15
+    },
+    {
+      "class": "crusader",
+      "id": 86,
+      "name": "Shadow Slash",
+      "resources": [
+        "beast01.eff",
+        "beast02.eff",
+        "dance01.eff",
+        "dance02.eff",
+        "dance03.eff",
+        "dance04.eff",
+        "dancef.par",
+        "dancet.par",
+        "ring.eff",
+        "swordlight02.par"
+      ],
+      "effParts": 8,
+      "effKeyframes": 25
+    },
+    {
+      "class": "cleric",
+      "id": 99,
+      "name": "Bolt",
+      "resources": [
+        "hpushf.par",
+        "hpushf01.eff",
+        "hpushf02.eff",
+        "hpushf03.eff",
+        "hpushf04.eff",
+        "hpusht.eff",
+        "hpusht.par",
+        "wolf01.eff"
+      ],
+      "effParts": 7,
+      "effKeyframes": 25
+    },
+    {
+      "class": "cleric",
+      "id": 97,
+      "name": "Heal",
+      "resources": [
+        "01020007.eff",
+        "01020007.par"
+      ],
+      "effParts": 3,
+      "effKeyframes": 9
+    },
+    {
+      "class": "cleric",
+      "id": 106,
+      "name": "Energy",
+      "resources": [
+        "barrier01.eff",
+        "barrier02.eff",
+        "barrier03.eff",
+        "barrier04.eff",
+        "barrierf.par",
+        "barrieri.par",
+        "barriert.par",
+        "spaf(b).eff"
+      ],
+      "effParts": 6,
+      "effKeyframes": 18
+    },
+    {
+      "class": "cleric",
+      "id": 255,
+      "name": "Crystalline Blessing",
+      "resources": [
+        "stoneshield01.eff",
+        "stoneshieldi.par",
+        "stoneshieldt.par"
+      ],
+      "effParts": 1,
+      "effKeyframes": 3
+    },
+    {
+      "class": "sharpshooter",
+      "id": 94,
+      "name": "Cripple",
+      "resources": [
+        "01000016(a).eff",
+        "01000016.eff",
+        "01000016.par",
+        "01020013.eff",
+        "01020013.par",
+        "04000010.eff",
+        "04000010.par"
+      ],
+      "effParts": 9,
+      "effKeyframes": 32
+    },
+    {
+      "class": "sharpshooter",
+      "id": 95,
+      "name": "Enfeeble",
+      "resources": [
+        "01000016(a).eff",
+        "01000016.eff",
+        "01000016.par",
+        "01020013(b).eff",
+        "01020013(b).par",
+        "01020013(b1).eff",
+        "01020013(b2).eff",
+        "04000011.eff",
+        "04000011.par"
+      ],
+      "effParts": 32,
+      "effKeyframes": 123
+    },
+    {
+      "class": "sharpshooter",
+      "id": 96,
+      "name": "Headshot",
+      "resources": [
+        "01000016(a).eff",
+        "01000016.eff",
+        "01000016.par",
+        "01020013(a).eff",
+        "01020013(a).par",
+        "01020013(a1).eff",
+        "04000008.eff",
+        "04000008.par"
+      ],
+      "effParts": 10,
+      "effKeyframes": 35
+    },
+    {
+      "class": "sharpshooter",
+      "id": 456,
+      "name": "Red Thunder Cannon",
+      "resources": [
+        "cowtarget.eff",
+        "cowtarget.par",
+        "hamhamha.par",
+        "jiguang.eff",
+        "jiguang2.eff",
+        "jiguang3.eff"
+      ],
+      "effParts": 15,
+      "effKeyframes": 52
+    },
+    {
+      "class": "hunter",
+      "id": 90,
+      "name": "Dual Shot",
+      "resources": [
+        "inline.eff",
+        "ring.eff",
+        "runatktarget.eff",
+        "runatktarget.par",
+        "runningattack.eff",
+        "runningattack2.eff",
+        "runningattack3.eff",
+        "yfire.eff",
+        "yfire.par"
+      ],
+      "effParts": 11,
+      "effKeyframes": 32
+    },
+    {
+      "class": "hunter",
+      "id": 93,
+      "name": "Frozen Arrow",
+      "resources": [
+        "icearrow.eff",
+        "icearrow.par",
+        "icearrowf(a).eff",
+        "icearrowf.eff",
+        "icearrowf.par",
+        "icearrowh.eff",
+        "icearrowh.par"
+      ],
+      "effParts": 11,
+      "effKeyframes": 40
+    },
+    {
+      "class": "hunter",
+      "id": 224,
+      "name": "Venom Arrow",
+      "resources": [
+        "parrow.eff",
+        "parrow.par",
+        "parrowf.eff",
+        "parrowh.eff",
+        "parrowh.par"
+      ],
+      "effParts": 9,
+      "effKeyframes": 26
+    },
+    {
+      "class": "hunter",
+      "id": 112,
+      "name": "Meteor Shower",
+      "resources": [
+        "fallstar01.eff",
+        "fallstar01.par",
+        "fallstar02.par",
+        "fallstar03.eff",
+        "heallight03.eff",
+        "lightblast.par",
+        "littlering.eff"
+      ],
+      "effParts": 7,
+      "effKeyframes": 16
+    },
+    {
+      "class": "voyager",
+      "id": 216,
+      "name": "Conch Ray",
+      "resources": [
+        "cowdust.eff",
+        "cowdust.par",
+        "cowfire.eff",
+        "cowfire.par",
+        "cowtarget.eff",
+        "cowtarget.par"
+      ],
+      "effParts": 11,
+      "effKeyframes": 43
+    },
+    {
+      "class": "voyager",
+      "id": 214,
+      "name": "Lightning Bolt",
+      "resources": [
+        "strhurt(a).eff",
+        "strhurt(b).eff",
+        "strhurt(c).eff",
+        "strhurt.eff",
+        "strhurt.par",
+        "strik(a).eff",
+        "strik(c).eff",
+        "strik.eff",
+        "strik.par"
+      ],
+      "effParts": 21,
+      "effKeyframes": 72
+    },
+    {
+      "class": "voyager",
+      "id": 213,
+      "name": "Tornado",
+      "resources": [
+        "whurt(a).eff",
+        "whurt.eff",
+        "whurt.par",
+        "wind(a).eff",
+        "wind(b).eff",
+        "wind(c).eff",
+        "wind.eff",
+        "wind.par"
+      ],
+      "effParts": 12,
+      "effKeyframes": 40
+    },
+    {
+      "class": "voyager",
+      "id": 454,
+      "name": "Super consciousness",
+      "resources": [
+        "01030006.eff",
+        "01030006.par"
+      ],
+      "effParts": 2,
+      "effKeyframes": 6
+    },
+    {
+      "class": "seal-master",
+      "id": 99,
+      "name": "Spiritual Bolt",
+      "resources": [
+        "hpushf.par",
+        "hpushf01.eff",
+        "hpushf02.eff",
+        "hpushf03.eff",
+        "hpushf04.eff",
+        "hpusht.eff",
+        "hpusht.par",
+        "wolf01.eff"
+      ],
+      "effParts": 7,
+      "effKeyframes": 25
+    },
+    {
+      "class": "seal-master",
+      "id": 97,
+      "name": "Heal",
+      "resources": [
+        "01020007.eff",
+        "01020007.par"
+      ],
+      "effParts": 3,
+      "effKeyframes": 9
+    },
+    {
+      "class": "seal-master",
+      "id": 256,
+      "name": "Intense Magic",
+      "resources": [
+        "01010513.eff",
+        "mfbd.eff",
+        "mfbdb.par"
+      ],
+      "effParts": 3,
+      "effKeyframes": 5
+    },
+    {
+      "class": "seal-master",
+      "id": 105,
+      "name": "Shadow Insignia",
+      "resources": [
+        "shadow01.eff",
+        "shadow01.par",
+        "shadow02.eff",
+        "shadow03.eff",
+        "shadow04.eff",
+        "shadow05.eff",
+        "shadow06.eff",
+        "shadowf01.eff",
+        "shadowf01.par",
+        "shadowf02.eff",
+        "shadowf03.eff",
+        "shadowf04.eff",
+        "shadowi.par"
+      ],
+      "effParts": 19,
+      "effKeyframes": 63
+    },
+    {
+      "class": "champion",
+      "id": 107,
+      "name": "Howl",
+      "resources": [
+        "01030006.eff",
+        "01030006.par",
+        "wolf.par",
+        "wolf01.eff",
+        "wolf02.eff"
+      ],
+      "effParts": 5,
+      "effKeyframes": 15
+    },
+    {
+      "class": "champion",
+      "id": 243,
+      "name": "Roar",
+      "resources": [
+        "cf.eff",
+        "cfsj.eff",
+        "cfsj.par",
+        "pxsf.par"
+      ],
+      "effParts": 2,
+      "effKeyframes": 12
+    },
+    {
+      "class": "champion",
+      "id": 83,
+      "name": "Primal Rage",
+      "resources": [
+        "beast01.eff",
+        "beast02.eff",
+        "beast03.eff",
+        "foot.eff",
+        "foot.par",
+        "foot02.par"
+      ],
+      "effParts": 4,
+      "effKeyframes": 10
+    },
+    {
+      "class": "champion",
+      "id": 455,
+      "name": "Beast Legion Smash",
+      "resources": [
+        "beast03.eff",
+        "bsj.par",
+        "foot02.par",
+        "foot2.eff",
+        "foot3.eff",
+        "foot6.eff"
+      ],
+      "effParts": 4,
+      "effKeyframes": 6
+    }
+  ],
+  "effKeyframes": 714,
+  "resourceCount": 160,
+  "note": "Registro da conferência histórica anterior. A Illusion Slash (#81) foi recuperada da edição do usuário, que tem prioridade sobre os binários originais.",
+  "userEditedSkills": [
+    81
+  ]
+}

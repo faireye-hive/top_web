@@ -4,10 +4,11 @@ import {buildTimeline,effSegments,effDuration,parCurveKeys,parDuration,stageTime
 const root = new URL('../../assets/skills/', import.meta.url);
 const load=file=>JSON.parse(readFileSync(new URL(file,root),'utf8'));
 const vis=load('visuals.json'), hist=load('historical.json');
-const eff=vis.resources['04000009.eff'];
+// Timing regression fixture: the editor's real Illusion Slash is user-editable.
+const eff={parts:[{keys:[{d:.9},{d:1.8},{d:.9}]}]};
 assert.deepEqual(effSegments(eff).map(k=>[k.start,k.end]),[[0,.9],[.9,2.7],[2.7,3.6]],'EFF 81 tempos cumulativos');
 assert.equal(effDuration(eff),3.6,'somar os tempos EFF é diferente do cooldown de 5s');
-const sys=vis.resources['01000014.par'].systems[0];
+const sys={life:1,play:.5,type:12,sizes:[.2,.1,.05]};
 assert.equal(parDuration(sys).duration,1.5,'sistemas PAR: play + life');
 assert.ok(parCurveKeys(sys).length>=3,'distribuição das chaves PAR');
 assert.equal(parCurveKeys({life:2,delay:.5,sizes:[1,2,3]})[1].start,1.1667,'chaves PAR não são segundos explícitos');
@@ -17,7 +18,7 @@ const layers=sk.channels.flatMap((c,i)=>c.visual.flatMap(v=>(v.files||[]).flatMa
   return r.kind==='eff'?[{key:`${i}:${file}:e`,file,kind:'eff',channel:c.kind,vis:v,flightSpeed:sk.speed}]:
     (r.systems||[]).map((_,idx)=>({key:`${i}:${file}:s${idx}`,file,idx,kind:'system',channel:c.kind,vis:v,flightSpeed:sk.speed}));
 })));
-const plan=buildTimeline({layers,resolve:l=>l.kind==='eff'?vis.resources[l.file]:vis.resources[l.file].systems[l.idx],
+const plan=buildTimeline({layers,resolve:l=>l.file==='04000009.eff'?eff:l.kind==='eff'?vis.resources[l.file]:vis.resources[l.file].systems[l.idx],
   resolveEff:f=>vis.resources[f],historical:hist.skills['81'],distance:3.8});
 assert.ok(plan.tracks.length>0);
 assert.equal(plan.stage.release,0,'sem timestamp DX9 verificável não inventar atraso');

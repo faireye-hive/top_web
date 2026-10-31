@@ -2,6 +2,7 @@
 // As durações EFF (d) e PAR (delay/play/life/step) são lidas de resources e
 // sobrescritas pelas edições do próprio Studio. Campos SkillInfo 'keyframe'
 // são índices/eventos legados SEM timestamp: jamais convertê-los em segundos.
+import {layerPreview,layerStart} from './skill-fx-preview.mjs';
 const finite = (value, fallback=0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const positive = (value, fallback=0) => Math.max(0, finite(value,fallback));
 const precision = value => Math.round(value*10000)/10000;
@@ -191,7 +192,7 @@ export function buildTimeline({layers=[],resolve,resolveEff,historical=null,dist
   }
   for(const layer of layers){
     const data=resolve(layer);if(!data)continue;
-    const start=stage.starts[layer.channel]??0;
+    const preview=layerPreview(data.preview),start=layerStart(stage.starts[layer.channel]??0,preview);
     let length=0,open=false,keys=[],timing='';
     const eff=layer.kind==='eff'?data:(Number(data.type)&&[4,5,6,15].includes(Number(data.type))?
       resolveEff(data.effect||data.model):null);
@@ -213,6 +214,10 @@ export function buildTimeline({layers=[],resolve,resolveEff,historical=null,dist
         length=Math.max(length,positive(data.delay)+effDuration(eff));
       }
     }
+    keys=keys.map(k=>({...k,time:precision(start+(k.time-start)/preview.speed),
+      ...(k.endTime==null?{}:{endTime:precision(start+(k.endTime-start)/preview.speed)})}));
+    length/=preview.speed;
+    if(preview.duration>0){length=Math.min(length,preview.duration);open=false;}
     const stop=start+length;
     if(open)continuous++;
     if(!open)end=Math.max(end,stop);

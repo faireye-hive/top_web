@@ -29,6 +29,18 @@ const seconds = n => Math.round(n*10000)/10000;
 const matchingClip = (clip, action) =>
   !!clip && new RegExp('(^|\\D)'+action.id+'(\\D|$)').test(clip.name||'');
 
+// GLBs converted at 25 FPS retain their LAB poses, but source playback is 30 FPS.
+export function sourceTimedClip(clip,actor){
+  const id=Number(/^\s*(\d+)\s*[·\-]/.exec(clip?.name||'')?.[1]);
+  const frames=ACTION_FRAMES[actor]?.[id];
+  if(!frames||!clip?.clone||!(clip.duration>0))return clip;
+  const duration=(frames[1]-frames[0])/30;
+  const copy=clip.clone(),factor=duration/clip.duration;
+  for(const track of copy.tracks)for(let i=0;i<track.times.length;i++)track.times[i]*=factor;
+  copy.duration=duration;
+  return copy;
+}
+
 // characterposeinfo.txt traduz a ação base conforme a arma; o catálogo
 // de cada skill já lista as ações equipadas e o intervalo de frames.
 // Usamos o clip real quando presente para mapear os frames DX9 ao tempo GLB.
