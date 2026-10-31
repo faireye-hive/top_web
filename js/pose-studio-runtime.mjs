@@ -57,10 +57,10 @@ export function selectPoseName(state,profile,clips,bank=null){
   // do equipamento. Configurações explícitas do usuário continuam prioritárias.
   const base={idle:1,guard:4,run:5,armedRun:6,attack:7}[state];
   if(base&&Number.isInteger(bank)&&bank>=0&&bank<=6){
-    const chosen=clips.find(c=>Number(/^\\s*(\\d{1,3})\\s*[·-]/.exec(c.name)?.[1])===base+bank*54);
+    const chosen=clips.find(c=>Number(/^\s*(\d{1,3})\s*[·-]/.exec(c.name)?.[1])===base+bank*54);
     if(chosen)return chosen.name;
     if(bank!==0){
-      const common=clips.find(c=>Number(/^\\s*(\\d{1,3})\\s*[·-]/.exec(c.name)?.[1])===base);
+      const common=clips.find(c=>Number(/^\s*(\d{1,3})\s*[·-]/.exec(c.name)?.[1])===base);
       if(common)return common.name;
     }
   }
