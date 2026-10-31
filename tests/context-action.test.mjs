@@ -6,6 +6,7 @@ test('mesmo botão prioriza NPC próximo sobre combate e poses',()=>{
   assert.equal(resolvePrimaryAction({npc,pose}).type,'npc');
   assert.equal(resolvePrimaryAction({npc,pose}).label,'Conversar');
   assert.equal(resolvePrimaryAction({}).type,'attack');
+  assert.equal(resolvePrimaryAction({}).label,'Atacar');
 });
 test('botão permite levantar e não ataca durante recuperação',()=>{
   assert.equal(resolvePrimaryAction({seated:true,npc:{}}).type,'stand');
