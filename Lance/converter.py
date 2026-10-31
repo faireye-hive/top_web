@@ -170,10 +170,23 @@ def clips_from_table(text, frame_count, section=1, actions=None, all_actions=Fal
         raise ValueError(f'Seção de animação {section} não encontrada em CharacterAction.tx; disponíveis: {list(sections)}')
     default=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,18]
     ids=sorted(table) if all_actions else (actions if actions is not None else default)
-    titles={1:'Parado',2:'Pose',3:'Pose 2',4:'Combate',5:'Correr',6:'Correr armado',
-            7:'Ataque 1',8:'Ataque 2',9:'Ataque 3',10:'Ataque forte',
-            11:'Skill 1',12:'Skill 2',13:'Skill 3',14:'Skill 4',15:'Skill 5',
-            18:'Acenar'}
+    # 54 descrições históricas de referencias/characterposeinfo.txt.
+    titles={i+1:label for i,label in enumerate((
+        "Parado", "Pose de estilo", "Pose engraçada", "Combate",
+        "Correr", "Correr armado", "Ataque 1", "Ataque 2",
+        "Ataque 3", "Ataque forte", "Skill 1", "Skill 2",
+        "Skill 3", "Skill 4", "Skill 5", "Sentado no chão",
+        "Morte", "Acenar", "Chorar", "Comemorar",
+        "Raiva", "Provocar", "Autoadmiração", "Emote 7",
+        "Emote 8", "Emote 9", "Emote 10", "Minerar",
+        "Coletar", "Sentado no banco", "Encostado na parede", "Encostado na árvore",
+        "Interação com personagem", "Interação cenário 7", "Interação cenário 8", "Interação cenário 9",
+        "Interação cenário 10", "Sentado aguardando", "Morte (espera)", "Skill ação 6",
+        "Skill ação 7", "Skill ação 8", "Skill ação 9", "Skill ação 10",
+        "Skill ação 11", "Skill ação 12", "Skill ação 13", "Skill ação 14",
+        "Skill ação 15", "Skill ação 16", "Skill ação 17", "Skill ação 18",
+        "Skill ação 19", "Skill movimento 20",
+    ))}
     result=[]
     for code in ids:
         span=table.get(code)
