@@ -32,6 +32,33 @@ test('clipes só podem apontar para ações realmente carregadas e têm fallback
  assert.equal(selectPoseName('attack',p,clips),'220 · Combate');
  assert.equal(selectPoseName('run',p,clips),'5 · Correr');
 });
+test('seleciona IDs do banco Crusader sem confundir poses de mesmo nome',()=>{
+ const clips=[{name:'001 · Parado'}, {name:'005 · Correr'},
+   {name:'004 · Combate'}, {name:'007 · Ataque 1'},
+   {name:'163 · Parado'}, {name:'166 · Combate'},
+   {name:'167 · Correr'}, {name:'168 · Correr armado'},
+   {name:'169 · Ataque 1'}];
+ assert.equal(selectPoseName('idle',null,clips,3),'163 · Parado');
+ assert.equal(selectPoseName('run',null,clips,3),'167 · Correr');
+ assert.equal(selectPoseName('guard',null,clips,3),'166 · Combate');
+ assert.equal(selectPoseName('armedRun',null,clips,3),'168 · Correr armado');
+ assert.equal(selectPoseName('attack',null,clips,3),'169 · Ataque 1');
+ assert.equal(selectPoseName('run',null,clips,0),'005 · Correr');
+ assert.equal(selectPoseName('run',{clips:{run:'005 · Correr'}},clips,3),'005 · Correr');
+ assert.equal(selectPoseName('armedRun',null,[{name:'005 · Correr'}],3),'005 · Correr');
+});
+test('reconhece armas LGO de GLBs antigos e não confunde malhas corporais',()=>{
+ const mk=(name,role)=>({isSkinnedMesh:true,skeleton:{bones:[]},name,userData:role?{topRole:role}:{}});
+ const body=mk('Parte 4 · 0000560004.lgo');
+ const left=mk('Parte 5 · 01010021.lgo');
+ const right=mk('Parte 6 · 01010021.lgo');
+ const marked=mk('Parte 4 · 999999.lgo','weapon');
+ const avatar={traverse(fn){[body,right,left,marked].forEach(fn)}};
+ assert.deepEqual(weaponMeshNodes(avatar).map(x=>x.name),[
+   'Parte 4 · 999999.lgo','Parte 5 · 01010021.lgo','Parte 6 · 01010021.lgo'
+ ]);
+});
+
 test('salvar localmente preserva manifesto shipped e preferências por perfil',()=>{
  const db=new Map();
  const storage={getItem:k=>db.get(k)||null,setItem:(k,v)=>db.set(k,v)};
