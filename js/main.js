@@ -19,7 +19,7 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=2';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=3';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -616,7 +616,7 @@ async function loadCharacter(id){
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;
     await poseProfilesReady;
     activePoseProfile=poseProfile(poseProfiles,id,hero.job);
-    weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile):null;
+    weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];

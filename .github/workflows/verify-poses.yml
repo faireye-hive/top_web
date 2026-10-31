@@ -10,6 +10,7 @@ on:
       - 'Lance/converter.py'
       - 'js/main.js'
       - 'js/pose-studio-runtime.mjs'
+      - 'js/historical-weapon-dummies.mjs'
       - 'tests/pose-editor.mjs'
       - 'tests/pose-editor.html'
       - 'tests/pose-studio.test.mjs'

@@ -1,3 +1,4 @@
+import {historicalWeaponDummies} from './historical-weapon-dummies.mjs';
 // Pose Studio runtime — shared by the game and tests/pose-editor.html.
 // Stores user refinements separately from historical CharacterAction.tx and GLB assets.
 export const POSE_STORAGE_KEY='topweb_pose_profiles_v1';
@@ -28,7 +29,8 @@ export function parsePoseProfiles(input){
         bone:typeof settings.bone==='string'?settings.bone.slice(0,160):'',
         position:vec(settings.position),
         rotation:vec(settings.rotation),
-        scale:bound(number(settings.scale,1),.1,5)
+        scale:bound(number(settings.scale,1),.1,5),
+        ...(settings.anchor==='historical'?{anchor:'historical'}:{})
       };
     }
     out.profiles[key]={clips,stowOnIdle:value.stowOnIdle!==false,weapons};
@@ -124,43 +126,94 @@ function fixedBoneSkin(mesh){
 // Converted Evanescence weapons are fully weighted to one hand bone.
 // Move a static copy into editable local chest/hip space; original skinned
 // geometry remains untouched and reappears for guards and attacks.
+// Para o Lance Crusader, a geometria original da arma já está convertida
+// na posição do dummy de mão. Removemos apenas essa matriz e anexamos a
+// geometria ao dummy histórico das costas, animado pelo osso pai.
+// Não é necessário mudar um único keyframe ou inventar uma pose "Cidade".
 export class WeaponHolster {
-  constructor(THREE,avatar,job,profile){
-    this.THREE=THREE;this.avatar=avatar;this.job=job;this.parts=[];
-    const bones=availableBones(avatar);
-    this.bones=bones;
+  constructor(THREE,avatar,job,profile,actor=null){
+    this.THREE=THREE;this.avatar=avatar;this.job=job;this.actor=actor;this.parts=[];
+    this.bones=availableBones(avatar);
     const weapons=weaponMeshNodes(avatar);
     weapons.forEach((source,index)=>{
       const skinBone=fixedBoneSkin(source);
       if(skinBone===null)return;
       const inverse=source.skeleton.boneInverses[skinBone];
       if(!inverse)return;
+      const slot=Number(source.userData?.equipmentSlot)||(index===0?6:index===1?9:0);
+      const sockets=historicalWeaponDummies(actor,job,slot);
+      const historical=!!sockets&&sockets.hand.parent===skinBone&&
+        !!source.skeleton.bones[sockets.back.parent]&&
+        !!source.skeleton.boneInverses[sockets.back.parent];
       const transformed=source.geometry.clone();
-      transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,source.bindMatrix));
-      transformed.computeBoundingBox();
-      const center=transformed.boundingBox.getCenter(new THREE.Vector3());
-      transformed.translate(-center.x,-center.y,-center.z);
+      if(historical){
+        // O conversor aplicou handDummy * inverseGrip * modelLocal;
+        // retirar handDummy recupera a geometria ligada ao grip original.
+        transformed.applyMatrix4(new THREE.Matrix4().fromArray(sockets.hand.matrix).invert());
+      }else{
+        // Fallback para GLBs e atores ainda sem os dummies históricos.
+        transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,source.bindMatrix));
+        transformed.computeBoundingBox();
+        const center=transformed.boundingBox.getCenter(new THREE.Vector3());
+        transformed.translate(-center.x,-center.y,-center.z);
+      }
       const view=new THREE.Mesh(transformed,source.material);
       view.name='Pose Studio · arma guardada '+index;
       view.frustumCulled=false;
       const holder=new THREE.Group();holder.name='Pose Studio · encaixe '+index;
-      holder.add(view);
-      this.parts.push({index,key:'weapon-'+index,source,holder,view});
+      const adjust=new THREE.Group();adjust.name='Pose Studio · ajuste '+index;
+      adjust.add(view);holder.add(adjust);
+      this.parts.push({index,key:'weapon-'+index,source,holder,adjust,view,
+        slot,historical:historical?sockets:null});
     });
     this.setProfile(profile);
+  }
+  defaultSettings(part){
+    if(part?.historical){
+      const bone=part.source.skeleton.bones[part.historical.back.parent];
+      return {bone:bone.name,position:[0,0,0],rotation:[0,0,0],scale:1,anchor:'historical'};
+    }
+    return weaponDefaults(this.job,part?.index||0,this.bones);
   }
   setProfile(profile){
     this.profile=profile||null;
     for(const part of this.parts){
-      const {source,holder,index,key}=part;
-      const setting=profile?.weapons?.[key]||weaponDefaults(this.job,index,this.bones);
-      const bone=this.avatar.getObjectByName(setting.bone)||this.avatar.getObjectByName(weaponDefaults(this.job,index,this.bones).bone);
+      const {source,holder,adjust,index,key,historical}=part;
+      const defaults=this.defaultSettings(part);
+      // As versões anteriores salvavam offsets aproximados de coluna. Não
+      // aplicá-los por engano sobre o novo dummy histórico (deslocaria a arma).
+      if(historical&&profile?.weapons?.[key]&&profile.weapons[key].anchor!=='historical')
+        profile.weapons[key]=defaults;
+      const setting=profile?.weapons?.[key]||defaults;
+      const bone=this.avatar.getObjectByName(setting.bone)||
+        this.avatar.getObjectByName(defaults.bone);
       if(!bone)continue;
       if(holder.parent!==bone)bone.add(holder);
-      holder.position.set(...setting.position);
-      holder.rotation.order='XYZ';
-      holder.rotation.set(...setting.rotation.map(v=>v*Math.PI/180));
-      holder.scale.setScalar(setting.scale);
+      if(historical){
+        // Dummy LAB está no espaço de bind do personagem. Converter para
+        // espaço local do osso atual (mesma convenção das inverse bind matrices).
+        const boneIndex=source.skeleton.bones.indexOf(bone);
+        const boneInverse=source.skeleton.boneInverses[boneIndex];
+        if(!boneInverse)continue;
+        const backMatrix=new this.THREE.Matrix4().fromArray(historical.back.matrix);
+        holder.matrixAutoUpdate=false;
+        holder.matrix.multiplyMatrices(boneInverse,backMatrix);
+        holder.matrix.decompose(holder.position,holder.quaternion,holder.scale);
+        holder.updateMatrixWorld(true);
+        adjust.position.set(...setting.position);
+        adjust.rotation.order='XYZ';
+        adjust.rotation.set(...setting.rotation.map(v=>v*Math.PI/180));
+        adjust.scale.setScalar(setting.scale);
+      }else{
+        holder.matrixAutoUpdate=true;
+        holder.position.set(...setting.position);
+        holder.rotation.order='XYZ';
+        holder.rotation.set(...setting.rotation.map(v=>v*Math.PI/180));
+        holder.scale.setScalar(setting.scale);
+        adjust.position.set(0,0,0);
+        adjust.rotation.set(0,0,0);
+        adjust.scale.setScalar(1);
+      }
       holder.updateMatrixWorld(true);
       source.visible=true;
     }
