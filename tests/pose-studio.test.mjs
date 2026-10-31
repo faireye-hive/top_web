@@ -60,6 +60,74 @@ test('reconhece armas LGO de GLBs antigos e não confunde malhas corporais',()=>
  ]);
 });
 
+
+test('GLTFLoader: reconhece dois grupos de equipamento, cada um com duas submalhas',()=>{
+ const bone={isBone:true,name:'Osso 4 · Bip01 Spine',
+   add(o){o.parent=this},remove(o){o.parent=null}};
+ const geom=()=>({getAttribute(k){
+   if(k==='skinIndex')return {count:1,getX:()=>0};
+   if(k==='skinWeight')return {count:1,getX:()=>1};
+   return null;
+ },clone(){return {
+   applyMatrix4(){},computeBoundingBox(){this.boundingBox={getCenter(v){return v}}},
+   translate(){},dispose(){}
+ }}});
+ const mesh=name=>({
+   name,isSkinnedMesh:true,isMesh:true,geometry:geom(),
+   skeleton:{bones:[bone],boneInverses:[{}]},bindMatrix:{},material:{},
+   visible:true,userData:{}
+ });
+ const makeGroup=(slot,index)=>({
+   name:'Parte_'+index+'__01010021_lgo',userData:{topRole:'weapon',equipmentSlot:slot},
+   children:[mesh('primitive_'+index+'_0'),mesh('primitive_'+index+'_1')],
+   visible:true,
+   traverse(fn){fn(this);this.children.forEach(fn)}
+ });
+ const left=makeGroup(6,5),right=makeGroup(9,6);
+ const root={
+   traverse(fn){fn(this);left.traverse(fn);right.traverse(fn);fn(bone)},
+   getObjectByName(name){return name===bone.name?bone:null}
+ };
+ const matches=weaponMeshNodes(root);
+ assert.deepEqual(matches,[left,right]);
+ const THREE={
+   Matrix4:class{multiplyMatrices(){return this}},
+   Vector3:class{constructor(){this.x=0;this.y=0;this.z=0}},
+   Mesh:class{constructor(g,m){this.geometry=g;this.material=m;this.visible=true}},
+   Group:class{constructor(){
+     this.position={set(){}};this.rotation={set(){},order:''};
+     this.scale={setScalar(){}}}
+     add(o){(this.children??=[]).push(o);o.parent=this}
+     updateMatrixWorld(){}
+   }
+ };
+ const holster=new WeaponHolster(THREE,root,'hunter',{stowOnIdle:true,weapons:{}},'lance');
+ assert.equal(holster.parts.length,2);
+ assert.deepEqual(holster.parts.map(p=>p.views.length),[2,2]);
+ holster.setStowed(true,'idle');
+ assert.equal(left.visible,false);
+ assert.equal(right.visible,false);
+ assert.equal(holster.parts[0].holder.visible,true);
+ holster.setStowed(false,'guard');
+ assert.equal(left.visible,true);
+ assert.equal(right.visible,true);
+ holster.dispose();
+});
+
+test('GLB publicado possui duas peças compostas e sockets completos',()=>{
+ const data=readFileSync(new URL('../assets/equipment/models/lance-crusader.glb',import.meta.url));
+ assert.equal(data.subarray(0,4).toString('utf8'),'glTF');
+ const jsonSize=data.readUInt32LE(12);
+ const gltf=JSON.parse(data.subarray(20,20+jsonSize).toString('utf8'));
+ const weapons=gltf.nodes.filter(node=>node.extras?.topRole==='weapon');
+ assert.equal(weapons.length,2);
+ assert.deepEqual(weapons.map(node=>node.extras.equipmentSlot).sort(),[6,9]);
+ assert.deepEqual(weapons.map(node=>gltf.meshes[node.mesh].primitives.length),[2,2]);
+ for(const n of [6,9,21,22]){
+   assert.ok(gltf.nodes.some(node=>node.extras?.topDummy===n),'Dummy '+n+' não exportado');
+ }
+});
+
 test('salvar localmente preserva manifesto shipped e preferências por perfil',()=>{
  const db=new Map();
  const storage={getItem:k=>db.get(k)||null,setItem:(k,v)=>db.set(k,v)};

@@ -91,23 +91,59 @@ export function selectPoseName(state,profile,clips,bank=null){
     return selectPoseName(state==='guard'?'idle':'run',profile,clips,bank);
   return clips[0]?.name||'';
 }
-export function weaponMeshNodes(avatar){
+function weaponSubmeshes(object){
+  if(!object)return [];
+  if(object.isMesh||object.isSkinnedMesh)return [object];
   const result=[];
+  object.traverse?.(node=>{if(node!==object&&(node.isMesh||node.isSkinnedMesh))result.push(node)});
+  return result;
+}
+
+function weaponPartNumber(name){
+  // GLTFLoader may sanitize "Parte 5 · weapon" to "Parte_5__weapon".
+  // Metadata from glTF extras is authoritative; names are legacy fallback.
+  const match=/^Parte[\s_]*(\d+)(?:[\s_.·-]|$)/i.exec(String(name||''));
+  return match?Number(match[1]):null;
+}
+
+export function weaponMeshNodes(avatar){
+  const found=[];
   avatar?.traverse(o=>{
-    if(!o.isSkinnedMesh||!o.skeleton)return;
-    const part=/^Parte\s*(\d+)\s*·\s*(.+)$/i.exec(o.name);
-    if(!part)return;
-    const role=o.userData?.topRole;
-    const labeled=/^weapon(?:\b|$)/i.test(part[2]);
-    // GLBs anteriores nomeiam as armas pelo arquivo LGO, por exemplo
-    // "Parte 5 · 01010021.lgo". Equipamentos gerados têm 5 partes de
-    // corpo seguidas dos slots 6/9 (armas). Esta detecção é compatível
-    // com os modelos binários já publicados, sem precisar reconvertê-los.
-    const legacy=Number(part[1])>=5 && /\.lgo$/i.test(part[2]);
-    if(role!=='weapon'&&!labeled&&!legacy)return;
-    result.push(o);
+    // Multi-primitive GLBs use a Group parent (metadata lives here).
+    // The editor must detect the complete logical item, not only a child Mesh.
+    // Preserve plain Mesh support so "Ocultar" works without rigid skin.
+    const children=weaponSubmeshes(o);
+    if(!children.length)return;
+    const role=String(o.userData?.topRole||'').toLowerCase();
+    const slot=Number(o.userData?.equipmentSlot);
+    const part=weaponPartNumber(o.name);
+    const legacyName=String(o.name||'');
+    const labeled=part!==null&&/(?:^|[\s_·-])weapon(?:$|[\s_.·-])/i.test(legacyName);
+    const legacy=part!==null&&part>=5&&/(?:\.?lgo)(?:$|[\s_.-])/i.test(legacyName);
+    const tagged=(role==='weapon'||(slot===6||slot===9)&&part!==null);
+    if(!tagged&&!labeled&&!legacy)return;
+    found.push(o);
   });
-  return result.sort((a,b)=>Number(/Parte\s*(\d+)/.exec(a.name)?.[1]||0)-Number(/Parte\s*(\d+)/.exec(b.name)?.[1]||0));
+  // Preserve weapon-0/weapon-1 across reexports and saved presets.
+  return found.sort((a,b)=>{
+    const slotA=Number(a.userData?.equipmentSlot),slotB=Number(b.userData?.equipmentSlot);
+    const orderA=slotA===6?0:slotA===9?1:(weaponPartNumber(a.name)??99);
+    const orderB=slotB===6?0:slotB===9?1:(weaponPartNumber(b.name)??99);
+    return orderA-orderB;
+  });
+}
+
+export function findHistoricalDummy(avatar,number){
+  let found=null;
+  avatar?.traverse(o=>{
+    if(found)return;
+    const tagged=Number(o.userData?.topDummy)===number;
+    // Old GLBs without extras and GLTFLoader-sanitized node names.
+    const name=String(o.name||'');
+    const named=new RegExp('^TOP[ _]Dummy[ _]'+number+'$','i').test(name);
+    if(tagged||named)found=o;
+  });
+  return found;
 }
 
 export function availableBones(avatar){
@@ -132,6 +168,7 @@ export function weaponDefaults(job,index,bones=[]){
   };
 }
 function fixedBoneSkin(mesh){
+  if(!mesh?.skeleton?.bones?.length)return null;
   const geom=mesh.geometry,index=geom?.getAttribute('skinIndex'),weight=geom?.getAttribute('skinWeight');
   if(!index||!weight||!index.count)return null;
   const boneIndex=index.getX(0);
@@ -156,57 +193,86 @@ export class WeaponHolster {
     weapons.forEach((source,index)=>{
       const slot=Number(source.userData?.equipmentSlot)||(index===0?6:index===1?9:0);
       const key='weapon-'+index;
-      const part={index,key,slot,source,holder:null,adjust:null,view:null,
+      const meshes=weaponSubmeshes(source);
+      const part={index,key,slot,source,meshes,holder:null,adjust:null,
+        view:null,views:[],skinMesh:meshes[0]||null,
         historical:null,socketNode:null,issue:''};
       this.parts.push(part);
-      const skinBone=fixedBoneSkin(source);
-      if(skinBone===null){
-        part.issue='Malha não está rigidamente presa a um único osso (skinWeight/skinIndex).';
+      const skinMeshes=meshes.map(mesh=>({mesh,skinBone:fixedBoneSkin(mesh)}));
+      if(skinMeshes.some(row=>row.skinBone===null)){
+        part.issue='Pelo menos uma submalha não está rigidamente presa a um único osso.';
         this.issues.push(source.name+': '+part.issue);
         return;
       }
-      const inverse=source.skeleton.boneInverses[skinBone];
-      if(!inverse){
-        part.issue='Matriz inverseBind ausente.';
+      if(skinMeshes.some(row=>!row.mesh.skeleton.boneInverses[row.skinBone])){
+        part.issue='Matriz inverseBind ausente em uma das submalhas.';
         this.issues.push(source.name+': '+part.issue);
         return;
       }
       const sockets=historicalWeaponDummies(actor,job,slot);
-      const historical=!!sockets&&sockets.hand.parent===skinBone&&
-        !!source.skeleton.bones[sockets.back.parent]&&
-        !!source.skeleton.boneInverses[sockets.back.parent];
+      const historical=!!sockets&&skinMeshes.every(({mesh,skinBone})=>
+        sockets.hand.parent===skinBone&&
+        !!mesh.skeleton.bones[sockets.back.parent]&&
+        !!mesh.skeleton.boneInverses[sockets.back.parent]);
       const socketNode=historical
-        ?avatar.getObjectByName('TOP Dummy '+(slot===6?22:21)):null;
-      const transformed=source.geometry.clone();
+        ?findHistoricalDummy(avatar,slot===6?22:21):null;
+      const holder=new THREE.Group();holder.name='Pose Studio · encaixe '+index;
+      const adjust=new THREE.Group();adjust.name='Pose Studio · ajuste '+index;
+      holder.add(adjust);
+      const views=[];
       try{
-        if(historical){
-          transformed.applyMatrix4(new THREE.Matrix4().fromArray(sockets.hand.matrix).invert());
-        }else{
-          transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,source.bindMatrix));
-          transformed.computeBoundingBox();
-          const center=transformed.boundingBox.getCenter(new THREE.Vector3());
-          transformed.translate(-center.x,-center.y,-center.z);
+        for(const {mesh,skinBone} of skinMeshes){
+          const inverse=mesh.skeleton.boneInverses[skinBone];
+          const transformed=mesh.geometry.clone();
+          try{
+            if(historical){
+              transformed.applyMatrix4(new THREE.Matrix4().fromArray(sockets.hand.matrix).invert());
+            }else{
+              transformed.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,mesh.bindMatrix));
+              transformed.computeBoundingBox();
+              // Match old fallback behaviour, but use a consistent center
+              // for all primitives so they stay assembled.
+            }
+            const view=new THREE.Mesh(transformed,mesh.material);
+            view.name='Pose Studio · arma '+index+' · parte '+views.length;
+            view.frustumCulled=false;
+            // GLTFLoader primitive children are normally identity transforms,
+            // but retain any local transforms from older converted assets.
+            if(mesh!==source&&mesh.matrix&&typeof view.applyMatrix4==='function')
+              view.applyMatrix4(mesh.matrix);
+            adjust.add(view);
+            views.push(view);
+          }catch(error){
+            transformed.dispose();
+            throw error;
+          }
         }
-      }catch(err){
-        transformed.dispose();
-        part.issue='Falha ao criar cópia para costas: '+err.message;
+        if(!historical&&views.length){
+          // Preserve the old centered fallback for other characters.
+          // For multi-primitive weapons, use ONE common center so each
+          // primitive keeps its original alignment with the others.
+          const bounds=views[0].geometry.boundingBox;
+          if(bounds?.getCenter&&typeof THREE.Vector3==='function'){
+            const center=bounds.getCenter(new THREE.Vector3());
+            for(const view of views){
+              view.geometry.translate(-center.x,-center.y,-center.z);
+            }
+          }
+        }
+      }catch(error){
+        for(const view of views)view.geometry.dispose();
+        part.issue='Falha ao criar cópia para costas: '+error.message;
         this.issues.push(source.name+': '+part.issue);
         return;
       }
-      const view=new THREE.Mesh(transformed,source.material);
-      view.name='Pose Studio · arma guardada '+index;
-      view.frustumCulled=false;
-      const holder=new THREE.Group();holder.name='Pose Studio · encaixe '+index;
-      const adjust=new THREE.Group();adjust.name='Pose Studio · ajuste '+index;
-      adjust.add(view);holder.add(adjust);
-      Object.assign(part,{holder,adjust,view,
+      Object.assign(part,{holder,adjust,view:views[0],views,
         historical:historical?sockets:null,socketNode});
     });
     this.setProfile(profile);
   }
   defaultSettings(part){
     if(part?.historical){
-      const bone=part.source.skeleton.bones[part.historical.back.parent];
+      const bone=part.skinMesh.skeleton.bones[part.historical.back.parent];
       return {bone:(part.socketNode||bone).name,
         position:[0,0,0],rotation:[0,0,0],scale:1,anchor:'historical'};
     }
@@ -215,7 +281,7 @@ export class WeaponHolster {
   setProfile(profile){
     this.profile=profile||null;
     for(const part of this.parts){
-      const {source,holder,adjust,index,key,historical,socketNode}=part;
+      const {source,holder,adjust,index,key,historical,socketNode,skinMesh}=part;
       if(!holder)continue;
       const defaults=this.defaultSettings(part);
       // As versões anteriores salvavam offsets aproximados de coluna. Não
@@ -239,8 +305,8 @@ export class WeaponHolster {
           holder.scale.setScalar(1);
         }else{
           // Compatibilidade com GLBs anteriores ao exportador dos sockets.
-          const boneIndex=source.skeleton.bones.indexOf(bone);
-          const boneInverse=source.skeleton.boneInverses[boneIndex];
+          const boneIndex=skinMesh.skeleton.bones.indexOf(bone);
+          const boneInverse=skinMesh.skeleton.boneInverses[boneIndex];
           if(!boneInverse){
             part.issue='Osso selecionado não pertence ao esqueleto da arma.';
             this.issues.push(source.name+': '+part.issue);
@@ -287,9 +353,9 @@ export class WeaponHolster {
     }
   }
   dispose(){
-    for(const {source,holder,view}of this.parts){
+    for(const {source,holder,views=[]}of this.parts){
       source.visible=true;holder?.parent?.remove(holder);
-      view?.geometry?.dispose();
+      for(const view of views)view.geometry.dispose();
     }
     this.parts=[];
   }

@@ -13,6 +13,7 @@ on:
       - 'assets/equipment/models/lance-crusader.glb'
       - 'js/main.js'
       - 'js/pose-studio-runtime.mjs'
+      - 'scripts/inspect_lance_model.py'
       - 'js/historical-weapon-dummies.mjs'
       - 'tests/pose-editor.mjs'
       - 'tests/pose-editor.html'
@@ -42,5 +43,7 @@ jobs:
         run: node --test tests/pose-studio.test.mjs tests/pose-action-catalog.test.mjs tests/pose-missing-report.test.mjs
       - name: Verify reconstructed Lance GLB sockets
         run: python scripts/rebuild_lance_glb_sockets.py --verify-only
+      - name: Inspect real equipped GLB meshes and extras
+        run: python scripts/inspect_lance_model.py
       - name: Check JS syntax
         run: node --check js/main.js && node --check js/pose-studio-runtime.mjs && node --check tests/pose-editor.mjs
