@@ -93,6 +93,37 @@ nomes disponíveis nos seus arquivos convertidos. Se um clipe não estiver
 presente, o jogo usará o fallback existente. O editor **não reconstrói
 keyframes binários**, nem publica arquivos automaticamente no GitHub.
 
+
+## Descobrir exatamente quais animações faltam
+
+No Pose Studio, **Animações faltantes** aparece imediatamente abaixo da
+seleção do clipe. A lista contém os **nomes completos e IDs históricos** da
+arma/classe e personagem escolhidos, incluindo as ações compartilhadas se
+o banco `Com arma + ações compartilhadas` estiver selecionado. Por exemplo,
+`166 · Postura de guarda — Duas espadas` e
+`192 · Sentado no banco — Duas espadas`.
+
+Cada item mostra o intervalo real de frames de `CharacterAction.tx`. A
+lista é gerada **comparando os IDs com as animações realmente carregadas do
+GLB**: somente um registro com frames históricos válidos e clipe ausente
+recebe o estado **⚠ Faltando**. IDs sem frames disponíveis não entram
+nessa contagem. Clicar numa ação faltante mostra seus detalhes e não
+reproduz uma animação substituta.
+
+- **Mostrar só faltantes no catálogo** filtra a lista histórica.
+- **Copiar nomes + IDs** copia a relação inteira para procurar no Client
+  original; se a área de transferência não estiver disponível, baixa TXT.
+- **Lista .txt** baixa a relação com ator, classe, GLB examinado, ID,
+  descrição, banco, frames, nome original e fontes necessárias.
+
+**As poses não são arquivos individuais.** Os keyframes estão dentro de
+`Client/animation/0000.lab` (Lance), `0001.lab` (Carsise),
+`0002.lab` (Phyllis), `0003.lab` (Ami). A descrição e a numeração vêm
+de `referencias/characterposeinfo.txt`; os quadros de
+`Client/scripts/txt/CharacterAction.tx`. Após identificar o que falta,
+reconverta os GLBs com `scripts/build_evanescence.py`; isso não é feito
+automaticamente ao selecionar uma linha no editor.
+
 ## Fidelidade histórica e animações ausentes
 
 `characterposeinfo.txt` tem colunas para Punhos, Espada, Espadão, Duas

@@ -4,7 +4,8 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
   availableBones} from '../js/pose-studio-runtime.mjs?v=1';
-import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES} from '../js/pose-action-catalog.mjs?v=1';
+import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
+  missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
 const $=id=>document.getElementById(id);
 const stateLabels={idle:'Cidade',guard:'Guarda',run:'Corrida',armedRun:'Corrida armada',attack:'Ataque'};
@@ -98,10 +99,66 @@ function showCatalogDetail(row){
    original+frames+'\n'+status+note;
  $('catalog-use').disabled=!row.clip;
 }
+function missingRows(){
+ return missingHistoricalActions(catalogRows());
+}
+function currentModelPath(){
+ const actor=actorEl.value,job=jobEl.value;
+ return $('equipped').checked
+   ?'assets/equipment/'+(equipment?.sets?.[job]?.models?.[actor]||'modelo indisponível')
+   :'assets/characters/'+actor+'.glb';
+}
+function missingText(){
+ return missingActionReportText({
+   actor:actorEl.value,job:jobEl.value,modelPath:currentModelPath(),
+   records:catalogRows()
+ });
+}
+function renderMissingReport(){
+ const el=$('missing-list');el.replaceChildren();
+ const rows=missingRows(),actor=actorEl.value,job=jobEl.value;
+ const lab=HISTORICAL_LAB_BY_ACTOR[actor]||'?';
+ const actors={lance:'Lance',carsise:'Carsise',phyllis:'Phyllis',ami:'Ami'};
+ const withoutFrames=catalogRows().filter(row=>row.status==='no-source-frames').length;
+ $('missing-title').textContent='⚠ '+rows.length+' animações faltantes · '+(actors[actor]||actor)+' '+job;
+ $('missing-source').textContent='Modelo verificado: '+currentModelPath()+
+   ' · Origem: Client/animation/'+lab+
+   ' · IDs/frames: Client/scripts/txt/CharacterAction.tx'+
+   ($('equipped').checked?'':' · Atenção: você está visualizando o modelo SEM equipamento.');
+ $('missing-summary').textContent='Nomes e IDs que faltam no GLB ('+rows.length+')';
+ if(!rows.length){
+   el.textContent=withoutFrames
+    ?'Nenhum clipe com frames válidos está faltando. Há '+withoutFrames+' ações sem frames neste personagem.'
+    :'Nenhuma ação com frames históricos está faltando neste GLB.';
+ }else for(const row of rows){
+   const button=document.createElement('button');button.type='button';button.className='missing-item';
+   const title=document.createElement('span');title.className='missing-head';
+   title.textContent=row.code+' · '+row.label+' — '+row.groupName;
+   const desc=document.createElement('span');desc.className='missing-sub';
+   desc.textContent='Frames '+row.frames[0]+'–'+row.frames[1]+' · ID '+row.id;
+   button.append(title,desc);button.title='Ver a referência desta animação histórica';
+   button.onclick=()=>{
+     $('catalog-category').value='all';$('catalog-status').value='not-exported';
+     $('catalog-search').value=String(row.id);
+     chooseHistoricalAction(row.id);
+     $('catalog-detail').scrollIntoView({block:'nearest',behavior:'smooth'});
+   };
+   el.append(button);
+ }
+}
+function downloadMissingList(){
+ const data=missingText(),filename=actorEl.value+'-'+jobEl.value+'-animacoes-faltantes.txt';
+ const blob=new Blob([data],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download=filename;link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
+ status('✓ Lista salva: '+filename);
+}
 function renderCatalog(){
  const list=$('catalog-list');list.replaceChildren();
  if(!historicalCatalog){
   $('catalog-summary').textContent='Catálogo histórico indisponível.';
+  $('missing-title').textContent='⚠ Catálogo histórico indisponível';
   $('catalog-use').disabled=true;return;
  }
  const all=catalogRows();
@@ -135,6 +192,7 @@ function renderCatalog(){
   list.append(button);
  }
  showCatalogDetail(selectedHistorical());
+ renderMissingReport();
 }
 function chooseHistoricalAction(id){
  const row=catalogRows().find(x=>x.id===id);
@@ -142,7 +200,10 @@ function chooseHistoricalAction(id){
  selectedHistoricalId=row.id;
  renderCatalog();
  if(!row.clip){
-  status('⚠ '+row.code+' · '+row.label+' ainda não está no GLB. Regenere os modelos com o Client original.');
+  if(action){action.stop();action=null;}
+  mixer?.stopAllAction();mixer?.update(0);
+  $('timeline').value=0;$('clock').textContent='Sem clipe GLB';
+  status('⚠ '+row.code+' · '+row.label+' ainda não está no GLB. Consulte o LAB original e regenere o modelo.');
   return;
  }
  previewClip(row.clip,{once:['combat','skills','emotes','interaction'].includes(row.category)});
@@ -150,7 +211,10 @@ function chooseHistoricalAction(id){
  status('▶ '+row.code+' · '+row.label+' · clipe real do GLB '+actorEl.value);
 }
 function showClip(){
- if(!clips.length)return;
+ if(!clips.length){
+  $('clip-info').textContent='⚠ Este modelo não possui clipes GLB; veja os nomes históricos faltantes abaixo.';
+  $('clip').replaceChildren();renderCatalog();return;
+ }
  ensureProfile();
  const chosen=selectPoseName(selectedState,profile,clips);
  $('clip').replaceChildren();
@@ -283,6 +347,22 @@ for(const b of document.querySelectorAll('[data-state]'))
 for(const id of ['catalog-bank','catalog-category','catalog-status'])
  $(id).onchange=renderCatalog;
 $('catalog-search').oninput=renderCatalog;
+$('missing-filter').onclick=()=>{
+ $('catalog-status').value='not-exported';$('catalog-search').value='';
+ $('catalog-category').value='all';renderCatalog();
+ $('catalog-list').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+$('missing-copy').onclick=async()=>{
+ const report=missingText();
+ try{
+   if(!navigator.clipboard?.writeText)throw new Error('Clipboard indisponível');
+   await navigator.clipboard.writeText(report);
+   status('✓ Copiado! Nomes, IDs, frames e origem dos arquivos históricos.');
+ }catch{
+   downloadMissingList();
+ }
+};
+$('missing-download').onclick=downloadMissingList;
 $('catalog-use').onclick=()=>{
  const row=selectedHistorical();if(!row?.clip)return;
  ensureProfile();profile.clips[selectedState]=row.clip.name;
