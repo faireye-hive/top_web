@@ -4,5 +4,5 @@ export function resolvePrimaryAction({recovering=false,seated=false,npc=null,pos
   if(seated)return {type:'stand',label:'Levantar',icon:'#ui-talk'};
   if(npc)return {type:'npc',label:'Conversar',icon:'#ui-talk',npc};
   if(pose)return {type:'pose',label:pose.role==='sit'?'Sentar':'Encostar',icon:'#ui-talk',pose};
-  return {type:'attack',label:'Auto',icon:'#ui-swords'};
+  return {type:'attack',label:'Atacar',icon:'#ui-swords'};
 }
