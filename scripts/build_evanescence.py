@@ -70,6 +70,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('client',type=Path)
     parser.add_argument('--classes',nargs='+',choices=list(SETS))
+    parser.add_argument('--compact',action='store_true',
+      help='Exportar só animações essenciais; padrão exporta as 54 ações do banco histórico da arma')
     args=parser.parse_args();client=args.client.expanduser().resolve()
     items=parse_table(client/'scripts/table/iteminfo.txt')
     characters=parse_table(client/'scripts/table/characterinfo.txt')
@@ -100,13 +102,15 @@ def main():
                         raw=source.read_bytes();relative=f'slot-{slot}/{filename}'
                         zipfile.writestr(relative,raw)
                         if slot in (6,9):overrides[relative]=weapon_geometry(raw,lab,slot)
-                # Exportar o conjunto de ações de combate históricas por arma.
-                # 1 = descanso, 4 = guarda, 5 = corrida, 6 = corrida armada,
-                # 7/8/9 = ataques básicos, 10 = golpe forte; 11..14 = skills.
-                # Não reinterpreta IDs históricos como poses inventadas.
-                actions=[i+spec['pose']*54 for i in (1,4,5,6,7,8,9,10,11,12,13,14)]
-                actions.append(18)  # Aceno social sem equipamento
-                if char_id==1:actions.extend([16,30,31,38])
+                # 54 movimentos históricos do banco de arma correspondente,
+                # incluindo poses de guarda, sociais, bancos, paredes, habilidades
+                # e interações — todos os IDs com frames válidos para este ator.
+                # --compact preserva o subconjunto leve para celulares modestos.
+                base_ids=range(1,55) if not args.compact else (1,4,5,6,7,8,9,10,11,12,13,14)
+                actions=[i+spec['pose']*54 for i in base_ids]
+                # Poses comuns de personagem permanecem selecionáveis mesmo
+                # com modelo equipado (016, 030, 031, 038).
+                actions.extend([16,18,30,31,38])
                 filename=f'{NAMES[char_id]}-{job}.glb'
                 result=convert(archive,[client/'texture/character',client/'texture/item'],out/'models'/filename,
                                action_section=int(row[20]),action_ids=sorted(set(actions)),geometry_overrides=overrides)
