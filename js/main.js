@@ -10,7 +10,7 @@ import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=5';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
-import { resolvePrimaryAction } from './context-action.mjs';
+import { resolvePrimaryAction } from './context-action.mjs?v=2';
 import { createCombat, COMBAT } from './combat-state.mjs?v=4';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
 import { calculateMovementSpeed } from './movement-speed.mjs';
@@ -678,7 +678,10 @@ function updateCombatHud(){
     autoButton?.classList.toggle('auto-active',!!combat?.auto);
   }
   const autoButton=$('mobile-auto');
-  if(autoButton)autoButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+  if(autoButton){
+    autoButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+    autoButton.setAttribute('aria-label',combat?.auto?'Desligar ataque automático':'Ligar ataque automático');
+  }
   const context=primaryContext(),button=$('mobile-attack');
   button?.setAttribute('aria-label',context.type==='attack'?'Atacar manualmente':context.label);
   button?.removeAttribute('aria-pressed');
