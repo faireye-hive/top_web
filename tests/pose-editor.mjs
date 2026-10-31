@@ -50,8 +50,16 @@ function updateWeaponViewControls(){
  }
  const statusBox=$('weapon-diagnostics');
  if(!parts.length){
+   let meshes=0,tagged=0,groups=0;
+   model?.traverse(node=>{
+     if(node.isMesh||node.isSkinnedMesh)meshes++;
+     if(node.userData?.topRole==='weapon'){
+       tagged++;if(!node.isMesh&&!node.isSkinnedMesh)groups++;
+     }
+   });
    statusBox.textContent=$('equipped').checked
-     ?'Nenhuma malha de arma reconhecida. Verifique se as peças do GLB possuem extras.topRole=weapon.'
+     ?'Nenhuma arma controlável: '+meshes+' malhas, '+tagged+
+       ' nós marcados como equipamento ('+groups+' grupos). Informe estes números para diagnóstico.'
      :'Este GLB básico não contém armas: ative Evanescence para testar as duas espadas.';
    return;
  }
@@ -59,7 +67,7 @@ function updateWeaponViewControls(){
    const socket=p.socketNode?.name||'socket não encontrado';
    const copy=p.holder?.parent?'cópia pronta':p.issue||'cópia não encaixada';
    return 'Arma '+(p.index+1)+' · slot '+p.slot+
-     ' · '+p.mode+' · '+socket+' · '+copy+
+     ' · '+(p.meshes?.length||0)+' submalhas · '+p.mode+' · '+socket+' · '+copy+
      (p.visualStatus?.startsWith('Não')?' ⚠ '+p.visualStatus:'');
  }).join('\n');
 }
@@ -332,7 +340,9 @@ async function loadCharacter(){
   if(!holster?.parts.some(part=>part.key===selectedPart))selectedPart=holster?.parts[0]?.key||'';
   $('part').value=selectedPart;
   selectedHistoricalId=null;redrawWeaponFields();showClip();
-  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+' armas reconhecidas · '+(holster?.parts.filter(p=>p.socketNode).length||0)+' sockets GLB');
+  status('✓ '+actor+' · '+job+' · '+clips.length+' clipes · '+(holster?.parts.length||0)+
+    ' armas reconhecidas ('+(holster?.parts.reduce((total,p)=>total+(p.meshes?.length||0),0)||0)+
+    ' submalhas) · '+(holster?.parts.filter(p=>p.socketNode).length||0)+' sockets GLB');
  }catch(error){console.error(error);status('Falha ao carregar modelo: '+error.message);}
 }
 function updateJobs(){
