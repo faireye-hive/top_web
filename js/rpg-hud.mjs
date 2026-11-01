@@ -18,14 +18,23 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
   const hotbar=[...document.querySelectorAll('[data-hotbar-slot]')];
   const panels=[...overlay.querySelectorAll('[data-rpg-panel]')];
   const tabs=[...overlay.querySelectorAll('[data-rpg-tab]')];
-  // Somente o botão visível no mobile expande os atributos secundários.
-  // No desktop o grid original permanece integral e sem mudanças.
-  const mobileDetails=$('rpg-mobile-details');
-  mobileDetails?.addEventListener('click',()=>{
-    const expanded=$('rpg-panel').classList.toggle('mobile-details-expanded');
-    mobileDetails.setAttribute('aria-expanded',String(expanded));
-    mobileDetails.textContent=expanded?'− Mostrar menos atributos':'+ Ver todos os atributos';
-  });
+  // Categorias de Status exclusivas do mobile. Todos os 16 atributos
+  // continuam no DOM e são atualizados pelo mesmo setStats do desktop.
+  const statPages=new Set(['general','attributes','combat']);
+  const statButtons=[...overlay.querySelectorAll('[data-mobile-stat-tab]')];
+  function setMobileStatPage(page){
+    const selected=statPages.has(page)?page:'general';
+    $('rpg-panel').dataset.mobileStatPage=selected;
+    for(const button of statButtons){
+      const active=button.dataset.mobileStatTab===selected;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
+    }
+  }
+  for(const button of statButtons){
+    button.addEventListener('click',()=>setMobileStatPage(button.dataset.mobileStatTab));
+  }
+  setMobileStatPage('general');
   const nameOf=name=>(name||'').split('·').pop().trim();
   const iconFor=name=>/ataque/i.test(name)?'⚔':/magia|skill/i.test(name)?'✦':'✧';
   const hotbarIcons=['#ui-blade','#ui-flame','#ui-ice','#ui-vortex'];
