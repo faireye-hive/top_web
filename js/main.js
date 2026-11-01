@@ -15,6 +15,7 @@ import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getAc
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=5';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
 import { createCombat, COMBAT } from './combat-state.mjs?v=7';
+import {createCombatFeedback} from './combat-feedback.mjs?v=1';
 import { createMonsterManager } from './monster-manager.mjs?v=4';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
@@ -189,6 +190,10 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.NoToneMapping; // clássico: evita a perda de saturação do ACES
 renderer.toneMappingExposure=1.12;
 const camera=new THREE.PerspectiveCamera(51.6,1,.3,800);
+const combatFeedback=createCombatFeedback({
+  THREE,camera,canvas:renderer.domElement,
+  playerPosition:()=>playerPos,mobile:()=>MOBILE_UI
+});
 const skillVisuals=createSkillVisuals({scene,camera,heightAt:(x,z)=>world?sampleHeight(x,z):0});
 window.__skillVfxInfo=()=>skillVisuals.diagnostics();
 const hemi=new THREE.HemisphereLight(0xd5e4ee,0x4a5850,0.9);
@@ -957,6 +962,8 @@ function updateStealth(){
   }});
 }
 function combatEvent(event){
+  // Real hit/hurt/skill events from combat-state: visual only, no extra damage.
+  combatFeedback.emit(event);
   monsterManager?.onEvent(event);
   desktopHud?.recordCombat(event);
   if(event.type==='notice')toast(event.message);
@@ -2277,6 +2284,7 @@ function update(dt){
     npcManager.updateLabels(camera,renderer.domElement,playerPos.x,playerPos.z,MOBILE_UI);
   }
   monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused||sailing});
+  combatFeedback.update(); // camera already positioned, labels follow current 3D actors
   petManager?.update(dt,playerPos,{paused:combatPaused});
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
   if(performance.now()-hudTime>250){updateCombatHud();updateHUD();drawMinimap();hudTime=performance.now();}
