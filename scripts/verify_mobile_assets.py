@@ -41,18 +41,19 @@ def main():
     assert magic == b'GNR1' and width == height == 512
     assert len(terrain) == 20 + width * height * 7
     manifest = json.loads((ROOT / 'assets/monsters/manifest.json').read_text())
-    assert len(manifest['spawns']) <= 12
+    assert manifest['streaming'] is True and len(manifest['regions']) == 160
+    assert len(manifest['spawns']) == 10435 and len(manifest['species']) == 129
     for record in manifest['spawns']:
         assert record['species'] in manifest['species']
-        assert ox <= record['x'] < ox + width and oz <= record['z'] < oz + height
+        assert 0 <= record['x'] < 4096 and 0 <= record['z'] < 4096
     total = 0
     for species in manifest['species'].values():
         path = ROOT / 'assets/monsters' / species['model']
         gltf = verify_glb(path)
         assert gltf['skins'] and gltf['animations'] and gltf['images'], path
-        assert any('Ataque 1' in a['name'] for a in gltf['animations']), path
+        assert species['attack'] == 0 or any('Ataque 1' in a['name'] for a in gltf['animations']), path
         total += path.stat().st_size
-    assert total < 1024 * 1024, 'Monstros ultrapassaram 1 MiB'
+        assert path.stat().st_size < 1024 * 1024, 'Modelo individual ultrapassou 1 MiB'
     gltf = verify_glb(ROOT / 'assets/argent/modelos_cenario.glb')
     for path in (ROOT / 'assets/characters').glob('*.glb'):
         verify_glb(path)
@@ -71,7 +72,7 @@ def main():
     print(f'OK: 7 classes; {count} visuais Evanescence; poses de arma e nível mínimo 1.')
     print(f'OK: Argent {width}×{height}; {len(terrain):,} bytes de terreno; '
           f'{len(gltf["nodes"][0]["children"])} modelos de cenário; '
-          f'3 monstros / {total:,} bytes; 4 personagens.')
+          f'{len(manifest["species"])} monstros / {total:,} bytes sob demanda; 4 personagens.')
 
 
 if __name__ == '__main__':

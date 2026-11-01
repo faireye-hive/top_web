@@ -1,5 +1,12 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Monstros originais e GM:** Garner voltou a usar as 129 espécies e 160 regiões
+de nascimento originais, com carregamento por proximidade e limites próprios
+para celular e desktop. Em **Menu → GM · Teste de balanceamento**, use
+**+1 / +10 herói** e **+1 / +10 arma** para alterar os atributos reais e salvar
+os níveis localmente. Arma corresponde à proficiência do ataque em uso; sem
+equipamento, aumenta Punhos. [Detalhes](docs/MONSTROS_ORIGINAIS_E_GM.md).
+
 **HUD desktop:** interface compacta inspirada no cliente clássico, com retrato,
 HP e mana no canto superior esquerdo, minimapa quadrado à direita, registro de
 eventos à esquerda e ações/habilidades com experiência embaixo. Molduras e ícones

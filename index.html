@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="./desktop-hud.css?v=1">
 <link rel="stylesheet" href="./mobile-compact.css?v=4">
 <link rel="stylesheet" href="./npc-nameplates.css?v=1">
+<link rel="stylesheet" href="./gm-controls.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -98,6 +99,12 @@ font:600 12px system-ui,sans-serif}
 <div class="hud brand"><div class="logo">TOP</div><div><strong>Argent <span class="tag">WEB 0.14</span></strong><div class="sub">Tales of Pirates · Exploração local do mundo</div></div></div>
 <div class="hud side panel" id="settings">
   <div class="section">EXPLORADOR</div>
+  <details id="gm-tools">
+   <summary>GM · Teste de balanceamento</summary>
+   <div class="gm-test-row"><output id="gm-hero-level">Herói · nível 1 / 1000</output><button type="button" data-gm-boost="hero" data-gm-amount="1">+1 herói</button><button type="button" data-gm-boost="hero" data-gm-amount="10">+10 herói</button></div>
+   <div class="gm-test-row"><output id="gm-weapon-level">Punhos · nível 10 / 200</output><button type="button" data-gm-boost="weapon" data-gm-amount="1">+1 arma</button><button type="button" data-gm-boost="weapon" data-gm-amount="10">+10 arma</button></div>
+   <p id="gm-test-note">Teste local, salvo neste navegador. Aumenta a proficiência do ataque em uso.</p>
+  </details>
   <div class="kv"><span>Personagem</span><strong id="desktop-character-name">Lance</strong></div>
   <div class="kv"><span>Coordenadas</span><strong id="coords">—</strong></div>
   <div class="kv"><span>Altura</span><strong id="height">—</strong></div>
@@ -191,7 +198,7 @@ font:600 12px system-ui,sans-serif}
    <button type="button" id="go-harbor">Ir ao porto de Argent</button>
    <button type="button" id="sea-travel">Embarcar no veleiro</button>
    <div class="small" id="sea-status" role="status">No porto, aproxime-se da água e toque em Embarcar.</div>
-   <button type="button" id="combat-training">Ir ao treino · Argent</button>
+   <button type="button" id="combat-training">Ir aos monstros · arredores de Argent</button>
    <button type="button" id="go-arena-administrator">Ir à Arena Administrator</button>
    <button type="button" id="arena-leave" hidden>Encerrar tentativa · voltar a Argent</button>
    <button id="reset">↺ Voltar a Argent City</button>
@@ -372,7 +379,7 @@ font:600 12px system-ui,sans-serif}
  <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
  <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
 </dialog>
-<script type="module" src="./js/main.js?v=69"></script>
+<script type="module" src="./js/main.js?v=70"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

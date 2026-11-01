@@ -14,9 +14,10 @@ import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCame
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=5';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=7';
+import { createCombat, COMBAT } from './combat-state.mjs?v=8';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
-import { createMonsterManager } from './monster-manager.mjs?v=4';
+import { createMonsterManager } from './monster-manager.mjs?v=5';
+import {initGmControls} from './gm-controls.mjs';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
 import {initArenaUi} from './arena-ui.mjs';
@@ -141,7 +142,7 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null,cameraHeadHeight=1.55;
 let attackPlaying=false, testing=false;
-let rpgHud=null, desktopHud=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
+let rpgHud=null, desktopHud=null, gmControls=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -1056,6 +1057,7 @@ function combatEvent(event){
 }
 function updateCombatHud(){
   const snapshot=heroSnapshot(hero);
+  gmControls?.update({arena:isArenaMap,blocked:!world||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||boardingBoat});
   rpgHud?.setStats(snapshot);
   rpgHud?.setCombatState({cooldowns:combat?.cooldowns||{},mp:hero.mp});
   const target=combat?.target;
@@ -2080,18 +2082,21 @@ async function boot(){
       if(npcManager?.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
-      // O treino de Argent também deve existir ao iniciar em outra região.
-      if(!isArenaMap)await world.ensureAround(2218.5,2776.5,20);
-      monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,manifest:isArenaMap?arenaWave(arenaRun.floor):null,findSpawn:(x,z)=>{
+      monsterManager=await createMonsterManager({scene,mobile:MOBILE_UI,
+        heightAt:(x,z,m)=>m?.habitat==='sea'?SEA_LEVEL:sampleHeight(x,z),
+        manifest:isArenaMap?arenaWave(arenaRun.floor):null,findSpawn:(x,z,type)=>{
+        // Validar apenas a vizinhança carregada; nunca buscar terreno do mapa
+        // inteiro só para instanciar um nascimento distante.
+        if(!world.hasArea(x,z,9))return null;
         for(let radius=0;radius<=8;radius+=1)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
           const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
-          if(occupied(px,pz)&&!solidAt(px,pz,sampleHeight(px,pz)))return [px,pz];
+          if(type?.habitat==='sea'?sailableAt(getTile,px,pz,.3):occupied(px,pz)&&!solidAt(px,pz,sampleHeight(px,pz)))return [px,pz];
         }
         return null;
       }});
       combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
       if(isArenaMap)await monsterManager.prepare();
-    }catch(error){if(isArenaMap)throw error;console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
+    }catch(error){if(isArenaMap)throw error;console.warn('Monstros indisponíveis:',error);toast('Não foi possível carregar os monstros de Garner.');}
     try{
       petManager=await createPetManager({scene,camera});
       petManager.update(0,playerPos);
@@ -2574,7 +2579,20 @@ $('go-harbor').addEventListener('click',()=>{
     toast('Porto de Argent · toque em Embarcar para navegar.');
   }
 });
-$('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
+$('combat-training').addEventListener('click',()=>{
+  if(world&&hero.hp>0&&!isArenaMap&&teleport(2130,2730)){
+    document.body.classList.remove('mobile-settings-open');$('mobile-settings')?.setAttribute('aria-expanded','false');
+    toast('Arredores de Argent · monstros da região original.');
+  }
+});
+gmControls=initGmControls({hero,
+  canUse:()=>!!world&&!isArenaMap&&hero.hp>0&&!changingCharacter&&!changingLoadout&&!skillAnimationLocked&&!boardingBoat,
+  onChange:message=>{
+    stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
+    moverTarget=null;pendingPose=null;waypoint.hide();
+    saveHero();updateCombatHud();toast(`GM · ${message}`);
+  }
+});
 window.addEventListener('blur',()=>{stopCombat();saveHero();});
 window.addEventListener('pagehide',()=>{saveHero();if(world)saveSeaTravel();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCombat();});
@@ -2793,6 +2811,7 @@ mobileQuery.addEventListener('change',()=>{
   mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
   mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
   maxPixelRatio=Math.min(window.devicePixelRatio||1,renderBudget(MOBILE_UI).pixelRatio);
+  monsterManager?.setMobile(MOBILE_UI);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
   document.dispatchEvent(new Event('topweb:menu-open'));

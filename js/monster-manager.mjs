@@ -1,24 +1,41 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
+import {createMonsterPopulation,monsterBudget} from './monster-population.mjs';
 
-export async function createMonsterManager({scene,heightAt,findSpawn,url='assets/monsters/manifest.json',manifest:initialManifest=null}) {
+export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true,url='assets/monsters/manifest.json?v=3',manifest:initialManifest=null}) {
   let manifest=initialManifest;
   if(!manifest){const response=await fetch(url);if(!response.ok)throw new Error(`Monstros: HTTP ${response.status}`);manifest=await response.json();}
-  const group=new THREE.Group();group.name='Treino de Argent';scene.add(group);
-  const loader=new GLTFLoader(),cache=new Map();let generation=0;
-  function records(data){return data.spawns.slice(0,12).flatMap((spawn,index)=>{
-    const type=data.species[spawn.species];
-    if(!type||!/^models\/[\w-]+\.glb$/.test(type.model))return [];
-    const free=findSpawn(spawn.x,spawn.z);
-    if(!free)return [];
-    const patrol=(spawn.route||[]).flatMap(point=>{
-      const p=findSpawn(point[0],point[1]);return p?[{x:p[0],z:p[1]}]:[];
-    });
-    return [{...type,id:index,generation,species:spawn.species,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
-      ready:false,object:null,mixer:null,pending:false,failed:false,action:null}];
-  });}
-  const monsters=records(manifest);
+  const group=new THREE.Group();group.name=manifest.streaming?'Monstros originais de Garner':'Horda da Torre';scene.add(group);
+  const loader=new GLTFLoader(),cache=new Map(),budget=monsterBudget(mobile);
+  let loading=0,syncTime=.5,simulationTime=0;
+  function release(m){
+    m.mixer?.stopAllAction();
+    if(m.object){
+      m.mixer?.uncacheRoot(m.object);group.remove(m.object);
+      const skeletons=new Set();m.object.traverse(o=>{if(o.skeleton)skeletons.add(o.skeleton);});
+      for(const skeleton of skeletons)skeleton.dispose();
+    }
+    m.object=null;m.mixer=null;m.action=null;m.clips=null;
+  }
+  const population=createMonsterPopulation({manifest,findSpawn,budget,release});
+  const monsters=population.monsters;
+  function evict(){
+    const used=new Set(monsters.filter(m=>m.object||m.pending).map(m=>m.model));
+    for(const [key,entry] of cache){
+      if(cache.size<=budget.models)break;
+      if(used.has(key)||!entry.gltf)continue;
+      const geometries=new Set(),materials=new Set(),textures=new Set();
+      entry.gltf.scene.traverse(o=>{
+        if(o.geometry)geometries.add(o.geometry);
+        for(const material of (Array.isArray(o.material)?o.material:[o.material]))if(material){
+          materials.add(material);for(const value of Object.values(material))if(value?.isTexture)textures.add(value);
+        }
+      });
+      for(const value of [...geometries,...materials,...textures])value.dispose();
+      cache.delete(key);
+    }
+  }
   const ring=new THREE.Mesh(new THREE.RingGeometry(.8,.93,32),
     new THREE.MeshBasicMaterial({color:0xffcf61,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
   ring.rotation.x=-Math.PI/2;ring.visible=false;group.add(ring);
@@ -34,29 +51,37 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     action.clampWhenFinished=once;action.play();monster.action=action;
   }
   async function load(monster) {
-    monster.pending=true;
+    monster.pending=true;loading++;const version=monster.loadVersion;
     try {
       if(!cache.has(monster.model)) {
         const path=new URL(monster.model,new URL(url,location.href));
-        cache.set(monster.model,loader.loadAsync(path.href));
+        const entry={gltf:null,promise:null};
+        entry.promise=loader.loadAsync(path.href).then(gltf=>{entry.gltf=gltf;return gltf;})
+          .catch(error=>{cache.delete(monster.model);throw error;});
+        cache.set(monster.model,entry);
       }
-      const gltf=await cache.get(monster.model);
-      if(monster.generation!==generation)return;
+      const entry=cache.get(monster.model);cache.delete(monster.model);cache.set(monster.model,entry);
+      const gltf=await entry.promise;
+      if(monster.loadVersion!==version||!monsters.includes(monster))return;
       monster.object=clone(gltf.scene);monster.object.name=monster.name;
-      monster.object.position.set(monster.x,heightAt(monster.x,monster.z),monster.z);
+      monster.object.position.set(monster.x,heightAt(monster.x,monster.z,monster),monster.z);
       monster.object.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
       monster.clips=gltf.animations;monster.mixer=new THREE.AnimationMixer(monster.object);
       monster.mixer.addEventListener('finished',event=>{
         if(event.action===monster.action&&monster.hp>0)play(monster,monster.moving?'Correr':'Parado');
       });
-      group.add(monster.object);monster.ready=true;play(monster,'Parado');
-    }catch(error){monster.failed=true;console.warn('Modelo de monstro indisponível:',monster.model,error);}
-    finally{monster.pending=false;}
+      // O combate naval ainda não existe; criaturas do mar são visuais e
+      // não entram na seleção nem atacam o herói em terra.
+      group.add(monster.object);monster.ready=monster.habitat!=='sea';play(monster,'Parado');
+    }catch(error){if(monster.loadVersion===version)monster.failed=true;console.warn('Modelo de monstro indisponível:',monster.model,error);}
+    finally{loading--;if(monster.loadVersion===version)monster.pending=false;evict();}
   }
   function update(dt,position,target,{paused=false}={}) {
+    syncTime+=dt;if(!paused)simulationTime+=dt;
+    if(syncTime>=.5){population.sync(position,target,simulationTime);simulationTime=0;syncTime=0;evict();}
     for(const m of monsters) {
-      const near=Math.hypot(m.x-position.x,m.z-position.z)<45;
-      if(near&&!m.object&&!m.pending&&!m.failed)void load(m);
+      const near=Math.hypot(m.x-position.x,m.z-position.z)<budget.radius;
+      if(near&&!m.object&&!m.pending&&!m.failed&&loading<budget.loads)void load(m);
       if(!m.object)continue;
       if(!paused){m.deathTime=Math.max(0,(m.deathTime||0)-dt);m.recoil=Math.max(0,(m.recoil||0)-dt);}
       m.object.visible=near&&(m.hp>0||m.deathTime>0);
@@ -64,12 +89,12 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
         if(m.engaged&&!m.moving)m.object.rotation.y=Math.atan2(m.x-position.x,m.z-position.z);
         else if(m.moving)m.object.rotation.y=m.facing;
         const recoil=m.hp>0?Math.sin((m.recoil||0)/.18*Math.PI)*.12:0;
-        m.object.position.set(m.x+Math.sin(m.object.rotation.y)*recoil,heightAt(m.x,m.z),m.z+Math.cos(m.object.rotation.y)*recoil);
+        m.object.position.set(m.x+Math.sin(m.object.rotation.y)*recoil,heightAt(m.x,m.z,m),m.z+Math.cos(m.object.rotation.y)*recoil);
         if(m.hp>0&&(!m.action||m.action.loop!==THREE.LoopOnce))play(m,m.moving?'Correr':'Parado');
         if(!paused)m.mixer.update(dt);
       }
     }
-    ring.visible=!!target?.object&&target.hp>0;
+    ring.visible=!!target?.object&&target.object.visible&&target.hp>0;
     if(ring.visible)ring.position.set(target.x,heightAt(target.x,target.z)+.08,target.z);
   }
   function onEvent(event) {
@@ -80,7 +105,7 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     if(event.type==='respawn'||event.type==='reset'){m.deathTime=0;m.recoil=0;play(m,'Parado');}
   }
   function pick(raycaster){
-    const candidates=monsters.filter(m=>m.object?.visible&&m.hp>0);
+    const candidates=monsters.filter(m=>m.object?.visible&&m.ready&&m.hp>0);
     const hits=raycaster.intersectObjects(candidates.map(m=>m.object),true);
     if(!hits.length)return null;
     for(const m of candidates){let object=hits[0].object;while(object){if(object===m.object)return m;object=object.parent;}}
@@ -91,11 +116,10 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     if(monsters.some(m=>!m.ready))throw Error('Não foi possível preparar a horda');
   }
   async function replaceWave(data){
-    generation++;
-    for(const m of monsters){m.mixer?.stopAllAction();if(m.object){m.mixer?.uncacheRoot(m.object);group.remove(m.object);}}
-    monsters.splice(0,monsters.length,...records(data));ring.visible=false;
+    population.reset(data);ring.visible=false;evict();
     if(monsters.length!==data.spawns.length)throw Error('Pontos de horda bloqueados');
     await prepare();
   }
-  return {monsters,update,onEvent,pick,prepare,replaceWave};
+  return {monsters,update,onEvent,pick,prepare,replaceWave,
+    setMobile(value){Object.assign(budget,monsterBudget(value));syncTime=.5;}};
 }

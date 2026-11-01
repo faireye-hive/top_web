@@ -36,7 +36,7 @@ export function returnMonsterHome(m,{teleport=false}={}){
 }
 export function updateMonsterMotion(m,dt,hero,{canReach=()=>true,range=2.4}={}){
   initMonsterMotion(m);m.moving=false;
-  if(m.hp<=0||m.ready===false||m.status?.stun>0||m.attackPending)return;
+  if(m.hp<=0||m.ready===false||m.immobile||m.status?.stun>0||m.attackPending)return;
   const mode=m.engaged?'chase':m.motion==='return'?'return':'patrol';
   if(mode!==m.motion){m.path=[];m.pathGoal=null;m.motion=mode;}
   let goal=mode==='chase'?hero:mode==='return'?m.home:m.patrol?.[m.routeIndex];

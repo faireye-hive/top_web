@@ -1,6 +1,6 @@
 import {gainExperience,trainAttack} from './hero-state.mjs?v=5';
 import {basicAttackRange,skillWithRules,inSkillArea} from './skill-rules.mjs';
-import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs';
+import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs?v=2';
 export const COMBAT=Object.freeze({targetRadius:30,range:2.2,leash:34,respawn:12,recovery:5});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function nearestMonster(monsters,position,radius=COMBAT.targetRadius,canReach=()=>true){
@@ -98,7 +98,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     m.hp=Math.max(0,m.hp-damage);m.engaged=true;quiet=0;
     onEvent({type,monster:m,damage,skill});
     if(m.hp===0){
-      m.respawnIn=COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
+      m.respawnIn=m.respawnSeconds??COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
       const levels=gainExperience(hero,m.xp);onEvent({type:'kill',monster:m,levels});
       if(m===target){target=null;manual=false;manualActive=false;scan=0;}
     }
@@ -197,7 +197,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     if((auto||manualActive)&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
       startSwing(target,position);
     for(const m of monsters){
-      if(!m.engaged||m.hp<=0||m.ready===false)continue;
+      if(!m.engaged||m.hp<=0||m.ready===false||m.attack<=0)continue;
       if(m.status.stun>0||buffs.stealth>0){m.attackPending=null;continue;}
       if(!m.attackPending){
         if(m.cooldown>0||distance(position,m)>COMBAT.range+.4||!canSee(position,m))continue;
