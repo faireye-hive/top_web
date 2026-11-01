@@ -1,0 +1,100 @@
+/* Short-lived combat feedback, pointer-transparent over the 3D world.
+   No texture downloads, no new WebGL draw calls, no permanent HUD clutter. */
+.combat-float-layer{
+  position:fixed;inset:0;z-index:22;
+  pointer-events:none;
+  overflow:hidden;
+  contain:layout style;
+}
+.combat-float[hidden]{display:none!important}
+.combat-float{
+  position:absolute;
+  transform:translate(-50%,-100%);
+  display:block;min-width:36px;height:24px;
+  pointer-events:none;
+  text-align:center;
+  color:#fff5c2;
+  --combat-offset:0px;
+}
+.combat-float-value{
+  display:inline-block;
+  position:relative;z-index:2;
+  font:900 23px/1 system-ui,-apple-system,Arial,sans-serif;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.5px;
+  -webkit-text-stroke:1px #25151c;
+  paint-order:stroke fill;
+  filter:drop-shadow(0 2px 2px #000);
+  animation:combat-number-rise 1.1s ease-out both;
+}
+.combat-float--skill .combat-float-value{color:#82e3ff}
+.combat-float--dot .combat-float-value{color:#9bffb2;font-size:18px}
+.combat-float--hurt .combat-float-value{color:#ff7271;font-size:25px}
+.combat-float--heal .combat-float-value{color:#8dffae}
+.combat-float--miss .combat-float-value,.combat-float--block .combat-float-value{
+  color:#e7f2fa;font-size:15px;letter-spacing:.4px;
+}
+.combat-impact{
+  position:absolute;
+  left:50%;top:35%;
+  width:42px;height:42px;
+  border:2px solid #ffe4a0;
+  border-radius:50%;
+  box-shadow:0 0 9px #ffb75aaf,inset 0 0 11px #ffe29a66;
+  transform:translate(-50%,-50%) scale(.12);
+  animation:combat-impact-ring .34s ease-out both;
+}
+.combat-impact::before,.combat-impact::after{
+  content:"";position:absolute;left:50%;top:50%;
+  background:#fff5ce;
+  transform:translate(-50%,-50%) rotate(-38deg);
+  box-shadow:0 0 8px #ffd080;
+}
+.combat-impact::before{width:40px;height:3px}
+.combat-impact::after{width:3px;height:29px}
+.combat-float--skill .combat-impact{border-color:#9de5ff;box-shadow:0 0 11px #80caff}
+.combat-float--hurt .combat-impact{border-color:#ff7777;box-shadow:0 0 11px #ff666699}
+.combat-float--swing .combat-impact{
+  width:26px;height:26px;border-color:#ffe5a3;
+  animation-duration:.28s;
+}
+.combat-hurt-flash{
+  position:fixed;inset:0;z-index:20;
+  pointer-events:none;opacity:0;
+  border:0 solid transparent;
+  background:radial-gradient(ellipse at center,transparent 42%,#b41d3a1c 100%);
+  box-shadow:inset 0 0 65px #e5294260;
+  visibility:hidden;
+}
+.combat-hurt-flash.active{visibility:visible;animation:combat-hurt-vignette .4s ease-out both}
+@keyframes combat-number-rise{
+  0%{opacity:0;transform:translate(var(--combat-offset),14px) scale(.75)}
+  17%{opacity:1;transform:translate(var(--combat-offset),-2px) scale(1.23)}
+  58%{opacity:1;transform:translate(var(--combat-offset),-24px) scale(1)}
+  100%{opacity:0;transform:translate(var(--combat-offset),-54px) scale(.95)}
+}
+@keyframes combat-impact-ring{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.1) rotate(-14deg)}
+  20%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.55) rotate(20deg)}
+}
+@keyframes combat-hurt-vignette{
+  0%{opacity:0}20%{opacity:.48}100%{opacity:0;visibility:hidden}
+}
+body.mobile-ui .combat-float-value{font-size:20px}
+body.mobile-ui .combat-float--hurt .combat-float-value{font-size:22px}
+body.mobile-ui .combat-float--dot .combat-float-value,
+body.mobile-ui .combat-float--miss .combat-float-value,
+body.mobile-ui .combat-float--block .combat-float-value{font-size:14px}
+body.mobile-ui .combat-impact{width:34px;height:34px}
+body.rpg-open .combat-float-layer,
+body.map-open .combat-float-layer,
+body.nohud .combat-float-layer,
+body.mobile-settings-open .combat-float-layer{
+  display:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .combat-float-value{animation:combat-number-rise .1s linear both}
+  .combat-impact{animation:combat-impact-ring .12s linear both}
+  .combat-hurt-flash.active{animation:combat-hurt-vignette .12s linear both}
+}
