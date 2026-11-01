@@ -111,3 +111,46 @@ Reproduzir o caso:
 node --test tests/weapon-material-studio.test.mjs
 python3 scripts/audit_weapon_materials.py
 ```
+
+## Camadas 1.BMP nas demais classes (auditoria geral)
+
+Depois de confirmar que a Dance of Evanescence precisa de duas passagens,
+auditamos **todos os 14 GLBs de equipamentos** gerados para o TOP Web:
+`python3 scripts/audit_weapon_materials.py`.
+
+O resultado é consistente: **16 armas, 16 segundas submalhas com imagem
+`1.BMP` e 16 primeiras submalhas com outra textura principal**.
+Isso ocorre em Crusader (Lance/Phyllis), Champion (Carsise),
+Hunter (Lance/Phyllis), Sharpshooter (Lance/Phyllis),
+Cleric (Phyllis/Ami), Seal Master (Phyllis/Ami) e
+Voyager (Lance/Phyllis/Ami).
+
+A versão anterior do JavaScript tratava somente o nome
+`01010021.lgo · 1.BMP` como camada adicional. O módulo
+`js/weapon-materials.mjs` agora reconhece **qualquer material de arma**
+com padrão `<arquivo>.lgo · 1.BMP`, independentemente da classe.
+A regra vale somente aos nós reconhecidos como armas pelo
+`weaponMeshNodes`, não às peças de roupas/armadura/personagem.
+
+**Limitação da origem:** o valor real `blend=1` foi conferido
+no LGO original da Dance, mas **não foi conferido em todos os 15
+outros casos**. O GLB antigo descartou o valor de blend. Consideramos
+essas 15 camadas como **candidatas** por padrão visual e por nome,
+deixando-as ocultas para revelar a textura principal (configuração
+reversível no Weapon Material Studio). O conversor já exporta
+`extras.topOriginalBlend=1` nos novos modelos quando essa informação
+pode ser lida do LGO, permitindo substituir a heurística futuramente.
+
+Em cada arma, a **Parte 1** conserva sua textura e a **Parte 2**
+pode ser ativada em **Exibir camada secundária 1.BMP**. A intensidade
+pode ser editada e salva por arma/classe. Os ajustes também funcionam
+no Pose Studio e no jogo, inclusive nas armas guardadas.
+
+Testes:
+```bash
+python3 scripts/audit_weapon_materials.py
+node --test tests/weapon-material-studio.test.mjs
+```
+
+Os testes verificam explicitamente os 14 arquivos reais e que a
+textura principal não é confundida com a camada secundária.
