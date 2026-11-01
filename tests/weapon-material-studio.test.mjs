@@ -152,7 +152,7 @@ test('todos os 14 GLBs usam textura principal distinta de 1.BMP na arma',()=>{
          const old={material:{name:material.name,userData:{}},userData:{}};
          const isOverlay=isWeaponAdditiveLayer(old);
          if(i===0){
-           assert.notMatch(filename,/^1\.bmp$/i);
+           assert.doesNotMatch(filename,/^1\.bmp$/i);
            assert.equal(isOverlay,false,actor+'/'+job+' main texture misclassified');
          }else{
            candidates++;
