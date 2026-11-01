@@ -1001,6 +1001,11 @@ function updateCombatHud(){
   rpgHud?.setStats(snapshot);
   rpgHud?.setCombatState({cooldowns:combat?.cooldowns||{},mp:hero.mp});
   const target=combat?.target;
+  // No mobile, abrir o painel de combate somente quando há alvo
+  // ou um ataque ativo; esconder o card vazio devolve espaço ao mundo.
+  const combatPanel=document.querySelector('.combat-panel');
+  if(combatPanel)combatPanel.dataset.mobileActive=String(
+    !!target||!!combat?.auto||!!combat?.manualActive);
   $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:(MOBILE_UI?'Toque num monstro ou use Alvo':'Clique num monstro ou use T');
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
   $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
