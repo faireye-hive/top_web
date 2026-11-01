@@ -1,5 +1,12 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Mapa, barco e Estúdio de Refino:** os mapas mostram pontos vermelhos nas áreas
+originais de monstros, em terra e mar. Veja os stats em **Menu → Atributos do
+barco** ou toque no nome do barco durante a navegação. Cada nível aumenta HP,
+ataque, defesa e velocidade (+1% da base). Em **Menu → Editor de efeitos de
+refino**, ajuste aura, cores, brilho, faíscas e filamentos com prévia 3D e salve
+no jogo, ou importe/exporte seus estilos por personagem e classe.
+
 **Combate naval e refino:** barcos agora lutam contra os monstros marinhos,
 possuem nível/XP/HP próprios e recuperam o casco fora de combate. No Menu há
 um atalho aos monstros do mar, aumentos GM de nível do barco e refinos de

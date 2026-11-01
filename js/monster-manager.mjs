@@ -118,6 +118,6 @@ export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true
     if(monsters.length!==data.spawns.length)throw Error('Pontos de horda bloqueados');
     await prepare();
   }
-  return {monsters,update,onEvent,pick,prepare,replaceWave,
+  return {monsters,mapPoints:manifest.streaming?manifest.spawns:[],update,onEvent,pick,prepare,replaceWave,
     setMobile(value){Object.assign(budget,monsterBudget(value));syncTime=.5;}};
 }

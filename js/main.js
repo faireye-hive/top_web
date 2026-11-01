@@ -13,14 +13,17 @@ import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement } from './hero-state.mjs?v=6';
-import {createRefinementEffects} from './refinement-effects.mjs';
+import {createRefinementEffects} from './refinement-effects.mjs?v=2';
 import { resolvePrimaryAction } from './context-action.mjs?v=4';
 import { createCombat, COMBAT } from './combat-state.mjs?v=9';
-import {createNavalCombat} from './naval-combat.mjs';
-import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel} from './boat-state.mjs';
+import {createNavalCombat} from './naval-combat.mjs?v=2';
+import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel,boatMovementSpeed} from './boat-state.mjs?v=2';
+import {initBoatStatsUi} from './boat-stats-ui.mjs';
+import {monsterMapDots} from './monster-map.mjs';
+import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs';
 import {createNavalEffects} from './naval-effects.mjs';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
-import { createMonsterManager } from './monster-manager.mjs?v=6';
+import { createMonsterManager } from './monster-manager.mjs?v=7';
 import {initGmControls} from './gm-controls.mjs?v=2';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
@@ -167,6 +170,16 @@ if(arenaRun){hero.arenaBonuses=arenaRun.bonuses;refreshHero(hero,{heal:true});}
 let equipmentManifest=null,changingLoadout=false;
 let sailing=false,boardingBoat=false,boat=null,boatProfile=null,boatReady=null,seaTravelReady=false;
 let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
+let refinementProfiles={version:1,profiles:{}},shippedRefinements={version:1,profiles:{}};
+function refreshRefinementStyle(){
+  refinementProfiles=readRefinementProfiles(globalThis.localStorage,shippedRefinements);
+  refinementEffects.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));
+}
+fetch('assets/weapons/refinement-effects.json?v=1').then(r=>r.ok?r.json():shippedRefinements)
+  .then(data=>{shippedRefinements=data;refreshRefinementStyle();}).catch(()=>refreshRefinementStyle());
+window.addEventListener('storage',e=>{if(e.key===REFINEMENT_STORAGE_KEY||e.key===null)refreshRefinementStyle();});
+window.addEventListener('focus',refreshRefinementStyle);
+let boatStatsUi=null;
 let weaponMaterialProfiles={version:1,profiles:{}};
 const weaponMaterialsReady=fetch('assets/weapons/overrides.json?v=1')
   .then(r=>r.ok?r.json():{version:1,profiles:{}})
@@ -481,6 +494,13 @@ function drawNavigationMap(canvas,view,full=false){
     for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,mapHeight);ctx.moveTo(0,n*mapHeight/8);ctx.lineTo(size,n*mapHeight/8);ctx.stroke();}
   }
   const project=p=>projectMap(p,view,sizeXY),player=project(playerPos);
+  if(!isArenaMap&&$('map-monsters').checked){
+    const scale=canvas.width/(canvas.clientWidth||canvas.width);
+    ctx.fillStyle='#f34343';ctx.strokeStyle='#4b0c12';ctx.lineWidth=Math.max(.7,scale*.5);
+    for(const dot of monsterMapDots(monsterManager?.mapPoints||[],view,sizeXY,12*scale)){
+      ctx.beginPath();ctx.arc(dot.x,dot.y,Math.max(1.7,2*scale),0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+  }
   const destination=full?(mapSelection||navigationGoal):(navigationGoal||moverTarget);
   if(destination){
     const p=project(destination);
@@ -497,10 +517,6 @@ function drawNavigationMap(canvas,view,full=false){
     const p=project(navigationContext.destination);
     if(full)p.labelDy=24;
     mapDot(ctx,p,'#6dffcf',full?(sailing?'Desembarque livre':'Embarque livre'):'',full);
-  }
-  if(!full)for(const monster of monsterManager?.monsters||[]){
-    if(monster.hp>0&&Math.hypot(monster.x-playerPos.x,monster.z-playerPos.z)<40)
-      mapDot(ctx,project(monster),'#e68b72','',false);
   }
   const heading=sailing&&boat?boat.rotation.y+Math.PI:avatar?avatar.rotation.y+Math.PI:CAM.yaw;
   ctx.save();ctx.translate(player.x,player.y);ctx.rotate(Math.PI-heading);
@@ -958,6 +974,7 @@ async function loadCharacter(id){
     if(hero.equipped)applyWeaponAppearance(THREE,avatar,id,hero.job,weaponMaterialProfiles);
     weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
     refinementEffects.setAvatar(avatar,weaponHolster);
+    refreshRefinementStyle();
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
@@ -1091,6 +1108,7 @@ function navalReachable(a,b){
 function updateNavalHud(){
   const stats=boatSnapshot(ship,boatProfile?.name),hud=$('naval-hud');hud.hidden=!sailing;
   const write=(id,value)=>{if($(id).textContent!==value)$(id).textContent=value;};
+  boatStatsUi?.update();
   write('naval-name',`${stats.name} · Nv. ${ship.level}`);
   write('naval-hp',`${stats.hp} / ${stats.maxHp} HP`);write('naval-xp',`XP ${stats.xp}`);
   write('naval-state',ship.hp<=0?'Resgate no porto…':navalCombat?.inCombat?'Em combate':ship.hp<ship.stats.maxHp?'Reparando casco · +4% HP/s':'Casco íntegro');
@@ -2261,7 +2279,7 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
   landCombat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
   navalCombat?.update(dt,playerPos,{active:sailing,paused:combatPaused,moving:manualMove});
   if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
@@ -2284,7 +2302,7 @@ function update(dt){
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
     const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
-    const speed=(sailing?boatProfile.speed/WALK_SPEED:1)*calculateMovementSpeed({
+    const speed=(sailing?boatMovementSpeed(ship,boatProfile.speed)/WALK_SPEED:1)*calculateMovementSpeed({
       running:running&&!sailing,
       digital:!!(keyFw||keySide),
       destination:!!moverTarget||chasing,
@@ -2648,6 +2666,14 @@ $('combat-training').addEventListener('click',()=>{
     toast('Arredores de Argent · monstros da região original.');
   }
 });
+boatStatsUi=initBoatStatsUi({ship,
+  profile:()=>({name:boatProfile?.name||boatCatalog?.boats?.find(b=>b.slug===ship.hull)?.name||ship.hull,baseSpeed:boatProfile?.speed??marineDesign.boat.speed}),
+  canOpen:()=>!!world&&!isArenaMap&&!boardingBoat&&!changingCharacter&&!changingLoadout&&!skillAnimationLocked&&!mapIsOpen(),
+  onPause:()=>{clearTravelInput();stopCombat();rpgHud?.dismiss();
+    document.body.classList.remove('mobile-settings-open','desktop-settings-open');
+    for(const id of ['mobile-settings','desktop-settings'])$(id)?.setAttribute('aria-expanded','false');}
+});
+$('map-monsters').addEventListener('change',drawMinimap);
 $('naval-training').addEventListener('click',async()=>{
   if(isArenaMap||!world||boardingBoat||hero.hp<=0||ship.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked)return;
   boardingBoat=true;clearTravelInput();
@@ -2861,7 +2887,7 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen()||mapIsOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
+  if(typing||rpgHud?.isOpen()||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));

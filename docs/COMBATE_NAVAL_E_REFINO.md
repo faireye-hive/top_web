@@ -29,6 +29,7 @@ navegador. Nível, XP e HP do barco não usam nem alteram os valores do herói.
 | HP máximo | 1800 + 140 × (L − 1) |
 | Ataque do canhão | 135 + 14 × (L − 1) |
 | Defesa do casco | 40 + 3 × (L − 1) |
+| Velocidade de movimento | velocidade base do editor × [1 + 0,01 × (L − 1)] |
 | Cadência | 0,8 tiros/s |
 | XP por criatura | 10 + 3 × nível original do monstro |
 
@@ -39,7 +40,11 @@ tempos. Ao afundar, um resgate de cinco segundos devolve ao porto com HP
 restaurado, sem perder XP ou nível. Fechar/reabrir o jogo preserva o HP salvo.
 
 O painel do barco substitui o retrato enquanto navega e mostra nível, HP, XP e
-estado de combate/reparo no mobile e no desktop. **GM → +1/+10 barco** permite
+estado de combate/reparo no mobile e no desktop. Toque no nome do barco ou use
+**Menu → Atributos do barco** (também em terra) para ver HP, XP, ataque, defesa,
+velocidade, precisão, esquiva e cadência. A janela pausa o combate e mostra os
+ganhos do próximo nível. A velocidade cresce 1% da base por nível, até +99% no
+nível 100, preservando a velocidade base escolhida no editor de barcos. **GM → +1/+10 barco** permite
 testar níveis sem modificar o herói.
 
 ## Refino vermelho/dourado
@@ -70,6 +75,40 @@ No mobile são no máximo 24 faíscas por arma; no desktop, 48. As duas armas
 compartilham buffers, materiais e um conjunto fixo de geometrias. Não há
 alocação de partículas nem carregamento de imagens a cada quadro.
 
+## Estúdio de Refino
+
+Abra **Menu → Editor de efeitos de refino** ou `tests/refinement-editor.html`.
+A prévia carrega os equipamentos reais de Lance, Phyllis, Carsise e Ami; escolha
+classe, refino +0 a +13, animação e posição nas mãos/costas. Arraste para girar
+e use pinça/roda para aproximar. O botão Pausar congela a animação e o efeito.
+
+Ajuste cores de aura, núcleo e filamentos; largura, intensidade, aura externa,
+pulsação, velocidade, quantidade/tamanho de faíscas e raio da órbita. Há quatro
+estilos iniciais: Rubi e ouro, Chama carmesim, Aura glacial e Energia violeta.
+O editor e o jogo usam o mesmo renderizador. Os limites de 24 faíscas por arma
+no mobile e 48 no desktop permanecem ativos mesmo no máximo dos controles.
+
+**Salvar no jogo** guarda os estilos por personagem/classe na chave
+`topweb_refinement_effects_v1` deste navegador e origem. O jogo já aberto recebe
+a alteração pelo evento de armazenamento; ao retornar à aba, também relê os
+perfis. Isso altera apenas a aparência. O nível de prévia não muda o herói, e
+a progressão do efeito continua obedecendo ao refino real da arma equipada.
+
+**Exportar** baixa `refinement-effects.json`. **Importar** valida o JSON e abre
+na prévia; salve para aplicar. Para distribuir o estilo a outros dispositivos,
+publique o arquivo em `assets/weapons/refinement-effects.json`. Preferências
+locais prevalecem sobre o arquivo publicado. O botão Restaurar padrão deste
+perfil restaura o vermelho/dourado apenas no perfil selecionado; salve depois.
+
+## Pontos de monstros no mapa
+
+Mapa completo e minimapa mostram pequenos pontos vermelhos estáticos baseados
+nas posições originais de nascimento, em terra e no mar. O mapa agrupa pontos
+próximos conforme o zoom; aproximar revela mais detalhes. São áreas aproximadas,
+mesmo com monstros distantes, mortos ou ainda não carregados. A opção
+**Monstros · terra e mar** do mapa liga/desliga a camada nos dois mapas.
+Rotas, porto, desembarque e jogador continuam desenhados sobre os pontos.
+
 ## Verificação
 
 ```sh
@@ -82,4 +121,6 @@ python3 scripts/verify_mobile_assets.py
 
 Os testes cobrem progressão e saves de cascos independentes, dano no impacto,
 alcance e barreiras, manual/Auto, retaliação, reparo fora de combate, pausa,
-resgate, migração de saves de herói e crescimento/limites dos efeitos de refino.
+resgate, velocidade por nível, migração de saves de herói, agrupamento de pontos
+terrestres/marinhos e importação/persistência/limites dos estilos de refino.
+Prévia e jogo também foram conferidos em desktop e tela mobile de 844 × 390.
