@@ -2888,14 +2888,18 @@ $('map-harbor').addEventListener('click',async()=>{
   mapOverviewCenter=point;mapOverviewSpan=256;
   await selectMapDestination(point);
 });
-$('map-zoom-in').addEventListener('click',()=>{
-  const r=expandedMap.getBoundingClientRect();
-  mapZoomAt(r.left+r.width/2,r.top+r.height/2,.5);
-});
-$('map-zoom-out').addEventListener('click',()=>{
-  const r=expandedMap.getBoundingClientRect();
-  mapZoomAt(r.left+r.width/2,r.top+r.height/2,2);
-});
+function zoomMapButton(factor){
+  const rect=expandedMap.getBoundingClientRect(),view=fullMapView();
+  // After tapping a location, +/- enlarges THAT location, not the avatar.
+  const chosen=mapSelection||{x:view.x+view.w/2,z:view.z+view.h/2};
+  const inside=chosen.x>=view.x&&chosen.x<=view.x+view.w&&
+    chosen.z>=view.z&&chosen.z<=view.z+view.h;
+  const location=inside?chosen:{x:view.x+view.w/2,z:view.z+view.h/2};
+  const point=projectMap(location,view,{width:rect.width,height:rect.height});
+  mapZoomAt(rect.left+point.x,rect.top+point.y,factor,view);
+}
+$('map-zoom-in').addEventListener('click',()=>zoomMapButton(.5));
+$('map-zoom-out').addEventListener('click',()=>zoomMapButton(2));
 $('map-world').addEventListener('click',()=>{
   mapOverviewSpan=Math.max(world.h,world.w/fullMapAspect());
   mapOverviewCenter=null;drawMinimap();
