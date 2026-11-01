@@ -10,10 +10,10 @@ import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=5';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
-import { resolvePrimaryAction } from './context-action.mjs?v=2';
+import { resolvePrimaryAction } from './context-action.mjs?v=3';
 import { createCombat, COMBAT } from './combat-state.mjs?v=4';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
-import { calculateMovementSpeed } from './movement-speed.mjs';
+import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
@@ -22,6 +22,7 @@ import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=7';
 import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=3';
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
+import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition} from './sea-navigation.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -97,6 +98,7 @@ const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
 });
 const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
 let equipmentManifest=null,changingLoadout=false;
+let sailing=false,boardingBoat=false,boat=null,boatProfile=null,boatReady=null,seaTravelReady=false;
 let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
 let weaponMaterialProfiles={version:1,profiles:{}};
 const weaponMaterialsReady=fetch('assets/weapons/overrides.json?v=1')
@@ -455,6 +457,7 @@ function teleport(x,z){
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
+  if(sailing){sailing=false;if(boat)boat.visible=false;if(avatar)avatar.visible=true;shadow.visible=true;saveSeaTravel();}
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
@@ -475,19 +478,84 @@ function updateHUD(){
   $('coords').textContent=`${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
   $('height').textContent=`${playerPos.y.toFixed(2)} m`;
   $('texid').textContent=t?`#${t.tex}`:'fora';
-  $('region').textContent=t?`${t.region} ${t.region&9?'· terra':'· sem passagem'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
+  $('region').textContent=t?`${t.region} ${sailing?'· navegando':t.region&9?'· terra':'· mar'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
   $('objcount').textContent=objects.length.toLocaleString('pt-BR');
   const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
+function canSail(x,z){return !!world&&sailableAt(getTile,x,z);}
+function canLand(x,z){
+  if(!landableAt(getTile,x,z,BODY_R))return false;
+  const height=footSurface(x,z,SEA_LEVEL+3.5);
+  return height>=SEA_LEVEL-.3&&height<=SEA_LEVEL+3.5&&!solidAt(x,z,height);
+}
+function transferConnected(a,b){
+  return clearTransfer(a,b,getTile,(x,z)=>{
+    const height=footSurface(x,z,SEA_LEVEL+3.5);
+    return height>SEA_LEVEL+3.5||solidAt(x,z,height);
+  });
+}
+async function loadBoat(){
+  if(!boatReady)boatReady=(async()=>{
+    const response=await fetch('assets/boats/manifest.json?v=1');
+    if(!response.ok)throw new Error('Catálogo de barcos indisponível.');
+    const profile=await response.json();
+    const gltf=await new GLTFLoader().loadAsync(profile.model);
+    boatProfile=profile;boat=gltf.scene;boat.visible=false;scene.add(boat);
+    return boat;
+  })().catch(error=>{boatReady=null;throw error;});
+  return boatReady;
+}
+function saveSeaTravel(){
+  if(!seaTravelReady)return;
+  setPref('topweb_sea_travel_v1',JSON.stringify({version:1,sailing,x:playerPos.x,z:playerPos.z}));
+}
+function clearTravelInput(){
+  stopCombat(true);keys.clear();touchMove.forward=0;touchMove.sideways=0;
+  moverTarget=null;pendingPose=null;waypoint.hide();
+  mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;cameraFollowTarget=null;
+  document.dispatchEvent(new Event('topweb:menu-open'));
+}
+function setSailing(enabled,destination){
+  clearTravelInput();sailing=enabled;
+  playerPos.set(destination.x,enabled?boatProfile.seaLevel:footSurface(destination.x,destination.z,SEA_LEVEL+3.5),destination.z);
+  if(boat){boat.visible=enabled;boat.position.copy(playerPos);boat.rotation.y=avatar?.rotation.y||0;}
+  if(avatar){avatar.visible=!enabled;avatar.position.copy(playerPos);}
+  shadow.visible=!enabled;mobileCameraFocus.copy(playerPos);
+  playClip('Parado');saveSeaTravel();placeCamera();forceChunks=true;
+  updateHUD();updateCombatHud();drawMinimap();
+}
+async function toggleSeaTravel(){
+  if(!world||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||rpgHud?.isOpen())return false;
+  const context=primaryContext();
+  if(context.type==='disembark'){
+    setSailing(false,context.destination);toast('Em terra. Boa exploração!');return true;
+  }
+  if(context.type!=='embark'){
+    toast(sailing?'Aproxime-se de uma margem livre para desembarcar.':'Aproxime-se da água no porto para embarcar.');return false;
+  }
+  boardingBoat=true;clearTravelInput();
+  try{
+    await loadBoat();
+    // O jogador pode ter voltado à cidade ou aberto um menu durante o download.
+    const current=primaryContext();
+    if(current.type!=='embark'||hero.hp<=0||rpgHud?.isOpen())return false;
+    setSailing(true,current.destination);
+    toast('Guppy · use o joystick ou toque no mar para navegar.');return true;
+  }catch(error){console.error('Barco:',error);toast('Não foi possível carregar o barco. Tente embarcar novamente.');return false;}
+  finally{boardingBoat=false;}
+}
 function primaryContext(){
-  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,
+  const boarding=!sailing&&!seated&&world?nearestPosition(playerPos,canSail,7,transferConnected):null;
+  const landing=sailing?nearestPosition(playerPos,canLand,7,transferConnected):null;
+  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,sailing,boarding,landing,
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
   if(changingLoadout||changingCharacter||rpgHud?.isOpen())return;
   const context=primaryContext();
+  if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
   return tryPose();
 }
@@ -496,6 +564,7 @@ function tryPose(){
   stopCombat();
   const context=primaryContext();
   if(context.type==='recovering')return false;
+  if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='stand'){if(standUp())toast('Em pé.');return true;}
   if(context.type==='npc'){toast(context.npc.name+' · diálogo em desenvolvimento');return true;}
   if(context.type==='pose'){
@@ -575,7 +644,7 @@ function selectMobileAutoMode(){
 }
 function toggleAutoAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto){
     combat.toggle(); // Desativa auto, mas conserva alvo para o ataque manual.
@@ -591,7 +660,7 @@ function toggleAutoAttack(){
 }
 function manualAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto)return false; // O botão grande é exclusivamente manual.
   const fired=combat.manualAttack(playerPos);
@@ -755,7 +824,7 @@ function updateCombatHud(){
   desktopAuto?.classList.toggle('auto-active',!!combat?.auto);
   const autoModeButton=$('mobile-auto');
   if(autoModeButton){
-    autoModeButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+    autoModeButton.disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
     autoModeButton.setAttribute('aria-pressed',String(mobileAutoModeEnabled));
     autoModeButton.setAttribute('aria-label',mobileAutoModeEnabled?'Usar ataque manual':'Usar ataque automático no botão grande');
     autoModeButton.classList.toggle('auto-active',mobileAutoModeEnabled);
@@ -767,15 +836,22 @@ function updateCombatHud(){
     :combatAction?'Atacar manualmente':context.label);
   if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
   else button?.removeAttribute('aria-pressed');
-  if(context.npc){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
+  if(sailing){$('combat-mode').textContent='Navegando · Guppy';$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
+  if(context.npc&&!sailing){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
   button?.classList.toggle('interaction-ready',!combatAction&&context.type!=='recovering');
   button?.classList.toggle('auto-mode-selected',autoAction);
   button?.classList.toggle('auto-active',autoAction&&!!combat?.auto);
   button?.classList.remove('manual-unavailable');
   const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
   const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':'Atacar'):context.label;
-  if(button)button.disabled=hero.hp<=0||changingCharacter||changingLoadout;
-  $('mobile-target').disabled=hero.hp<=0||changingCharacter||changingLoadout;
+  if(button)button.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('mobile-target').disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('mobile-run').disabled=sailing||boardingBoat;
+  $('mobile-joystick').setAttribute('aria-label',sailing?'Joystick para navegar':'Joystick para caminhar');
+  const seaButton=$('sea-travel');
+  seaButton.textContent=sailing?'Desembarcar':'Embarcar no Guppy';
+  seaButton.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('sea-status').textContent=sailing?'Guppy · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
 
 }
@@ -1676,6 +1752,12 @@ async function boot(){
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
+    const seaSaved=restoreSeaPosition(getPref('topweb_sea_travel_v1','null'),canSail);
+    seaTravelReady=true;
+    if(seaSaved){
+      try{await loadBoat();setSailing(true,seaSaved);}
+      catch(error){console.warn('Não foi possível restaurar o barco:',error);toast('Barco indisponível. Você voltou a terra.');}
+    }
     progress(100,'Pronto! Explore o mapa.');
     $('loading').remove();
     if(sceneObjs3D)toast('Biblioteca original 3D carregada. Botão direito gira a câmera.');
@@ -1752,12 +1834,12 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter);
-  combat?.update(dt,playerPos,{paused:combatPaused,moving:manualMove,busy:attackPlaying});
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat);
+  combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
   let chasing=false;
   const target=combat?.target;
   const approach=combat?.approach;
-  if(approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
+  if(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
     dx=approach.target.x-playerPos.x;dz=approach.target.z-playerPos.z;chasing=true;
   }
   if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
@@ -1771,8 +1853,8 @@ function update(dt){
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
     const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
-    const speed=calculateMovementSpeed({
-      running,
+    const speed=(sailing?boatProfile.speed/WALK_SPEED:1)*calculateMovementSpeed({
+      running:running&&!sailing,
       digital:!!(keyFw||keySide),
       destination:!!moverTarget||chasing,
       analogX:touchMove.sideways,
@@ -1786,6 +1868,7 @@ function update(dt){
     for(let i=0;i<sub;i++){
       const h0=playerPos.y;
       const step=(nx,nz)=>{
+        if(sailing)return canSail(nx,nz);
         if(!occupied(nx,nz))return false;
         const h1=footSurface(nx,nz,h0);
         if(!allowBlocked && h1-h0>STEP_UP)return false;
@@ -1798,7 +1881,10 @@ function update(dt){
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
     if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
-    faceTravel(dx,dz,dt);
+    if(sailing&&boat){
+      const target=Math.atan2(-dx,-dz);
+      boat.rotation.y=followAngle(boat.rotation.y,target,dt,8);
+    }else faceTravel(dx,dz,dt);
     cameraFollowTarget=Math.atan2(dx,dz);
     // Modo mobile "Seguir direção": a câmera gira atrás do rumo REAL percorrido.
     // Arrastar a câmera suspende o giro automático temporariamente.
@@ -1814,7 +1900,8 @@ function update(dt){
        (fw>.15 || (moverTarget&&!(keyFw||keySide))) && !seated){
       CAM.yaw=followAngle(CAM.yaw,Math.atan2(dx,dz),dt,2.0);
     }
-    if(!attackPlaying){
+    if(sailing)actuallyMoving=moved;
+    if(!sailing&&!attackPlaying){
       if(moved){
         actuallyMoving=true;
         playClip('Correr');
@@ -1824,7 +1911,7 @@ function update(dt){
   }else if(!seated && !attackPlaying&&isRunningPose())playClip('Parado');
   // Atualiza as poses mesmo estando parado, ao cruzar o limite da cidade
   // ou quando os 3,5 s de guarda temporária terminam.
-  if(!seated&&!attackPlaying&&!skillAnimationLocked){
+  if(!sailing&&!seated&&!attackPlaying&&!skillAnimationLocked){
     const bank=currentWeaponPoseBank();
     const normalStates=['idle','guard','run','armedRun']
       .map(state=>selectPoseName(state,activePoseProfile,animations,bank));
@@ -1839,7 +1926,9 @@ function update(dt){
      performance.now()>cameraManualUntil){
     CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
   }
-  playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
+  playerPos.y=sailing?boatProfile.seaLevel:THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
+  if(boat&&sailing)boat.position.copy(playerPos);
+  if(avatar)avatar.visible=!sailing;
   // Executar a cada frame, DEPOIS de mover o jogador e ANTES de posicionar a câmera.
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
   if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
@@ -1995,6 +2084,7 @@ rpgHud=initRpgHud({
     if(!seated){attackPlaying=false;playClip('Parado');}
   },
   onPlayClip:clip=>{
+    if(sailing||boardingBoat){toast('Desembarque antes de usar skills.');return false;}
     if(skillAnimationLocked){toast('Aguarde a skill terminar.');return false;}
     stopCombat();
     if(hero.hp<=0||changingCharacter)return false;
@@ -2006,6 +2096,7 @@ rpgHud=initRpgHud({
     return played;
   },
   onPlaySkill:skill=>{
+    if(sailing||boardingBoat){toast('Desembarque antes de usar skills.');return false;}
     if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
     if(!combat||hero.hp<=0||changingCharacter||changingLoadout||seated)return false;
     if(!resolveSkillClip(skill,hero.character,animations)){toast('Animação indisponível para este personagem.');return false;}
@@ -2051,11 +2142,22 @@ $('hero-class').addEventListener('change',e=>{const value=e.target.value;void ch
   selectClass(hero,value);
 });});
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
-$('mobile-target').addEventListener('click',()=>{if(!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
+$('mobile-target').addEventListener('click',()=>{if(!sailing&&!boardingBoat&&!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
 $('mobile-auto').addEventListener('click',selectMobileAutoMode);
+$('sea-travel').addEventListener('click',()=>{
+  document.body.classList.remove('mobile-settings-open');
+  $('mobile-settings')?.setAttribute('aria-expanded','false');void toggleSeaTravel();
+});
+$('go-harbor').addEventListener('click',()=>{
+  if(!world||hero.hp<=0||boardingBoat||changingCharacter||changingLoadout)return;
+  if(teleport(2204.5,2819.5)){
+    document.body.classList.remove('mobile-settings-open');$('mobile-settings')?.setAttribute('aria-expanded','false');
+    toast('Porto de Argent · toque em Embarcar para navegar.');
+  }
+});
 $('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
 window.addEventListener('blur',()=>{stopCombat();saveHero();});
-window.addEventListener('pagehide',saveHero);
+window.addEventListener('pagehide',()=>{saveHero();if(world)saveSeaTravel();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCombat();});
 
 $('colormode').addEventListener('change',e=>{colorMode=e.target.value;landMat.map=colorMode==='textured'?terrainAtlas:null;landMat.needsUpdate=true;clearChunks();updateChunks();generateMinimap();drawMinimap();});
@@ -2196,11 +2298,14 @@ function groundAt(clientX,clientY){
   if(!world)return null;
   _aim.set(clientX/innerWidth*2-1,-clientY/innerHeight*2+1);
   _caster.setFromCamera(_aim,camera);
-  const hits=_caster.intersectObjects([...chunkMap.values()].map(c=>c.mesh),false);
+  const surfaces=[...chunkMap.values()].map(c=>c.mesh);
+  if(sailing)for(const c of chunkMap.values())if(c.water)surfaces.push(c.water);
+  const hits=_caster.intersectObjects(surfaces,false);
   return hits.length?hits[0].point:null;
 }
 function aimMode(point){
   if(!point)return 'move';
+  if(sailing)return canSail(point.x,point.z)?'move':'block';
   const mark=poseHere(point.x,point.z);
   if(mark?.role==='sit')return 'sit';
   if(mark?.role==='lean')return 'lean';
@@ -2211,11 +2316,11 @@ function orderMove(x,z,pose){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   stopCombat();
   if(hero.hp<=0||changingCharacter)return false;
-  const free=walkable(x,z)?[x,z]:findFree(x,z);
+  const free=sailing?(canSail(x,z)?[x,z]:null):walkable(x,z)?[x,z]:findFree(x,z);
   if(!free){toast('Destino bloqueado. Clique em área navegável.');return false;}
   moverTarget=new THREE.Vector3(free[0],sampleHeight(free[0],free[1]),free[1]);
-  pendingPose=pose||null;
-  waypoint.show(free[0],free[1],sampleHeight(free[0],free[1]));
+  pendingPose=sailing?null:pose||null;
+  waypoint.show(free[0],free[1],sailing?boatProfile.seaLevel:sampleHeight(free[0],free[1]));
   return true;
 }
 window.addEventListener('keydown',e=>{
@@ -2309,7 +2414,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   _aim.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);
   _caster.setFromCamera(_aim,camera);
   const monster=monsterManager?.pick(_caster);
-  if(monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
+  if(!sailing&&monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
   if(showMarkers){
     const hits=_caster.intersectObjects(objectMeshes,false);
     if(hits.length){const hit=hits[0],rec=hit.object.userData.records?.[hit.instanceId];
@@ -2318,6 +2423,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   }
   const pt=groundAt(e.clientX,e.clientY);
   if(!pt)return;
+  if(sailing){orderMove(pt.x,pt.z,null);return;}
   const mark=poseHere(pt.x,pt.z);
   if(mark&&poseHere(playerPos.x,playerPos.z)===mark){
     moverTarget=null;pendingPose=null;waypoint.hide();if(seated)standUp();else sitDown(mark);return;
@@ -2329,7 +2435,9 @@ renderer.domElement.addEventListener('pointerup',e=>{
 applyCursor(renderer.domElement,'move');
 setInterval(()=>{
   if(world&&playerPos&&Number.isFinite(playerPos.x))try{
-    localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
+    if(!seaTravelReady)return;
+    saveSeaTravel();
+    if(!sailing)localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}
 },5000);

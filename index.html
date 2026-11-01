@@ -58,6 +58,7 @@ font:600 12px system-ui,sans-serif}
   <symbol id="ui-shop" viewBox="0 0 32 32"><path d="M6 14h20v14H6Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M4 14 7 5h18l3 9-4 3-4-3-4 3-4-3-4 3Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M13 28v-9h7v9" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="ui-menu" viewBox="0 0 32 32"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"/><rect x="19" y="3" width="10" height="10" rx="2" fill="currentColor"/><rect x="3" y="19" width="10" height="10" rx="2" fill="currentColor"/><rect x="19" y="19" width="10" height="10" rx="2" fill="currentColor"/></symbol>
   <symbol id="ui-swords" viewBox="0 0 40 40"><path d="m5 4 19 20 7 8m4-28L16 24l-7 8" fill="none" stroke="currentColor" stroke-width="4.1" stroke-linecap="round"/><path d="m2 1 10 4-6 7Zm36 0L28 5l6 7Z" fill="currentColor"/><path d="m20 20-5 5m5-5 5 5" stroke="currentColor" stroke-width="3"/><path d="m6 28 7 7m21-7-7 7" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+  <symbol id="ui-boat" viewBox="0 0 32 32"><path d="M5 19h22l-4 7H10Z M16 4v15 M14 5 6 16h8 M18 7l8 9h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="ui-run" viewBox="0 0 32 32"><circle cx="19" cy="6" r="3" fill="currentColor"/><path d="m15 13-5 3-6-1m11-2 5 6 7 1M15 14l-1 8-7 7m7-7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="ui-talk" viewBox="0 0 32 32"><path d="M5 6h22v16H14l-7 5v-5H5Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="11" cy="14" r="1.8" fill="currentColor"/><circle cx="16" cy="14" r="1.8" fill="currentColor"/><circle cx="21" cy="14" r="1.8" fill="currentColor"/></symbol>
   <symbol id="ui-blade" viewBox="0 0 40 40"><path d="M5 32 30 5l6-1-2 7L10 35Z" fill="#bdeaff" stroke="#f4ffff" stroke-width="2"/><path d="m15 23 9-1-7 8" stroke="#20b8ff" stroke-width="3"/><path d="m6 29 8 8" stroke="#f8e4a0" stroke-width="4"/></symbol>
@@ -136,6 +137,10 @@ font:600 12px system-ui,sans-serif}
    <label class="check"><input type="checkbox" id="markers"> Mostrar pontos de objetos (.obj)</label>
    <label class="check"><input type="checkbox" id="wire"> Aramado do terreno</label>
    <label class="check"><input type="checkbox" id="noclip"> Ignorar bloqueios (exploração)</label>
+   <div class="section">Navegação marítima</div>
+   <button type="button" id="go-harbor">Ir ao porto de Argent</button>
+   <button type="button" id="sea-travel">Embarcar no Guppy</button>
+   <div class="small" id="sea-status" role="status">No porto, aproxime-se da água e toque em Embarcar.</div>
    <button type="button" id="combat-training">Ir ao treino · Argent</button>
    <button id="reset">↺ Voltar a Argent City</button>
    <button id="toggle">▤ Ocultar painel</button>
@@ -253,7 +258,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=51"></script>
+<script type="module" src="./js/main.js?v=52"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

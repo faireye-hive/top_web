@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": 1,
+  "name": "Guppy",
+  "model": "assets/boats/guppy.glb",
+  "speed": 4.5,
+  "seaLevel": -0.1,
+  "sourceHull": "2004000000.lgo",
+  "sourceTables": [
+    "shipinfo.txt",
+    "shipiteminfo.txt",
+    "characterinfo.txt"
+  ]
+}

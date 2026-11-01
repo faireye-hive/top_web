@@ -1,5 +1,10 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Navegação marítima mobile:** use **Menu → Ir ao porto de Argent** e toque
+em **Embarcar** no botão grande. Navegue com o joystick e desembarque perto
+de uma margem livre. Inclui o casco Guppy original, colisão marítima e
+retomada da viagem. [Controles e limites](docs/NAVEGACAO_MARITIMA.md).
+
 **Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz
 animações GLB de cidade, guarda, corrida, corrida armada e ataque; permite
 ajustar os ossos e as posições das armas quando guardadas nas costas

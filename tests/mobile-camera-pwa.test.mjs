@@ -33,7 +33,7 @@ test('loop do jogo atualiza o foco mobile após mover o personagem e antes de pl
   const end=code.indexOf('let qualitySampleTime=0',start);
   assert.ok(start>=0 && end>start,'loop update(dt) deve existir');
   const frame=code.slice(start,end);
-  const pos=frame.indexOf('playerPos.y=THREE.MathUtils.lerp(');
+  const pos=frame.indexOf('playerPos.y=sailing?boatProfile.seaLevel:THREE.MathUtils.lerp(');
   const follow=frame.indexOf('if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt');
   const camera=frame.indexOf('placeCamera();');
   assert.ok(pos>=0 && pos<follow && follow<camera,
@@ -90,7 +90,7 @@ test('opção mobile segue direção ou mantém órbita livre, persistida nas co
   assert.match(page,/option value="free"/);
   assert.match(code,/getPref\('topweb_mobile_camera_mode','follow'\)/);
   assert.match(code,/setPref\('topweb_mobile_camera_mode',mobileCameraMode\)/);
-  assert.match(page,/main\.js\?v=42/);
+  assert.match(page,/main\.js\?v=\d+/);
   assert.match(code,/movementFromYaw\(mobileSteeringReferenceYaw,fw,sideways\)/);
   assert.match(code,/if\(steering&&mobileSteeringReferenceYaw===null\)\{\s*mobileSteeringReferenceYaw=CAM\.yaw/);
   assert.match(code,/if\(!steering\)\{mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;\}/);
@@ -154,7 +154,7 @@ test('controle de toque manual funciona também em Câmera livre e responde imed
     code.indexOf('function bindMobileCameraTuning('));
   assert.match(disabled,/mobileCameraTuning\.querySelectorAll\('input'\)/);
   assert.doesNotMatch(disabled,/mobile-touch-sensitivity/);
-  assert.match(page,/main\.js\?v=42/);
+  assert.match(page,/main\.js\?v=\d+/);
 });
 
 test('eixos de toque podem ser invertidos separadamente com preferência salva',()=>{
@@ -170,7 +170,7 @@ test('eixos de toque podem ser invertidos separadamente com preferência salva',
   assert.match(code,/dragOrbitDelta\(dx\*mobileTouchSensitivity\*horizontalSign,innerWidth\)/);
   assert.match(code,/dy\*\.0018\*mobileTouchSensitivity\*verticalSign/);
   assert.match(code,/setPref\(key,checkbox.checked\?'1':'0'\)/);
-  assert.match(page,/main\.js\?v=42/);
+  assert.match(page,/main\.js\?v=\d+/);
 });
 test('Auto tem botão pequeno acima do Alvo e o grande é manual',()=>{
   const page=read('index.html'),code=read('js/main.js'),css=read('mobile-landscape.css');

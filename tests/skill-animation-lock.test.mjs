@@ -21,7 +21,7 @@ test('skill só desbloqueia depois da ÚLTIMA animação da cadeia GLB',()=>{
   const ctx={
     hero:{character:'lance'},animations:[{name:'081 · Ação 1',id:81},{name:'082 · Ação 2',id:82}],
     skillActionQueue:[],skillAnimationLocked:false,attackPlaying:false,seated:null,
-    currentClip:'Parado',runningAction:null,
+    currentClip:'Parado',runningAction:null,extendCityCombatPose(){},
     getActionId:clip=>clip.id,
     resolveSkillClip:()=>({name:'081 · Ação 1'}),
     playClip(name){this.currentClip=name;this.runningAction={name};return true;}
@@ -53,8 +53,8 @@ test('mover durante skill não cancela cast nem inicia animação de corrida',()
   const loop=code.slice(start,end);
   assert.match(loop,/const manualMove=!skillAnimationLocked&&!!\(dx\|\|dz\|\|moverTarget\)/);
   assert.match(loop,/if\(skillAnimationLocked\)\{dx=0;dz=0;\}/);
-  assert.match(loop,/if\(approach&&!skillAnimationLocked&&!attackPlaying/);
-  assert.match(loop,/if\(!attackPlaying\)\{/);
+  assert.match(loop,/if\(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying/);
+  assert.match(loop,/if\(!sailing&&!attackPlaying\)\{/);
   assert.match(code,/if\(skillAnimationLocked&&!force\)return/);
   assert.match(code,/if\(skillAnimationLocked\)\{toast\('Aguarde a animação da skill terminar.'\);return false;\}/);
 });

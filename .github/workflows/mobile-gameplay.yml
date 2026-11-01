@@ -1,0 +1,32 @@
+name: Verify mobile gameplay
+on:
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'tests/*.test.mjs'
+      - 'index.html'
+      - 'sw.js'
+      - 'assets/boats/**'
+      - 'scripts/build_mobile_boat.py'
+      - '.github/workflows/mobile-gameplay.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gameplay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test mobile gameplay and published boat assets
+        run: node --test tests/*.test.mjs
+      - name: Check navigation syntax
+        run: node --check js/main.js && node --check js/sea-navigation.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check boat exporter syntax
+        run: python -m py_compile scripts/build_mobile_boat.py
