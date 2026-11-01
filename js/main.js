@@ -515,8 +515,10 @@ function drawMinimap(){
 async function selectMapDestination(point){
   if(point.x<world.ox||point.z<world.oz||
     point.x>=world.ox+world.w||point.z>=world.oz+world.h){
+    mapSelection=null;mapSelectionValid=false;mapSelectionRevision++;
+    $('map-travel').disabled=true;$('map-manual').disabled=true;
     $('map-selection-info').textContent='Fora de Garner. Selecione um ponto dentro do mapa.';
-    return;
+    drawMinimap();return;
   }
   mapSelection=point;mapSelectionValid=false;const revision=++mapSelectionRevision;
   $('map-travel').disabled=true;$('map-manual').disabled=true;
