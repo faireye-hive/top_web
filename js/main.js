@@ -2796,31 +2796,117 @@ $('world-map-dialog').addEventListener('click',e=>{
   const rect=e.currentTarget.getBoundingClientRect();
   if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();
 });
-let mapPan=null,mapPanned=false;
-$('world-map').addEventListener('pointerdown',e=>{const view=fullMapView();mapPanned=false;mapPan={x:e.clientX,y:e.clientY,view};e.currentTarget.setPointerCapture(e.pointerId);});
-$('world-map').addEventListener('pointermove',e=>{
-  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
-  mapPanned=true;const r=e.currentTarget.getBoundingClientRect(),v=mapPan.view;
-  mapOverviewCenter={x:v.x+v.w/2-(e.clientX-mapPan.x)/r.width*v.w,z:v.z+v.h/2-(e.clientY-mapPan.y)/r.height*v.h};drawMinimap();
+let mapPan=null,mapPanned=false,pinch=null;
+const mapPointers=new Map();
+const expandedMap=$('world-map');
+const aspect=()=>fullMapAspect();
+const mapPointAt=(x,y,view=fullMapView())=>{
+  const r=expandedMap.getBoundingClientRect();
+  const px=Math.max(0,Math.min(r.width,x-r.left)),py=Math.max(0,Math.min(r.height,y-r.top));
+  return unprojectMap(px,py,view,{width:r.width,height:r.height});
+};
+const mapZoomAt=(x,y,factor,original=fullMapView())=>
+  assignMapView(zoomMapAt(world,original,mapPointAt(x,y,original),factor,aspect()));
+expandedMap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  mapZoomAt(e.clientX,e.clientY,e.deltaY>0?1.28:.78);
+},{passive:false});
+expandedMap.addEventListener('dblclick',e=>{
+  e.preventDefault();mapPanned=true;mapZoomAt(e.clientX,e.clientY,.5);
 });
-for(const event of ['pointerup','pointercancel','lostpointercapture'])$('world-map').addEventListener(event,()=>{mapPan=null;});
-$('world-map').addEventListener('click',e=>{
-  if(!world||mapPanned)return;const rect=e.currentTarget.getBoundingClientRect();
-  selectMapDestination(unprojectMap((e.clientX-rect.left)/rect.width*768,(e.clientY-rect.top)/rect.height*768,fullMapView(),768));
+expandedMap.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  mapPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  expandedMap.setPointerCapture(e.pointerId);
+  if(mapPointers.size===2){
+    const [a,b]=[...mapPointers.values()];
+    pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),view:fullMapView(),
+      x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    mapPan=null;mapPanned=true;
+  }else if(mapPointers.size===1){
+    mapPanned=false;
+    mapPan={x:e.clientX,y:e.clientY,view:fullMapView()};
+  }
+});
+expandedMap.addEventListener('pointermove',e=>{
+  if(!mapPointers.has(e.pointerId))return;
+  mapPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(mapPointers.size===2&&pinch){
+    const [a,b]=[...mapPointers.values()];
+    const distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinch.distance>4){
+      mapPanned=true;
+      mapZoomAt(pinch.x,pinch.y,pinch.distance/Math.max(distance,1),pinch.view);
+    }
+    return;
+  }
+  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
+  mapPanned=true;
+  const rect=expandedMap.getBoundingClientRect(),v=mapPan.view;
+  assignMapView(mapViewRect(world,{
+    x:v.x+v.w/2-(e.clientX-mapPan.x)/rect.width*v.w,
+    z:v.z+v.h/2-(e.clientY-mapPan.y)/rect.height*v.h
+  },v.h,aspect()));
+});
+function releaseMapPointer(e){
+  mapPointers.delete(e.pointerId);
+  if(mapPointers.size<2)pinch=null;
+  mapPan=null;
+}
+for(const event of ['pointerup','pointercancel','lostpointercapture'])
+  expandedMap.addEventListener(event,releaseMapPointer);
+expandedMap.addEventListener('click',e=>{
+  if(!world||mapPanned)return;
+  void selectMapDestination(mapPointAt(e.clientX,e.clientY));
 });
 $('map-harbor').addEventListener('click',async()=>{
-  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
+  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}
+  catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
   const point=sailing?nearestPosition(ARGENT_HARBOR_WATER,canSail,boardingReach()):ARGENT_HARBOR;
   if(!point){toast('Carregue a região do porto para marcar uma chegada segura.');return;}
-  mapOverviewCenter=point;mapOverviewSpan=256;await selectMapDestination(point);
+  mapOverviewCenter=point;mapOverviewSpan=256;
+  await selectMapDestination(point);
 });
-$('map-zoom-in').addEventListener('click',()=>{mapOverviewCenter=mapSelection||playerPos.clone();mapOverviewSpan=Math.max(96,mapOverviewSpan/2);drawMinimap();});
-$('map-zoom-out').addEventListener('click',()=>{mapOverviewSpan=Math.min(world.w,mapOverviewSpan*2);drawMinimap();});
-$('map-world').addEventListener('click',()=>{mapOverviewSpan=world.w;mapOverviewCenter=null;drawMinimap();});
+$('map-zoom-in').addEventListener('click',()=>{
+  const r=expandedMap.getBoundingClientRect();
+  mapZoomAt(r.left+r.width/2,r.top+r.height/2,.5);
+});
+$('map-zoom-out').addEventListener('click',()=>{
+  const r=expandedMap.getBoundingClientRect();
+  mapZoomAt(r.left+r.width/2,r.top+r.height/2,2);
+});
+$('map-world').addEventListener('click',()=>{
+  mapOverviewSpan=world.h;mapOverviewCenter=null;drawMinimap();
+});
+$('map-manual').addEventListener('click',()=>{
+  if(!mapSelection||!mapSelectionValid)return;
+  stopCombat();
+  moverTarget=null;pendingPose=null;waypoint.hide();
+  navigationGoal={x:mapSelection.x,z:mapSelection.z};
+  navigationAuto=false;
+  $('world-map-dialog').close();
+  toast('Destino marcado: siga a seta dourada no chão. Você controla o movimento.');
+});
 $('map-travel').addEventListener('click',()=>{
-  if(!mapSelection)return;
-  if(orderMove(mapSelection.x,mapSelection.z,null)){$('world-map-dialog').close();toast(sailing?'Rumo marcado no mar. A costa e bloqueios continuam valendo.':'Destino marcado. Use o joystick se o caminho estiver bloqueado.');}
+  if(!mapSelection||!mapSelectionValid)return;
+  // Keep an independent guide even when direct travel meets a wall.
+  if(orderMove(mapSelection.x,mapSelection.z,null)){
+    navigationGoal={x:mapSelection.x,z:mapSelection.z};
+    navigationAuto=true;
+    $('world-map-dialog').close();
+    toast(sailing?'Navegação automática iniciada.':'Caminhada automática iniciada. Mover manualmente interrompe.');
+  }
 });
+$('map-clear').addEventListener('click',()=>{
+  const wasAuto=navigationAuto;
+  navigationGoal=null;navigationAuto=false;mapSelection=null;mapSelectionValid=false;
+  mapSelectionRevision++;
+  if(wasAuto){moverTarget=null;pendingPose=null;waypoint.hide();}
+  $('map-manual').disabled=true;$('map-travel').disabled=true;$('map-clear').disabled=true;
+  $('map-selection-info').textContent='Destino removido. Toque para marcar outro.';
+  drawMinimap();
+});
+
 $('navigation-hint').addEventListener('click',()=>{
   if(navigationContext?.destination)void toggleSeaTravel();
   else{openWorldMap();if(mapIsOpen())$('map-harbor').click();}
