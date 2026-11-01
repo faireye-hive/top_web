@@ -241,3 +241,54 @@
 @media(prefers-reduced-motion:reduce){
   body.mobile-ui .mobile-player-card,body.mobile-ui .rpg-panel{transition:none}
 }
+
+/* Mobile HUD declutter (PR #41): no full-width travel hint, redundant
+   Hero pill, or zoom stack around the minimap. Desktop remains intact. */
+body.mobile-ui #navigation-hint{
+  display:none!important;
+}
+body.mobile-ui #rpg-open{
+  display:none!important;
+}
+body.mobile-ui .mobile-zoom{
+  display:none!important;
+}
+body.mobile-ui #mobile-player-open{
+  pointer-events:auto;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+body.mobile-ui #mobile-player-open:focus-visible{
+  outline:2px solid #a4f7e1;
+  outline-offset:3px;
+}
+body.mobile-ui #mobile-player-open:active{
+  border-color:#f9e9bb;
+  filter:brightness(1.1);
+}
+/* Only one map control remains: a 40px expand icon sitting on the rim.
+   The minimap itself still opens the full map when tapped. */
+body.mobile-ui #map-expand{
+  position:absolute;
+  top:auto;left:auto;right:-8px;bottom:-8px;
+  display:grid;place-items:center;
+  width:40px;height:40px;min-width:40px;min-height:40px;
+  padding:0;margin:0;
+  line-height:1;border-radius:50%;
+  border:2px solid #efd097;
+  background:radial-gradient(circle at 28% 20%,#446981,#0a2c42 77%);
+  color:#fff0bb;
+  box-shadow:0 2px 9px #000b,0 0 0 2px #0b2b43;
+  z-index:4;
+  touch-action:manipulation;
+}
+body.mobile-ui #map-expand .map-expand-word{
+  display:none!important;
+}
+body.mobile-ui #map-expand .map-expand-symbol{
+  display:block;
+  font-size:24px;
+  line-height:1;
+  transform:translateY(-1px);
+}
