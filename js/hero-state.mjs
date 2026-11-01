@@ -31,6 +31,8 @@ export function practiceRequirement(level){return 20+(level-10)*10;}
 export function refreshHero(hero,{heal=false}={}){
   const previous=hero.stats;
   hero.attributes=attributesFor(hero.job,hero.level);
+  // Melhorias da tentativa não fazem parte do save permanente do personagem.
+  for(const key of ATTRIBUTE_KEYS)if(Number.isFinite(hero.arenaBonuses?.[key]))hero.attributes[key]+=Math.max(0,hero.arenaBonuses[key]);
   hero.stats=deriveStats(hero.attributes,hero.level,{equipped:hero.equipped,attackAttribute:CLASSES[hero.job].attackAttribute,practiceLevel:hero.practice[practiceKey(hero)].level});
   hero.hp=heal?hero.stats.maxHp:Math.min(hero.stats.maxHp,(hero.hp??hero.stats.maxHp)+Math.max(0,hero.stats.maxHp-(previous?.maxHp??hero.stats.maxHp)));
   hero.mp=heal?hero.stats.maxMp:Math.min(hero.stats.maxMp,(hero.mp??hero.stats.maxMp)+Math.max(0,hero.stats.maxMp-(previous?.maxMp??hero.stats.maxMp)));

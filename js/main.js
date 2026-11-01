@@ -11,13 +11,16 @@ import { initRpgHud } from './rpg-hud.mjs?v=6';
 import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
-import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
+import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=5';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=5';
-import { createMonsterManager } from './monster-manager.mjs?v=3';
+import { createCombat, COMBAT } from './combat-state.mjs?v=6';
+import { createMonsterManager } from './monster-manager.mjs?v=4';
+import {createArenaWorld} from './arena-world.mjs';
+import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
+import {initArenaUi} from './arena-ui.mjs';
 import { createPetManager } from './pet-manager.mjs?v=1';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs?v=4';
+import { createNpcManager } from './npc-manager.mjs?v=5';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
@@ -52,6 +55,10 @@ let MOBILE_UI=mobileQuery.matches;
 document.body.classList.toggle('mobile-ui', MOBILE_UI);
 const ORIGIN = { x: 2218.5, z: 2776.5 };
 const launchParams=new URLSearchParams(location.search),spawnParts=(launchParams.get('spawn')||'').split(',').map(Number);
+const isArenaMap=launchParams.get('map')==='teampk';
+if(isArenaMap)Object.assign(ORIGIN,ARENA_SPAWN);
+document.body.classList.toggle('arena-mode',isArenaMap);
+if(isArenaMap)document.querySelector('#loading h1').textContent='Torre da Provação';
 const editorSpawn=spawnParts.length===2&&spawnParts.every(n=>Number.isFinite(n)&&n>=0&&n<4096)?{x:spawnParts[0],z:spawnParts[1]}:null;
 if(editorSpawn){ORIGIN.x=editorSpawn.x;ORIGIN.z=editorSpawn.z;}
 const BUDGET=renderBudget(MOBILE_UI),CHUNK=BUDGET.chunk,RADIUS=BUDGET.radius,STRIDE=7;
@@ -142,7 +149,12 @@ const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
   if(rpgHud&&catalog)rpgHud.setClassSkills(catalog,hero.job,hero.character,animations);
   return catalog;
 });
-const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
+const getArenaSession=key=>{try{return sessionStorage.getItem(key)}catch{return null}};
+const setArenaSession=(key,value)=>{try{sessionStorage.setItem(key,value)}catch{}};
+const hero=restoreHero(isArenaMap?(getArenaSession(ARENA_HERO_KEY)||getPref('topweb_hero_v2','null')):getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
+const arenaRun=isArenaMap?createArenaRun(getArenaSession(ARENA_RUN_KEY)):null;
+let arenaUi=null,arenaTransition=false,arenaLeaving=false;
+if(arenaRun){hero.arenaBonuses=arenaRun.bonuses;refreshHero(hero,{heal:true});}
 let equipmentManifest=null,changingLoadout=false;
 let sailing=false,boardingBoat=false,boat=null,boatProfile=null,boatReady=null,seaTravelReady=false;
 let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
@@ -155,7 +167,7 @@ const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .then(r=>r.ok?r.json():{version:1,profiles:{}})
   .catch(()=>({version:1,profiles:{}}))
   .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
-const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
+const saveHero=()=>isArenaMap?setArenaSession(ARENA_HERO_KEY,serializeHero(hero)):setPref('topweb_hero_v2',serializeHero(hero));
 const marineDesign=readMarineDesign();
 const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
 let boatCatalog=null,boatDecoration=null;
@@ -230,7 +242,7 @@ window.addEventListener('resize',resize);resize();
 function getTile(x,z){
   if(!world)return null;
   const base=world.tileAt(x,z);
-  return editedTile(base,x,z,marineDesign);
+  return isArenaMap?base:editedTile(base,x,z,marineDesign);
 }
 function sampleHeight(x,z){
   const tile=getTile(x,z);if(!tile)return 0;
@@ -408,7 +420,7 @@ function drawNavigationMap(canvas,view,full=false){
       image.data[at]=color[0];image.data[at+1]=color[1];image.data[at+2]=color[2];image.data[at+3]=255;
     }
     local.putImageData(image,0,0);ctx.drawImage(localMapCanvas,0,0,size,size);
-  }else for(const patch of mapEdits){
+  }else for(const patch of isArenaMap?[]:mapEdits){
     if(patch.x<view.x||patch.z<view.z||patch.x>view.x+view.w||patch.z>view.z+view.h)continue;
     const color=mapTileColor({...getTile(patch.x,patch.z),...patch.tile});ctx.fillStyle=`rgb(${color.join(',')})`;
     ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*size,Math.max(1,size/view.w),Math.max(1,size/view.h));
@@ -426,9 +438,11 @@ function drawNavigationMap(canvas,view,full=false){
     ctx.setLineDash([full?12:6,full?8:4]);ctx.lineWidth=full?3:2;ctx.strokeStyle='#ffd37d';ctx.stroke();ctx.setLineDash([]);
     mapDot(ctx,p,'#ffb94f',full?'Destino':'',full);
   }
-  const harbor=full?project(ARGENT_HARBOR):mapEdgePoint(ARGENT_HARBOR,view,size,30);
-  if(full)harbor.labelDy=-24;
-  mapDot(ctx,harbor,'#ffd37d',full?'Porto de Argent':'P',full);
+  if(!isArenaMap){
+    const harbor=full?project(ARGENT_HARBOR):mapEdgePoint(ARGENT_HARBOR,view,size,30);
+    if(full)harbor.labelDy=-24;
+    mapDot(ctx,harbor,'#ffd37d',full?'Porto de Argent':'P',full);
+  }
   if(navigationContext?.destination){
     const p=project(navigationContext.destination);
     if(full)p.labelDy=24;
@@ -480,6 +494,7 @@ function openWorldMap(){
   document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
 }
 function updateNavigationIndicators(){
+  if(isArenaMap){$('navigation-hint').hidden=true;return;}
   if(!seaTravelReady)return;
   const context=navigationContext,destination=context?.destination;
   navigationMarkers.update({harbor:ARGENT_HARBOR,
@@ -662,7 +677,7 @@ async function loadBoat(){
   return boatReady;
 }
 function saveSeaTravel(){
-  if(!seaTravelReady)return;
+  if(!seaTravelReady||isArenaMap)return;
   setPref('topweb_sea_travel_v1',JSON.stringify({version:1,sailing,x:playerPos.x,z:playerPos.z}));
 }
 function clearTravelInput(){
@@ -702,13 +717,13 @@ async function toggleSeaTravel(){
   finally{boardingBoat=false;}
 }
 function primaryContext(){
-  const boarding=!sailing&&!seated&&world?nearestPosition(playerPos,canSail,boardingReach(),transferConnected):null;
+  const boarding=!isArenaMap&&!sailing&&!seated&&world?nearestPosition(playerPos,canSail,boardingReach(),transferConnected):null;
   const landing=sailing?nearestPosition(playerPos,canLand,boardingReach(),transferConnected):null;
   return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,sailing,boarding,landing,
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
-  if(changingLoadout||changingCharacter||rpgHud?.isOpen())return;
+  if(changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
   const context=primaryContext();
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
@@ -721,7 +736,11 @@ function tryPose(){
   if(context.type==='recovering')return false;
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='stand'){if(standUp())toast('Em pé.');return true;}
-  if(context.type==='npc'){toast(context.npc.name+' · diálogo em desenvolvimento');return true;}
+  if(context.type==='npc'){
+    if(isArenaAdministrator(context.npc))arenaUi?.openEntry();
+    else toast(context.npc.name+' · diálogo em desenvolvimento');
+    return true;
+  }
   if(context.type==='pose'){
     if(hero.character!=='lance'){toast('As poses de banco ainda estão disponíveis apenas para Lance.');return false;}
     sitDown(context.pose);return true;
@@ -966,8 +985,12 @@ function combatEvent(event){
     extendCityCombatPose();
     if(feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
   }
-  if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
-  if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
+  if(event.type==='kill'&&!isArenaMap)toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
+  if(event.type==='defeat'){
+    skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');
+    if(isArenaMap){leaveArena(true);return;}
+    toast('Você caiu. Recuperando em 5 segundos…');
+  }
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
 }
 function updateCombatHud(){
@@ -1017,11 +1040,16 @@ function updateCombatHud(){
   seaButton.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
   $('sea-status').textContent=sailing?'Veleiro · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
+  if(isArenaMap){
+    $('equipment-toggle').disabled=true;$('hero-character').disabled=true;$('hero-class').disabled=true;
+    if(arenaRun&&monsterManager)arenaUi?.update(arenaRun,monsterManager.monsters);
+  }
 
 }
 
 function showLoadingError(error){console.error(error);$('loadingmessage').textContent=`Erro: ${error?.message||error}`;$('loadinghint').textContent='Abra via http://localhost:8000 e verifique sua conexão com a internet.';$('retry').hidden=false;}
 async function fetchMap(){
+  if(isArenaMap)return createArenaWorld();
   const streamed=await createStreamedWorld({maxSectors:BUDGET.sectors,onLoad:()=>{forceChunks=true;}});
   let land=null,sea=null;
   try{land=JSON.parse(getPref('topweb_garner_position','null'));sea=JSON.parse(getPref('topweb_sea_travel_v1','null'));}catch{}
@@ -1855,7 +1883,8 @@ window.__fx={
     const gl=renderer.getContext();
     return {
       player:[playerPos.x,playerPos.y,playerPos.z],
-      world:{width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
+      world:{map:isArenaMap?'teampk':'garner',width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
+      arena:arenaRun?{floor:arenaRun.floor,phase:arenaRun.phase,bonuses:arenaRun.bonuses,loading:arenaTransition}:null,
       cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
       cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
       resources:renderResources(),
@@ -1883,15 +1912,48 @@ window.__fx={
   }
 };
 
+function saveArenaRun(){
+  if(!arenaRun)return;
+  setArenaSession(ARENA_RUN_KEY,arenaRun.serialize());saveHero();
+}
+function enterArena(){
+  if(isArenaMap||hero.hp<=0||changingCharacter||changingLoadout)return;
+  clearTravelInput();saveHero();saveCameraDistance();
+  setArenaSession(ARENA_HERO_KEY,serializeHero(hero));setArenaSession(ARENA_RUN_KEY,createArenaRun().serialize());
+  location.assign(arenaDestination(location.href,{enter:true}));
+}
+function leaveArena(defeated=false){
+  if(!isArenaMap||arenaLeaving)return;
+  arenaLeaving=true;arenaRun.finish();clearTravelInput();saveCameraDistance();
+  try{sessionStorage.removeItem(ARENA_RUN_KEY);sessionStorage.removeItem(ARENA_HERO_KEY)}catch{}
+  setPref('topweb_garner_position',JSON.stringify([ARENA_RETURN.x,ARENA_RETURN.z]));
+  location.assign(arenaDestination(location.href,{defeated,floor:arenaRun.floor}));
+}
+async function chooseArenaAttribute(attribute){
+  if(!arenaRun||arenaTransition||!arenaRun.choose(attribute,hero.job))return;
+  arenaTransition=true;arenaUi.closeChoice();clearTravelInput();
+  hero.arenaBonuses=arenaRun.bonuses;refreshHero(hero);
+  hero.hp=Math.min(hero.stats.maxHp,hero.hp+hero.stats.maxHp*.2);
+  hero.mp=Math.min(hero.stats.maxMp,hero.mp+hero.stats.maxMp*.3);
+  saveArenaRun();
+  try{
+    teleport(ARENA_SPAWN.x,ARENA_SPAWN.z);
+    await monsterManager.replaceWave(arenaWave(arenaRun.floor));
+    combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
+    arenaUi.update(arenaRun,monsterManager.monsters);rpgHud.setStats(heroSnapshot(hero));
+    toast(`Andar ${arenaRun.floor} · ${monsterManager.monsters.length} Forest Spirits`);arenaTransition=false;
+  }catch(error){console.error('Horda da Torre:',error);toast('Falha ao carregar a horda. Recarregue para tentar este andar novamente.');}
+}
+
 async function boot(){
   try{
-    progress(9,'Carregando alturas e bloqueios de Garner...');
+    progress(9,isArenaMap?'Restaurando o terreno original da Arena...':'Carregando alturas e bloqueios de Garner...');
     world=await fetchMap();
-    createArgentFountain(THREE, scene, sampleHeight(2232, 2773)).then(fx=>{fountain=fx;}).catch(err=>console.error('Fonte de Argent:',err));
+    if(!isArenaMap)createArgentFountain(THREE, scene, sampleHeight(2232, 2773)).then(fx=>{fountain=fx;}).catch(err=>console.error('Fonte de Argent:',err));
     if(ORIGIN.x<world.ox || ORIGIN.x>=world.ox+world.w || ORIGIN.z<world.oz || ORIGIN.z>=world.oz+world.h){
       ORIGIN.x=world.ox+world.w/2; ORIGIN.z=world.oz+world.h/2;
     }
-    progress(20,'Carregando atlas das texturas históricas de Garner...');
+    progress(20,'Carregando atlas das texturas históricas...');
     try{
       terrainAtlas=await new THREE.TextureLoader().loadAsync('assets/terrain_atlas.jpg');
       terrainAtlas.colorSpace=THREE.SRGBColorSpace;
@@ -1908,7 +1970,7 @@ async function boot(){
     await generateMinimap();
     let saved=null;
     try{saved=JSON.parse(localStorage.getItem('topweb_garner_position')||'null')}catch{}
-    if(!editorSpawn&&Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
+    if(!isArenaMap&&!editorSpawn&&Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
        saved[0]>=world.ox&&saved[0]<world.ox+world.w&&saved[1]>=world.oz&&saved[1]<world.oz+world.h){
       ORIGIN.x=saved[0];ORIGIN.z=saved[1];
     }
@@ -1942,13 +2004,13 @@ async function boot(){
     // Carrega NPCs apenas quando manifest.json tiver GLBs convertidos e posições.
     // Sem NPCs, o módulo não cria nenhum mesh / draw call adicional.
     try{
-      npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight});
-      if(npcManager.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
+      if(!isArenaMap)npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight});
+      if(npcManager?.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
       // O treino de Argent também deve existir ao iniciar em outra região.
-      await world.ensureAround(2218.5,2776.5,20);
-      monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,findSpawn:(x,z)=>{
+      if(!isArenaMap)await world.ensureAround(2218.5,2776.5,20);
+      monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,manifest:isArenaMap?arenaWave(arenaRun.floor):null,findSpawn:(x,z)=>{
         for(let radius=0;radius<=8;radius+=1)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
           const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
           if(occupied(px,pz)&&!solidAt(px,pz,sampleHeight(px,pz)))return [px,pz];
@@ -1956,7 +2018,8 @@ async function boot(){
         return null;
       }});
       combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
-    }catch(error){console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
+      if(isArenaMap)await monsterManager.prepare();
+    }catch(error){if(isArenaMap)throw error;console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
     try{
       petManager=await createPetManager({scene,camera});
       petManager.update(0,playerPos);
@@ -1965,7 +2028,7 @@ async function boot(){
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
     const boatsResponse=await fetch('assets/boats/manifest.json?v=2');boatCatalog=await boatsResponse.json();
-    const savedSeaInput=editorSpawn?(launchParams.get('boat')==='1'?JSON.stringify({version:1,sailing:true,...editorSpawn}):'null'):getPref('topweb_sea_travel_v1','null');
+    const savedSeaInput=isArenaMap?'null':editorSpawn?(launchParams.get('boat')==='1'?JSON.stringify({version:1,sailing:true,...editorSpawn}):'null'):getPref('topweb_sea_travel_v1','null');
     const seaSaved=restoreSeaPosition(savedSeaInput,canSail);
     seaTravelReady=true;
     if(seaSaved){
@@ -1974,7 +2037,21 @@ async function boot(){
     }
     progress(100,'Pronto! Explore o mapa.');
     $('loading').remove();
-    if(sceneObjs3D)toast('Biblioteca original 3D carregada. Botão direito gira a câmera.');
+    if(isArenaMap){
+      $('arena-tower-hud').hidden=false;$('arena-leave').hidden=false;
+      $('world-map-title').textContent='Arena · Torre da Provação';$('map-world').textContent='Arena inteira';
+      document.querySelector('.brand strong').firstChild.textContent='Arena ';
+      document.querySelector('.mobile-player-title span').textContent='Arena';
+      if(arenaRun.phase==='ended'){leaveArena(true);return;}
+      if(arenaRun.phase==='choice')arenaUi.showChoice(arenaRun,hero);
+      else toast(`Torre da Provação · Andar ${arenaRun.floor}`);
+    }
+    if(sceneObjs3D&&!isArenaMap)toast('Biblioteca original 3D carregada. Botão direito gira a câmera.');
+    if(!isArenaMap&&launchParams.has('arenaResult')){
+      setPref('topweb_garner_position',JSON.stringify([playerPos.x,playerPos.z]));
+      toast(launchParams.get('arenaResult')==='defeat'?`Tentativa encerrada no andar ${launchParams.get('arenaFloor')}. De volta à Arena Administrator.`:'De volta à Arena Administrator.');
+      const clean=new URL(location.href);for(const key of ['spawn','arenaResult','arenaFloor'])clean.searchParams.delete(key);history.replaceState(null,'',clean);
+    }
     testing=new URLSearchParams(location.search).has('selftest');
     clock.getDelta();
     animate();
@@ -2048,15 +2125,18 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen());
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
   combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
+  if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
+    saveArenaRun();clearTravelInput();arenaUi.showChoice(arenaRun,hero);
+  }
   let chasing=false;
   const target=combat?.target;
   const approach=combat?.approach;
   if(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
     dx=approach.target.x-playerPos.x;dz=approach.target.z-playerPos.z;chasing=true;
   }
-  if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
+  if(hero.hp<=0||changingCharacter||combatPaused||arenaRun&&arenaRun.phase!=='fighting'){dx=0;dz=0;}
   const wish=Math.hypot(dx,dz);
   let actuallyMoving=false;
   if(seated && seated.role==='sit' && runningAction && !currentClip.toLowerCase().includes('sentado')){
@@ -2300,6 +2380,14 @@ window.__selfTestControls=async function(){
   attackPlaying=false;playClip('Parado');placeCamera();updateChunks();
   return results;
 };
+arenaUi=initArenaUi({onEnter:enterArena,onChoose:chooseArenaAttribute,onLeave:()=>leaveArena(),onPause:clearTravelInput});
+$('go-arena-administrator').addEventListener('click',()=>{
+  if(isArenaMap||!world||hero.hp<=0)return;
+  if(teleport(ARENA_RETURN.x,ARENA_RETURN.z)){
+    document.body.classList.remove('mobile-settings-open');$('mobile-settings').setAttribute('aria-expanded','false');
+    toast('Arena Administrator · aproxime-se e toque em Conversar.');
+  }
+});
 rpgHud=initRpgHud({
   onOpen:()=>{
     if(skillAnimationLocked){rpgHud?.dismiss();toast('Aguarde a skill terminar para abrir o menu.');return;}
@@ -2350,6 +2438,7 @@ function updateEquipmentUi(){
 }
 async function changeLoadout(change){
   if(skillAnimationLocked){toast('Aguarde a skill terminar para trocar personagem ou equipamento.');updateEquipmentUi();return;}
+  if(isArenaMap){toast('Prepare sua classe e equipamento antes de entrar na Torre.');return;}
   if(changingLoadout||changingCharacter)return;
   if(seated&&!standUp())return;
   const previous={job:hero.job,character:hero.character,equipped:hero.equipped};
@@ -2405,7 +2494,7 @@ $('visrange').addEventListener('input',e=>{
 if($('fx'))$('fx').addEventListener('change',e=>{if(effectGroup)effectGroup.visible=e.target.checked;});
 $('markers').addEventListener('change',e=>{showMarkers=e.target.checked;updateObjectMarkers();});
 $('noclip').addEventListener('change',e=>{allowBlocked=e.target.checked;toast(allowBlocked?'Bloqueios desativados.':'Bloqueios originais reativados.');});
-$('reset').addEventListener('click',()=>{localStorage.removeItem('topweb_garner_position');CAM.yaw=Math.PI-.35;CAM.dist=15;CAM.lift=1.85;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;teleport(2218.5,2776.5);});
+$('reset').addEventListener('click',()=>{if(isArenaMap){leaveArena();return;}localStorage.removeItem('topweb_garner_position');CAM.yaw=Math.PI-.35;CAM.dist=15;CAM.lift=1.85;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;teleport(2218.5,2776.5);});
 $('toggle').addEventListener('click',()=>document.body.classList.toggle('compact'));
 $('show').addEventListener('click',()=>{document.body.classList.remove('compact');document.body.classList.toggle('nohud');});
 $('idle').addEventListener('click',()=>{if(skillAnimationLocked)return;stopCombat();attackPlaying=false;playClip('Parado');});
@@ -2570,7 +2659,7 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen()||mapIsOpen())return;
+  if(typing||rpgHud?.isOpen()||mapIsOpen()||arenaUi?.blocked()||arenaTransition)return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
@@ -2717,7 +2806,7 @@ setInterval(()=>{
   if(world&&playerPos&&Number.isFinite(playerPos.x))try{
     if(!seaTravelReady)return;
     saveSeaTravel();
-    if(!sailing)localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
+    if(!isArenaMap&&!sailing)localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}
 },5000);

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Arena · Torre da Provação",
+  "source": "Client/map/teampk.map + teampk.obj",
+  "origin": [
+    0,
+    0
+  ],
+  "size": [
+    96,
+    96
+  ],
+  "spawn": {
+    "x": 44.5,
+    "z": 35.5
+  },
+  "terrain": "assets/arena/region.gmap.gz",
+  "overview": "assets/arena/overview.png",
+  "objects": "assets/arena/objects.json",
+  "scenery": "assets/arena/scenery.glb"
+}

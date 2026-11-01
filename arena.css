@@ -1,0 +1,16 @@
+.arena-dialog{color:#e8f4f4;background:linear-gradient(140deg,#193e4c,#0a202d);border:1px solid #dabf80;border-radius:16px;width:min(730px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:22px;box-shadow:0 20px 60px #0009;overflow:auto}
+.arena-dialog::backdrop{background:#03111bcc;backdrop-filter:blur(4px)}
+.arena-dialog h2{font-size:21px;color:#ffe5a3;margin:4px 0 10px}.arena-dialog p{font-size:14px;line-height:1.5;margin:9px 0}
+.arena-note{color:#aac7cb}.arena-dialog .arena-note{font-size:12px}.arena-eyebrow{font-size:11px;letter-spacing:.12em;color:#b9e9d3}
+.arena-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px;flex-wrap:wrap}
+.arena-dialog button{min-height:44px;touch-action:manipulation}.arena-dialog #arena-enter{background:#75603d;border-color:#e5ce91;color:#fff1c8}
+.arena-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.arena-choices button{display:flex;flex-direction:column;align-items:start;gap:7px;min-height:142px;padding:16px;text-align:left;background:#103642;border:1px solid #85b8ac}
+.arena-choices button:hover,.arena-choices button:focus-visible{background:#215649;outline:2px solid #d6dda0;outline-offset:2px}
+.arena-choices strong{font-size:30px;color:#ffe2a1}.arena-choices span{font-weight:700}.arena-choices small{font-size:12px;line-height:1.4;color:#bdd7d7}
+#arena-tower-hud{position:fixed;z-index:35;top:17px;left:50%;transform:translateX(-50%);padding:8px 13px;background:#092331ed;border:1px solid #b69a65;border-radius:11px;display:grid;gap:3px;text-align:center;pointer-events:none;max-width:250px}
+#arena-tower-hud[hidden]{display:none}#arena-tower-hud strong{font-size:13px;color:#ffe6ac}#arena-tower-hud span{font-size:12px}#arena-tower-hud small{font-size:10px;color:#bdd2d7}
+body.mobile-ui #arena-tower-hud{top:78px;max-width:220px}
+body.arena-mode #go-harbor,body.arena-mode #sea-travel,body.arena-mode #sea-status,body.arena-mode #combat-training,body.arena-mode #go-arena-administrator,body.arena-mode #map-harbor,body.arena-mode .marine-editor-link,body.arena-mode #navigation-hint{display:none!important}
+@media(max-width:540px){.arena-choices{grid-template-columns:1fr}.arena-choices button{min-height:92px;gap:4px}.arena-dialog{padding:16px}}
+@media(max-height:430px) and (min-width:541px){.arena-dialog{padding:15px 18px}.arena-dialog h2{font-size:18px}.arena-choices{margin:10px 0}.arena-choices button{min-height:124px;padding:12px}}

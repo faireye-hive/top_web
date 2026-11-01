@@ -21,6 +21,7 @@ function fixture(){
   const state={
     sailing:false,boardingBoat:false,mobileAutoModeEnabled:false,attackPlaying:false,playClip(){return true},
     changingCharacter:false,changingLoadout:false,skillAnimationLocked:false,
+    arenaUi:null,arenaTransition:false,
     hero:{hp:100},rpgHud:{isOpen:()=>false},seated:null,
     keys:new Set(['KeyW']),touchMove:{forward:1,sideways:0},
     moverTarget:{},pendingPose:{},waypoint:{hide(){}},

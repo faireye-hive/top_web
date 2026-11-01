@@ -1,4 +1,4 @@
-import {gainExperience,trainAttack} from './hero-state.mjs?v=4';
+import {gainExperience,trainAttack} from './hero-state.mjs?v=5';
 import {basicAttackRange,skillWithRules,inSkillArea} from './skill-rules.mjs';
 import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs';
 export const COMBAT=Object.freeze({targetRadius:30,range:2.2,leash:34,respawn:12,recovery:5});
@@ -123,18 +123,21 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       initMonsterMotion(m);
       m.cooldown=Math.max(0,(m.cooldown||0)-dt);
       if(m.hp<=0){
+        if(m.respawn===false)continue;
         m.respawnIn-=dt;
         if(m.respawnIn<=0){m.hp=m.maxHp;m.status={};returnMonsterHome(m,{teleport:true});onEvent({type:'respawn',monster:m});}
         continue;
       }
       m.status??={};
+      if(m.aggressive&&!m.engaged&&m.ready!==false&&hero.hp>0&&distance(position,m)<=(m.aggroRange||20)&&canSee(m,position))m.engaged=true;
       if(m.status.poison>0){
         m.poisonTick=(m.poisonTick||0)+dt;
         if(m.poisonTick>=1){m.poisonTick-=1;damageMonster(m,Math.max(1,Math.round(hero.stats.magic*.25)),'dot');}
       }else m.poisonTick=0;
       for(const status of Object.keys(m.status))m.status[status]=Math.max(0,m.status[status]-dt);
       if(m.hp<=0)continue;
-      if(m.engaged&&(distance(position,m.home)>COMBAT.leash||distance(m,m.home)>COMBAT.leash)){
+      const leash=m.leash??COMBAT.leash;
+      if(m.engaged&&(distance(position,m.home)>leash||distance(m,m.home)>leash)){
         m.hp=m.maxHp;m.status={};returnMonsterHome(m);onEvent({type:'reset',monster:m});
       }
       if(hero.hp>0)updateMonsterMotion(m,dt,position,{canReach,

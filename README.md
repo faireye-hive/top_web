@@ -1,5 +1,12 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Torre da Provação:** converse com a **Arena Administrator** para entrar no mapa
+original de PvP (`teampk`). Para testar: **Menu → Ir à Arena Administrator →
+Conversar → Entrar na Torre**. Vença a horda e escolha um de três atributos para
+avançar. Forest Spirits atacam por conta própria e ficam mais fortes a cada
+andar. Ao morrer, você volta a **2207, 2891**, com sua câmera preservada.
+[Regras, testes e reconstrução do mapa](docs/TORRE_DA_PROVACAO.md).
+
 **Câmera e Bolsa:** no Menu, **Personagem na tela** ajusta o enquadramento vertical:
 mais acima, atual ou mais abaixo, com escolha salva. A barra **Zoom da câmera a pé**
 aproxima até quase primeira pessoa. A Bolsa tem grade clássica, painel com atributos ao lado
