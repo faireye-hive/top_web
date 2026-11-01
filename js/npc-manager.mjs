@@ -1,4 +1,5 @@
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import {isArenaAdministrator} from './arena-state.mjs';
 
 // Loader opcional: sem NPCs em manifest.json, não carrega modelos nem cria draw calls.
 // Modelos são GLBs com texturas embutidas; tipos repetidos compartilham GPU assets.
@@ -71,11 +72,12 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
     }
   }
   function nearest(px,pz,radius=2.3){
-    let best=null, distance2=radius*radius;
+    let best=null, distance2=Infinity;
     for(const npc of records){
       if(!npc.object?.visible)continue;
       const d2=(npc.x-px)**2+(npc.z-pz)**2;
-      if(d2<distance2){best=npc;distance2=d2}
+      const limit=isArenaAdministrator(npc)?Math.max(radius,5):radius;
+      if(d2<limit*limit&&d2<distance2){best=npc;distance2=d2}
     }
     return best;
   }

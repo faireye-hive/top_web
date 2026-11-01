@@ -62,13 +62,14 @@ test('carregamento demorado não sobrescreve a viagem salva antes da retomada',(
   const main=readFileSync(new URL('../js/main.js',import.meta.url),'utf8');
   const source=main.slice(main.indexOf('function saveSeaTravel(){'),main.indexOf('\nfunction clearTravelInput(){'));
   const saved=[];
-  const ctx={seaTravelReady:false,sailing:false,playerPos:{x:0,z:0},setPref:(...args)=>saved.push(args)};
+  const ctx={seaTravelReady:false,isArenaMap:false,sailing:false,playerPos:{x:0,z:0},setPref:(...args)=>saved.push(args)};
   const save=new Function('ctx','with(ctx){'+source+';saveSeaTravel();}');
   save(ctx);
   assert.equal(saved.length,0,'intervalo de autosave durante boot deve preservar a viagem anterior');
   ctx.seaTravelReady=true;ctx.sailing=true;ctx.playerPos={x:2203,z:2825.5};
   save(ctx);
   assert.deepEqual(JSON.parse(saved[0][1]),{version:1,sailing:true,x:2203,z:2825.5});
+  ctx.isArenaMap=true;save(ctx);assert.equal(saved.length,1,'Arena não altera a viagem salva de Garner');
 });
 
 test('porto publicado permite ida e volta no terreno real de Argent',()=>{

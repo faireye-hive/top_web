@@ -2,23 +2,23 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
-export async function createMonsterManager({scene,heightAt,findSpawn,url='assets/monsters/manifest.json'}) {
-  const response=await fetch(url);
-  if(!response.ok)throw new Error(`Monstros: HTTP ${response.status}`);
-  const manifest=await response.json();
+export async function createMonsterManager({scene,heightAt,findSpawn,url='assets/monsters/manifest.json',manifest:initialManifest=null}) {
+  let manifest=initialManifest;
+  if(!manifest){const response=await fetch(url);if(!response.ok)throw new Error(`Monstros: HTTP ${response.status}`);manifest=await response.json();}
   const group=new THREE.Group();group.name='Treino de Argent';scene.add(group);
-  const loader=new GLTFLoader(),cache=new Map();
-  const monsters=manifest.spawns.slice(0,12).flatMap((spawn,index)=>{
-    const type=manifest.species[spawn.species];
+  const loader=new GLTFLoader(),cache=new Map();let generation=0;
+  function records(data){return data.spawns.slice(0,12).flatMap((spawn,index)=>{
+    const type=data.species[spawn.species];
     if(!type||!/^models\/[\w-]+\.glb$/.test(type.model))return [];
     const free=findSpawn(spawn.x,spawn.z);
     if(!free)return [];
     const patrol=(spawn.route||[]).flatMap(point=>{
       const p=findSpawn(point[0],point[1]);return p?[{x:p[0],z:p[1]}]:[];
     });
-    return [{...type,id:index,species:spawn.species,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
+    return [{...type,id:index,generation,species:spawn.species,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
       ready:false,object:null,mixer:null,pending:false,failed:false,action:null}];
-  });
+  });}
+  const monsters=records(manifest);
   const ring=new THREE.Mesh(new THREE.RingGeometry(.8,.93,32),
     new THREE.MeshBasicMaterial({color:0xffcf61,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
   ring.rotation.x=-Math.PI/2;ring.visible=false;group.add(ring);
@@ -41,6 +41,7 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
         cache.set(monster.model,loader.loadAsync(path.href));
       }
       const gltf=await cache.get(monster.model);
+      if(monster.generation!==generation)return;
       monster.object=clone(gltf.scene);monster.object.name=monster.name;
       monster.object.position.set(monster.x,heightAt(monster.x,monster.z),monster.z);
       monster.object.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
@@ -85,5 +86,16 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     for(const m of candidates){let object=hits[0].object;while(object){if(object===m.object)return m;object=object.parent;}}
     return null;
   }
-  return {monsters,update,onEvent,pick};
+  async function prepare(){
+    await Promise.all(monsters.filter(m=>!m.ready&&!m.pending&&!m.failed).map(load));
+    if(monsters.some(m=>!m.ready))throw Error('Não foi possível preparar a horda');
+  }
+  async function replaceWave(data){
+    generation++;
+    for(const m of monsters){m.mixer?.stopAllAction();if(m.object){m.mixer?.uncacheRoot(m.object);group.remove(m.object);}}
+    monsters.splice(0,monsters.length,...records(data));ring.visible=false;
+    if(monsters.length!==data.spawns.length)throw Error('Pontos de horda bloqueados');
+    await prepare();
+  }
+  return {monsters,update,onEvent,pick,prepare,replaceWave};
 }

@@ -70,7 +70,7 @@ test('botões de outras poses e menus não interrompem animação de skill',()=>
   assert.match(code,/async function changeLoadout\(change\)\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function tryPose\(\)\{\s*if\(skillAnimationLocked\)/);
   assert.match(code,/function teleport\(x,z\)\{\s*stopCombat\(true\)/);
-  assert.match(code,/if\(event\.type==='defeat'\)\{skillAnimationLocked=false/);
+  assert.match(code,/if\(event\.type==='defeat'\)\{\s*skillAnimationLocked=false/);
 });
 test('combate conclui o efeito da skill mesmo com avatar bloqueado em animação',()=>{
   const hero=createHero('lance');

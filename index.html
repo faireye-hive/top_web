@@ -15,10 +15,12 @@
 <link rel="stylesheet" href="./rpg-hud.css?v=2">
 <link rel="stylesheet" href="./skills-mobile.css?v=2">
 <link rel="stylesheet" href="./combat.css?v=1">
+<link rel="stylesheet" href="./arena.css?v=1">
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <link rel="stylesheet" href="./mobile-landscape.css?v=5">
 <link rel="stylesheet" href="./navigation-map.css?v=1">
 <link rel="stylesheet" href="./development-ui.css?v=1">
+<link rel="stylesheet" href="./desktop-hud.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -187,6 +189,8 @@ font:600 12px system-ui,sans-serif}
    <button type="button" id="sea-travel">Embarcar no veleiro</button>
    <div class="small" id="sea-status" role="status">No porto, aproxime-se da água e toque em Embarcar.</div>
    <button type="button" id="combat-training">Ir ao treino · Argent</button>
+   <button type="button" id="go-arena-administrator">Ir à Arena Administrator</button>
+   <button type="button" id="arena-leave" hidden>Encerrar tentativa · voltar a Argent</button>
    <button id="reset">↺ Voltar a Argent City</button>
    <button id="toggle">▤ Ocultar painel</button>
   </div>
@@ -341,7 +345,21 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=59"></script>
+<aside id="arena-tower-hud" hidden aria-live="polite"><strong>Torre da Provação</strong><span id="arena-tower-status">Andar 1</span><small>Forest Spirit · horda agressiva</small></aside>
+<dialog id="arena-entry-dialog" class="arena-dialog" aria-labelledby="arena-entry-title">
+ <h2 id="arena-entry-title">Arena Administrator</h2><p>Entre na Torre da Provação, no mapa original da Arena.</p>
+ <p>Vença a horda e escolha um de três atributos para subir ao próximo andar. Os inimigos atacam assim que encontram você e ficam mais fortes a cada andar.</p>
+ <p class="arena-note">Melhorias valem só nesta tentativa. Ao morrer, você retorna à frente da Arena Administrator. Sua câmera é preservada.</p>
+ <div class="arena-dialog-actions"><button type="button" id="arena-entry-close">Agora não</button><button type="button" id="arena-enter">Entrar na Torre</button></div>
+</dialog>
+<dialog id="arena-choice-dialog" class="arena-dialog" aria-labelledby="arena-choice-title">
+ <span class="arena-eyebrow">ANDAR <b id="arena-choice-floor">1</b> CONCLUÍDO</span>
+ <h2 id="arena-choice-title">Escolha como ficar mais forte</h2><p>Um atributo para enfrentar o andar <b id="arena-choice-next">2</b>.</p>
+ <div id="arena-choices" class="arena-choices"></div>
+ <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
+ <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
+</dialog>
+<script type="module" src="./js/main.js?v=61"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

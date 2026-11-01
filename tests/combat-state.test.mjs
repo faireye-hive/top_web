@@ -145,6 +145,29 @@ test('monstro pacífico só persegue e revida após receber ataque, com prepara�
   advance(combat,.6,pos);assert.ok(hero.hp<hero.stats.maxHp);
   const before=m.x;advance(combat,.5,{x:9,z:0});assert.ok(m.x>before,'monstro persegue quem se afasta');
 });
+test('horda agressiva inicia perseguição e ataque sem golpe do jogador; visão, alcance e menus são respeitados',()=>{
+  const enemy=monster({x:6,aggressive:true,aggroRange:10}),{combat,hero,events}=setup([enemy]);
+  combat.update(.05,{x:0,z:0},{paused:true});assert.equal(enemy.engaged,undefined);
+  advance(combat,3);assert.equal(enemy.engaged,true);assert.ok(enemy.x<6);assert.ok(hero.hp<hero.stats.maxHp);
+  assert.equal(combat.auto,false);assert.equal(enemy.hp,enemy.maxHp);
+  assert.ok(events.some(e=>e.type==='monster-swing'));
+  for(const extra of [{x:20},{ready:false}]){
+    const m=monster({aggressive:true,aggroRange:10,...extra}),state=setup([m]);
+    advance(state.combat,.5);assert.notEqual(m.engaged,true);
+  }
+  const m=monster({aggressive:true});
+  createCombat({hero:createHero(),monsters:[m],canSee:()=>false}).update(.1,{x:0,z:0});
+  assert.notEqual(m.engaged,true);
+});
+test('mortos da Torre não reaparecem e leash próprio permite perseguir além do limite de Garner',()=>{
+  const dead=monster({hp:1,respawn:false}),state=setup([dead]);
+  state.combat.toggle();advance(state.combat,COMBAT.respawn+2);
+  assert.equal(dead.hp,0);assert.equal(state.events.filter(e=>e.type==='kill').length,1);
+  assert.equal(state.events.some(e=>e.type==='respawn'),false);
+  const m=monster({x:40,home:{x:1,z:0},aggressive:true,engaged:true,leash:200});
+  const {combat}=setup([m]);combat.update(.05,{x:45,z:0});
+  assert.equal(m.engaged,true);assert.equal(m.motion,'chase');
+});
 test('sair do alcance, bloquear visão ou atordoar cancela impacto inimigo pendente',()=>{
   for(const mode of ['range','wall','stun']){
     const hero=createHero(),m=monster({engaged:true});let visible=true;
