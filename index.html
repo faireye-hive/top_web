@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <link rel="stylesheet" href="./mobile-landscape.css?v=5">
 <link rel="stylesheet" href="./navigation-map.css?v=1">
+<link rel="stylesheet" href="./development-ui.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -50,6 +51,27 @@ font:600 12px system-ui,sans-serif}
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="boat-view-controls" hidden aria-label="Câmera do barco">
+ <button type="button" id="boat-view-toggle" title="Alternar entre Atrás 3D, Proa 3D e Vista alta">Atrás 3D</button>
+ <button type="button" id="boat-look-ahead" aria-label="Olhar à frente do barco" title="Olhar à frente">↑</button>
+</div>
+<details id="performance-monitor" hidden>
+ <summary><b>DEV</b> <span id="perf-summary">Medindo FPS…</span></summary>
+ <div class="performance-body">
+  <dl><dt>Taxa de quadros</dt><dd id="perf-fps">—</dd>
+   <dt>Tempo por quadro</dt><dd id="perf-frame">—</dd>
+   <dt>Trabalho JS/render</dt><dd id="perf-work">—</dd>
+   <dt>Tempo de GPU</dt><dd id="perf-gpu">—</dd>
+   <dt>Heap JS usado/alocado</dt><dd id="perf-heap">—</dd>
+   <dt>Terreno em memória</dt><dd id="perf-terrain">—</dd>
+   <dt>Renderização</dt><dd id="perf-render">—</dd>
+   <dt>Recursos 3D</dt><dd id="perf-assets">—</dd>
+   <dt>Cena ativa</dt><dd id="perf-scene">—</dd>
+   <dt>Resolução real</dt><dd id="perf-resolution">—</dd></dl>
+  <p>Memória JS aproximada, quando disponível. Geometrias e texturas são contadores, não VRAM total. CPU/GPU em % não são medidos. GPU sem suporte aparece como N/D.</p>
+  <button type="button" id="performance-hide">Ocultar monitor</button>
+ </div>
+</details>
 <div class="orientation-hint" role="status"><span aria-hidden="true">↻</span><strong>Gire o celular</strong><p>Jogue com a tela deitada para explorar Argent.</p></div>
 <svg xmlns="http://www.w3.org/2000/svg" class="hud-svg-defs" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" focusable="false">
  <defs>
@@ -86,6 +108,11 @@ font:600 12px system-ui,sans-serif}
   <div class="col">
    <label class="small">Brilho <strong id="brightvalue">58</strong></label><input id="brightness" type="range" min="0" max="100" step="1" value="58">
    <div class="seg"><button type="button" data-bright="28">Suave</button><button type="button" data-bright="58">Dia</button><button type="button" data-bright="86">Forte</button></div>
+   <label class="small" for="boat-camera-mode"><strong>Visão no barco</strong></label>
+   <select id="boat-camera-mode"><option value="chase">Atrás 3D · caminho à frente livre</option><option value="bow">Proa 3D · olhar sobre a água</option><option value="classic">Vista alta · visão geral</option></select>
+   <div class="small">No barco, alterne pelo botão da câmera. A seta ↑ retorna o olhar ao rumo do casco. Arraste para olhar ao redor.</div>
+   <label class="check"><input type="checkbox" id="development-monitor"> Monitor de desenvolvimento</label>
+   <div class="small">FPS, memória e renderização. Arraste o painel para movê-lo; toque no cabeçalho para expandir.</div>
    <label class="check"><input type="checkbox" id="autocamera" checked> Câmera acompanha direção (desktop)</label>
    <label class="small" for="mobile-camera-mode"><strong>Câmera no celular</strong></label>
    <select id="mobile-camera-mode" aria-label="Modo da câmera no celular">
@@ -281,7 +308,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=54"></script>
+<script type="module" src="./js/main.js?v=55"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

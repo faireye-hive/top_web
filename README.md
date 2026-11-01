@@ -10,6 +10,11 @@ salvamento local e exportação. [Guia dos editores](docs/MARINA_STUDIO.md).
 O minimapa mostra os arredores; **⛶ Mapa** abre Garner com zoom e destinos.
 [Controles e limites](docs/NAVEGACAO_MARITIMA.md).
 
+**Câmera e desempenho:** embarcado, alterne **Atrás 3D → Proa 3D → Vista
+alta**; **↑** volta a olhar para a frente. O painel **DEV** mostra FPS,
+tempos de quadro, memória disponível e carga de renderização. Ative pelo
+Menu ou por `?debug=1`; ele já inicia ligado em localhost.
+
 **Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz
 animações GLB de cidade, guarda, corrida, corrida armada e ataque; permite
 ajustar os ossos e as posições das armas quando guardadas nas costas

@@ -7,6 +7,7 @@ on:
       - 'index.html'
       - 'sw.js'
       - 'navigation-map.css'
+      - 'development-ui.css'
       - 'assets/boats/**'
       - 'assets/garner/**'
       - 'tests/marine-editor.*'
@@ -28,7 +29,7 @@ jobs:
       - name: Test mobile gameplay and published boat assets
         run: node --test tests/*.test.mjs
       - name: Check navigation syntax
-        run: node --check js/main.js && node --check js/sea-navigation.mjs && node --check js/navigation-map.mjs && node --check js/navigation-markers.mjs && node --check js/marine-visuals.mjs && node --check js/streamed-world.mjs && node --check js/marine-design.mjs && node --check tests/marine-editor.mjs
+        run: node --check js/main.js && node --check js/sea-navigation.mjs && node --check js/navigation-map.mjs && node --check js/navigation-markers.mjs && node --check js/marine-visuals.mjs && node --check js/streamed-world.mjs && node --check js/marine-design.mjs && node --check js/boat-camera.mjs && node --check js/performance-monitor.mjs && node --check tests/marine-editor.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

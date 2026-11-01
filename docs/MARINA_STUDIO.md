@@ -28,6 +28,48 @@ de mais água livre; o embarque procura espaço mais longe do cais. O Guppy
 original continua selecionável no editor. Não há combustível ou combate
 naval nesta versão.
 
+## Câmera do barco
+
+Ao embarcar, o botão **Atrás 3D** alterna entre três vistas:
+
+- **Atrás 3D:** deslocada para o lado, com altura e distância ajustadas ao
+  tamanho real do casco e dos mastros, olhando para a rota à frente.
+- **Proa 3D:** posicionada à frente do casco para navegar sem as velas
+  cobrindo o caminho. Ao selecionar, olha para a direção do barco.
+- **Vista alta:** mantém a visão geral anterior.
+
+O botão **↑** volta a olhar para a frente do barco. Arrastar gira a câmera;
+pinça/roda ajusta a distância na vista atrás e o campo de visão na proa.
+No computador, **V** alterna as vistas. A seleção também está em **Menu →
+Câmera do barco** e fica salva neste navegador. Em terra, a câmera anterior
+continua sendo usada.
+
+## Monitor de desenvolvimento
+
+O painel **DEV** inicia ligado em localhost. Em qualquer hospedagem,
+`?debug=1` o liga e `?debug=0` o desliga para aquele carregamento. Também é
+possível alternar em **Menu → Monitor de desenvolvimento**. Toque no cabeçalho
+para expandir, arraste para reposicionar e use **Ocultar monitor** para parar
+a coleta. Os dados são atualizados aproximadamente a cada segundo:
+
+- FPS e tempo real entre quadros, incluindo o pior intervalo da amostra.
+- Tempo de trabalho JavaScript/renderização medido na aplicação, em ms por
+  quadro; não corresponde ao percentual de CPU do navegador.
+- Tempo de GPU em ms, quando a extensão WebGL estiver disponível. Consultas
+  são assíncronas e amostras inválidas são descartadas conforme a
+  [especificação Khronos](https://registry.khronos.org/webgl/extensions/EXT_disjoint_timer_query_webgl2/).
+- Heap JavaScript usado/alocado, quando fornecido pelo navegador. É uma
+  estimativa legada, não a memória total da aba ou do navegador; veja
+  [Performance.memory](https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory).
+- Memória dos dados de terreno, setores carregados, chamadas de desenho,
+  triângulos, contagens de geometrias/texturas, objetos, efeitos e espuma,
+  além da resolução real e da escala de renderização.
+
+Medições indisponíveis aparecem como **N/D**. Contagens de texturas e
+geometrias não medem VRAM total; percentuais de CPU/GPU não são estimados.
+Ao ocultar a aba, a amostragem é reiniciada para excluir o tempo em segundo
+plano. O painel usa os recursos já carregados e não baixa outros assets.
+
 ## Editores
 
 Abra **Menu → Editor de mapa e barco**, ou `tests/marine-editor.html`.
@@ -67,5 +109,7 @@ originais. Requerem NumPy e Pillow, já usados pelos conversores existentes.
 Os testes verificam os 256 setores, equivalência com o terreno de Argent,
 limite de memória, carregamento compartilhado e nova tentativa após erro,
 validação de projetos, pintura/restauração e espaço para o veleiro grande.
+Também verificam o referencial das câmeras, espaço livre à frente da proa,
+intervalos reais de quadros e consultas assíncronas de GPU.
 Os recursos visuais e os controles dos editores também devem ser conferidos
 em navegador; o desempenho final depende do aparelho.

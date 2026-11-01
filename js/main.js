@@ -25,6 +25,8 @@ import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat
 import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
 
 import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {boatCameraMode,boatCameraPose,BOAT_CAMERA_MODES,BOAT_CAMERA_LABELS} from './boat-camera.mjs?v=1';
+import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=1';
 import {createStreamedWorld} from './streamed-world.mjs?v=1';
 import {readMarineDesign,editedTile} from './marine-design.mjs?v=1';
 import {createSeaMaterial,decorateBoat,createBoatEffects,waveHeight} from './marine-visuals.mjs?v=1';
@@ -55,6 +57,8 @@ const BODY_R=0.22;
 const CAM={yaw:Math.PI-0.35,dist:15,lift:1.85};
 const getPref=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
 const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
+let boatViewMode=boatCameraMode(getPref('topweb_boat_camera','chase'));
+let boatCameraSize={length:12,height:10};
 let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
 // Modo novo por padrão; o jogador pode escolher a órbita livre e o valor fica salvo.
 let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'free':'follow';
@@ -492,6 +496,17 @@ function updateObjectMarkers(){
 function placeCamera(){
   const cameraPivot=MOBILE_UI?mobileCameraFocus:playerPos;
   clampCam();
+  if(sailing&&boatViewMode!=='classic'){
+    // Na proa, seguir o casco sem atraso evita entrar nele em alta velocidade.
+    const boatPivot=boatViewMode==='bow'?playerPos:cameraPivot;
+    const pose=boatCameraPose({mode:boatViewMode,yaw:CAM.yaw,boatYaw:boat?.rotation.y||0,
+      distance:CAM.dist,lift:CAM.lift,radius:boatRadius(),...boatCameraSize});
+    _eye.set(boatPivot.x+pose.eye.x,boatPivot.y+pose.eye.y,boatPivot.z+pose.eye.z);
+    _look.set(boatPivot.x+pose.look.x,boatPivot.y+pose.look.y,boatPivot.z+pose.look.z);
+    _eye.y=Math.max(_eye.y,sampleHeight(_eye.x,_eye.z)+.7);
+    if(Math.abs(camera.fov-pose.fov)>.05){camera.fov=pose.fov;camera.updateProjectionMatrix();}
+    camera.position.copy(_eye);camera.lookAt(_look);return;
+  }
   const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
   const desiredFov=cameraFovAtDistance(CAM.dist);
   if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
@@ -555,7 +570,7 @@ function updateHUD(){
   $('texid').textContent=t?`#${t.tex}`:'fora';
   $('region').textContent=t?`${t.region} ${sailing?'· navegando':t.region&9?'· terra':'· mar'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
   $('objcount').textContent=objects.length.toLocaleString('pt-BR');
-  const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
+  const cam=$('caminfo'); if(cam) cam.textContent=sailing&&boatViewMode!=='classic'?BOAT_CAMERA_LABELS[boatViewMode]+' · '+Math.round(camera.fov)+'°':`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
@@ -564,6 +579,19 @@ function boatRadius(){
   return (profile?.radius||(marineDesign.boat.hull==='guppy'?3.06:2.119))*marineDesign.boat.scale;
 }
 function boardingReach(){return Math.min(28,Math.max(7,boatRadius()+6));}
+function lookAheadFromBoat(){
+  if(!sailing||!boat)return;
+  CAM.yaw=boat.rotation.y+Math.PI;mobileOrbitYaw=CAM.yaw;
+  mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;cameraFollowTarget=CAM.yaw;
+  manualCamera();placeCamera();
+}
+function setBoatView(mode){
+  boatViewMode=boatCameraMode(mode);setPref('topweb_boat_camera',boatViewMode);
+  $('boat-camera-mode').value=boatViewMode;
+  $('boat-view-toggle').textContent=BOAT_CAMERA_LABELS[boatViewMode];
+  $('boat-view-toggle').setAttribute('aria-label','Vista do barco: '+BOAT_CAMERA_LABELS[boatViewMode]+'. Toque para alternar.');
+  if(sailing&&boatViewMode==='bow')lookAheadFromBoat();else placeCamera();
+}
 function canSail(x,z){return !!world&&sailableAt(getTile,x,z,boatRadius());}
 function canLand(x,z){
   if(!landableAt(getTile,x,z,BODY_R))return false;
@@ -583,7 +611,9 @@ async function loadBoat(){
     boatCatalog=await response.json();
     const profile=boatCatalog.boats.find(b=>b.slug===marineDesign.boat.hull)||boatCatalog.boats[0];
     const gltf=await new GLTFLoader().loadAsync(profile.model);
-    boatProfile={...profile,speed:marineDesign.boat.speed};boat=gltf.scene;boatDecoration=decorateBoat(THREE,boat,marineDesign.boat);boat.visible=false;scene.add(boat);
+    boatProfile={...profile,speed:marineDesign.boat.speed};boat=gltf.scene;boatDecoration=decorateBoat(THREE,boat,marineDesign.boat);
+    boat.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(boat).getSize(new THREE.Vector3());
+    boatCameraSize={length:Math.max(size.x,size.z),height:size.y};boat.visible=false;scene.add(boat);
     return boat;
   })().catch(error=>{boatReady=null;throw error;});
   return boatReady;
@@ -604,6 +634,7 @@ function setSailing(enabled,destination){
   if(boat){boat.visible=enabled;boat.position.copy(playerPos);boat.rotation.y=avatar?.rotation.y||0;}
   if(avatar){avatar.visible=!enabled;avatar.position.copy(playerPos);}
   shadow.visible=!enabled;mobileCameraFocus.copy(playerPos);
+  if(enabled&&boatViewMode==='bow')lookAheadFromBoat();
   playClip('Parado');saveSeaTravel();placeCamera();forceChunks=true;
   updateHUD();updateCombatHud();drawMinimap();
 }
@@ -912,6 +943,7 @@ function updateCombatHud(){
   }
   const context=primaryContext(),button=$('mobile-attack');
   navigationContext=context;
+  $('boat-view-controls').hidden=!sailing||!!rpgHud?.isOpen();
   const combatAction=context.type==='attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
   button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
@@ -1742,6 +1774,8 @@ window.__fx={
     return {
       player:[playerPos.x,playerPos.y,playerPos.z],
       world:{width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
+      cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
+      cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -2069,10 +2103,13 @@ function adaptMobileResolution(time){
 }
 function animate(time=performance.now()){
   requestAnimationFrame(animate);
+  const workStart=performance.now();
   const dt=Math.min(.045,clock.getDelta());
   if(document.hidden||(MOBILE_UI&&innerHeight>innerWidth)){stopCombat();lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
   if(!testing)update(dt);
+  performanceMonitor.beginFrame();
   renderer.render(scene,camera);
+  performanceMonitor.endFrame(time,performance.now()-workStart);
   adaptMobileResolution(time);
 }
 window.__selfTestControls=async function(){
@@ -2237,6 +2274,11 @@ $('hero-class').addEventListener('change',e=>{const value=e.target.value;void ch
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
 $('mobile-target').addEventListener('click',()=>{if(!sailing&&!boardingBoat&&!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
 $('mobile-auto').addEventListener('click',selectMobileAutoMode);
+$('boat-camera-mode').value=boatViewMode;
+$('boat-view-toggle').textContent=BOAT_CAMERA_LABELS[boatViewMode];
+$('boat-camera-mode').addEventListener('change',e=>setBoatView(e.target.value));
+$('boat-view-toggle').addEventListener('click',()=>setBoatView(BOAT_CAMERA_MODES[(BOAT_CAMERA_MODES.indexOf(boatViewMode)+1)%BOAT_CAMERA_MODES.length]));
+$('boat-look-ahead').addEventListener('click',lookAheadFromBoat);
 $('sea-travel').addEventListener('click',()=>{
   document.body.classList.remove('mobile-settings-open');
   $('mobile-settings')?.setAttribute('aria-expanded','false');void toggleSeaTravel();
@@ -2426,6 +2468,7 @@ window.addEventListener('keydown',e=>{
   }
   if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
   if(e.repeat&&(e.code==='Space'||e.code==='Insert'))return;
+  if(e.code==='KeyV'&&sailing){e.preventDefault();if(!e.repeat)$('boat-view-toggle').click();return;}
   if(e.code==='Insert'){e.preventDefault();tryPose();return;}
   if(e.code==='Space')primaryAction();else keys.add(e.code);
 });
@@ -2568,4 +2611,10 @@ setInterval(()=>{
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}
 },5000);
+const defaultMonitor=developmentMonitorDefault(location.hostname,location.search);
+const performanceMonitor=initPerformanceMonitor({renderer,
+  enabled:launchParams.has('debug')?defaultMonitor:getPref('topweb_dev_monitor',defaultMonitor?'1':'0')==='1',
+  onToggle:enabled=>setPref('topweb_dev_monitor',enabled?'1':'0'),
+  getResources:()=>({terrain:world?.stats(),objects:sceneStats.active,effects:effectStats.active,wake:boatEffects.stats().particles})
+});
 boot();
