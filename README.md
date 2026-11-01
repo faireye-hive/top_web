@@ -3,7 +3,9 @@
 **Navegação marítima mobile:** use **Menu → Ir ao porto de Argent** e toque
 em **Embarcar** no botão grande. Navegue com o joystick e desembarque perto
 de uma margem livre. Inclui o casco Guppy original, colisão marítima e
-retomada da viagem. [Controles e limites](docs/NAVEGACAO_MARITIMA.md).
+retomada da viagem, mar azul e placas de embarque/desembarque. O minimapa
+mostra os arredores; **⛶ Mapa** abre a região completa para marcar destinos.
+[Controles e limites](docs/NAVEGACAO_MARITIMA.md).
 
 **Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz
 animações GLB de cidade, guarda, corrida, corrida armada e ataque; permite

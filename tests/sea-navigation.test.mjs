@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
-import {sailableTile,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,SEA_LEVEL} from '../js/sea-navigation.mjs';
+import {sailableTile,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,SEA_LEVEL,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from '../js/sea-navigation.mjs';
 import {resolvePrimaryAction} from '../js/context-action.mjs';
 
 test('regra marítima histórica usa LAND e os quatro bloqueios, não altura',()=>{
@@ -80,7 +80,7 @@ test('porto publicado permite ida e volta no terreno real de Argent',()=>{
     const at=20+(iz*w+ix)*7;
     return {region:data.readUInt16LE(at+4),blocks:data[at+6],height:data.readInt8(at+1)*.1};
   };
-  const port={x:2204.5,z:2819.5};
+  const port=ARGENT_HARBOR;
   const water=nearestPosition(port,(x,z)=>sailableAt(tileAt,x,z),7,(a,b)=>clearTransfer(a,b,tileAt));
   assert.ok(water,'Guppy deve caber no mar junto ao porto');
   const land=nearestPosition(water,(x,z)=>{
@@ -89,6 +89,7 @@ test('porto publicado permite ida e volta no terreno real de Argent',()=>{
   },7,(a,b)=>clearTransfer(a,b,tileAt));
   assert.ok(land,'o barco precisa conseguir voltar a terra');
   assert.equal(sailableAt(tileAt,port.x,port.z),false);
+  assert.equal(sailableAt(tileAt,ARGENT_HARBOR_WATER.x,ARGENT_HARBOR_WATER.z),true,'botão Marcar porto deve selecionar água com espaço para o casco');
 });
 
 test('casco publicado contém geometria e textura originais e velocidade histórica',()=>{

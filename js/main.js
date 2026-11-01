@@ -22,7 +22,10 @@ import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=7';
 import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=3';
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
-import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition} from './sea-navigation.mjs?v=1';
+import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
+
+import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {createNavigationMarkers} from './navigation-markers.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -34,6 +37,7 @@ import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSea
 // yaw 0 olha para +Z; yaw π olha para −Z e o olho fica no +Z (o lado do rosto).
 // W anda nesse olhar. D anda na direita da tela (no yaw π, isso é +X).
 const $ = id => document.getElementById(id);
+const mapIsOpen=()=>!!$('world-map-dialog').open;
 const mobileQuery=window.matchMedia('(pointer: coarse), (max-width: 780px), (orientation: landscape) and (max-height: 600px)');
 let MOBILE_UI=mobileQuery.matches;
 document.body.classList.toggle('mobile-ui', MOBILE_UI);
@@ -110,6 +114,7 @@ const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .catch(()=>({version:1,profiles:{}}))
   .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
 const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
+let navigationContext=null,mapSelection=null;
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -133,6 +138,7 @@ const sun=new THREE.DirectionalLight(0xffe6b0,1.22); sun.position.set(-50,90,70)
 const ambient=new THREE.DirectionalLight(0x9ad4e2,.3); ambient.position.set(40,30,-50);scene.add(ambient);
 const brightness=attachBrightness({renderer, hemi, sun, fill:ambient, scene});
 const waypoint=createWaypoint(THREE, scene);
+const navigationMarkers=createNavigationMarkers(THREE,scene);
 let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
@@ -171,13 +177,16 @@ const seaMat=new THREE.ShaderMaterial({
     varying vec2 vWorld;
     void main(){
       float spark=sin(vWorld.x*1.6+uTime*0.8)*sin(vWorld.y*1.25-uTime*0.55);
-      vec3 deep=vec3(0.18,0.45,0.66);
-      vec3 crest=vec3(0.62,0.84,0.90);
-      vec3 col=mix(deep,crest,spark*0.5+0.5);
-      col=mix(col,vec3(0.549,0.549,0.863),0.42);
-      float alpha=vShore*(0.78+0.08*spark);
+      vec3 deep=vec3(0.006,0.075,0.19);
+      vec3 crest=vec3(0.015,0.21,0.36);
+      vec3 col=mix(deep,crest,0.35+spark*0.18);
+      float glint=pow(max(spark,0.0),12.0)*0.025;
+      col+=vec3(0.10,0.22,0.28)*glint;
+      float alpha=smoothstep(0.0,0.72,vShore)*0.94;
       if(alpha<0.015) discard;
       gl_FragColor=vec4(col,alpha);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }`
 });
 const chunkMap=new Map();
@@ -354,37 +363,111 @@ function updateChunks(){
   return created;
 }
 function mapPixels(){
-  const cnv=$('minimap'),ctx=cnv.getContext('2d',{willReadFrequently:false});
-  const img=ctx.createImageData(256,256);
-    for(let y=0;y<256;y++)for(let x=0;x<256;x++){
-    const xx=world.ox+(x+.5)/256*world.w,zz=world.oz+(y+.5)/256*world.h;
-    const t=getTile(xx,zz),clr=colorFor(t,Math.floor(xx),Math.floor(zz));
-    const at=(y*256+x)*4;
-    const sea=t?.height<-.4;
-    img.data[at]=Math.floor(Math.min(1,sea ? .25+clr[0]*.9 : clr[0])*255);
-    img.data[at+1]=Math.floor(Math.min(1,sea ? .45+clr[1]*.7 : clr[1])*255);
-    img.data[at+2]=Math.floor(Math.min(1,sea ? .57+clr[2]*.7 : clr[2])*255);
-    img.data[at+3]=255;
+  const ctx=$('minimap').getContext('2d');
+  const img=ctx.createImageData(world.w,world.h);
+  for(let z=0;z<world.h;z++)for(let x=0;x<world.w;x++){
+    const color=mapTileColor(getTile(world.ox+x,world.oz+z)),at=(z*world.w+x)*4;
+    img.data[at]=color[0];img.data[at+1]=color[1];img.data[at+2]=color[2];img.data[at+3]=255;
   }
   return img;
 }
 let minimapBackground=null;
 function generateMinimap(){
-  const hidden=document.createElement('canvas');hidden.width=256;hidden.height=256;
-  hidden.getContext('2d').putImageData(mapPixels(),0,0);
-  minimapBackground=hidden;
+  const hidden=document.createElement('canvas');hidden.width=world.w;hidden.height=world.h;
+  hidden.getContext('2d').putImageData(mapPixels(),0,0);minimapBackground=hidden;
+}
+function fullMapView(){return {x:world.ox,z:world.oz,w:world.w,h:world.h};}
+function mapDot(ctx,point,color,label,full){
+  const r=full?13:10;
+  ctx.beginPath();ctx.arc(point.x,point.y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='#082638';ctx.lineWidth=full?3:4;ctx.stroke();
+  if(label){
+    ctx.font=full?'bold 32px sans-serif':'bold 26px sans-serif';
+    ctx.textAlign=full?'left':'center';ctx.textBaseline='middle';
+    ctx.lineWidth=full?7:5;ctx.strokeStyle='#082638';ctx.fillStyle=color;
+    const x=point.x+(full?15:0),y=point.y+(point.labelDy??(full?0:22));
+    ctx.strokeText(label,x,y);ctx.fillText(label,x,y);
+  }
+}
+function drawNavigationMap(canvas,view,full=false){
+  const ctx=canvas.getContext('2d'),size=canvas.width;
+  ctx.clearRect(0,0,size,size);ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(minimapBackground,view.x-world.ox,view.z-world.oz,view.w,view.h,0,0,size,size);
+  ctx.imageSmoothingEnabled=true;
+  if(full){
+    ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
+    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,size);ctx.moveTo(0,n*size/8);ctx.lineTo(size,n*size/8);ctx.stroke();}
+  }
+  const project=p=>projectMap(p,view,size),player=project(playerPos);
+  const destination=mapSelection&&full?mapSelection:moverTarget;
+  if(destination){
+    const p=project(destination);
+    ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(p.x,p.y);
+    ctx.setLineDash([full?12:6,full?8:4]);ctx.lineWidth=full?3:2;ctx.strokeStyle='#ffd37d';ctx.stroke();ctx.setLineDash([]);
+    mapDot(ctx,p,'#ffb94f',full?'Destino':'',full);
+  }
+  const harbor=full?project(ARGENT_HARBOR):mapEdgePoint(ARGENT_HARBOR,view,size,30);
+  if(full)harbor.labelDy=-24;
+  mapDot(ctx,harbor,'#ffd37d',full?'Porto de Argent':'P',full);
+  if(navigationContext?.destination){
+    const p=project(navigationContext.destination);
+    if(full)p.labelDy=24;
+    mapDot(ctx,p,'#6dffcf',full?(sailing?'Desembarque livre':'Embarque livre'):'',full);
+  }
+  if(!full)for(const monster of monsterManager?.monsters||[]){
+    if(monster.hp>0&&Math.hypot(monster.x-playerPos.x,monster.z-playerPos.z)<40)
+      mapDot(ctx,project(monster),'#e68b72','',false);
+  }
+  const heading=sailing&&boat?boat.rotation.y+Math.PI:avatar?avatar.rotation.y+Math.PI:CAM.yaw;
+  ctx.save();ctx.translate(player.x,player.y);ctx.rotate(Math.PI-heading);
+  const radius=full?16:13;
+  ctx.beginPath();ctx.moveTo(0,-radius);ctx.lineTo(radius*.7,radius*.7);ctx.lineTo(0,radius*.35);ctx.lineTo(-radius*.7,radius*.7);ctx.closePath();
+  ctx.fillStyle='#fff8cf';ctx.strokeStyle='#062433';ctx.lineWidth=full?3:4;ctx.fill();ctx.stroke();ctx.restore();
+  if(full){
+    ctx.fillStyle='#fff4cb';ctx.font='bold 24px sans-serif';ctx.textAlign='right';ctx.fillText('N ↑',size-18,32);
+    const local=mapView(world,playerPos),p=project({x:local.x,z:local.z});
+    ctx.strokeStyle='#fff8cf88';ctx.lineWidth=2;ctx.setLineDash([7,6]);
+    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*size);ctx.setLineDash([]);
+  }
 }
 function drawMinimap(){
   if(!minimapBackground)return;
-  const ctx=$('minimap').getContext('2d');ctx.clearRect(0,0,256,256);
-  ctx.drawImage(minimapBackground,0,0);
-  const mx=(playerPos.x-world.ox)/world.w*256,mz=(playerPos.z-world.oz)/world.h*256;
-  const {fwd}=cameraBasis();
-  ctx.beginPath();ctx.moveTo(mx,mz);ctx.lineTo(mx+fwd.x*18,mz+fwd.z*18);
-  ctx.strokeStyle='#fff3c4';ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(mx,mz,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#072633';ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(mx,mz,9,0,Math.PI*2);ctx.strokeStyle='#b2fff0';ctx.lineWidth=1.4;ctx.stroke();
-  if(moverTarget){ctx.beginPath();ctx.arc((moverTarget.x-world.ox)/world.w*256,(moverTarget.z-world.oz)/world.h*256,3,0,Math.PI*2);ctx.strokeStyle='#ffe6ad';ctx.stroke()}
+  drawNavigationMap($('minimap'),mapView(world,playerPos));
+  if(mapIsOpen()){
+    drawNavigationMap($('world-map'),fullMapView(),true);
+    $('map-location').textContent=`Você: ${playerPos.x.toFixed(0)}, ${playerPos.z.toFixed(0)} · ${sailing?'no mar':'em terra'}`;
+  }
+}
+function selectMapDestination(point){
+  mapSelection=point;
+  const allowed=sailing?canSail(point.x,point.z):walkable(point.x,point.z);
+  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Destino marcado. Confirme para seguir.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
+  $('map-travel').disabled=!allowed;
+  $('map-travel').textContent=sailing?'Navegar até aqui':'Caminhar até aqui';drawMinimap();
+}
+function openWorldMap(){
+  if(!world||!seaTravelReady||mapIsOpen())return;
+  if(skillAnimationLocked){toast('Aguarde a skill terminar para abrir o mapa.');return;}
+  stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
+  document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
+  mapSelection=null;$('map-travel').disabled=true;$('map-travel').textContent='Selecione um destino';
+  $('map-selection-info').textContent='Selecione um ponto para traçar seu rumo.';
+  document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
+}
+function updateNavigationIndicators(){
+  if(!seaTravelReady)return;
+  const context=navigationContext,destination=context?.destination;
+  navigationMarkers.update({harbor:ARGENT_HARBOR,
+    harborHeight:footSurface(ARGENT_HARBOR.x,ARGENT_HARBOR.z,3.5),player:playerPos,context,
+    heightAt:p=>p?(sailing?footSurface(p.x,p.z,3.5):0):0,time:performance.now()/1000});
+  const distance=Math.hypot(ARGENT_HARBOR.x-playerPos.x,ARGENT_HARBOR.z-playerPos.z);
+  const hint=$('navigation-hint');hint.hidden=hero.hp<=0||!!rpgHud?.isOpen()||(!destination&&!sailing&&distance>110);
+  hint.classList.toggle('transfer-ready',!!destination);
+  const target=destination||ARGENT_HARBOR;
+  const bearing=Math.atan2(target.x-playerPos.x,target.z-playerPos.z);
+  hint.style.setProperty('--bearing',`${(CAM.yaw-bearing)*180/Math.PI}deg`);
+  $('navigation-title').textContent=destination?(sailing?'Desembarque disponível':'Embarque no Guppy'):`Porto de Argent · ${Math.round(distance)} m`;
+  $('navigation-detail').textContent=destination?'Siga a marca verde · toque aqui para '+(sailing?'desembarcar':'embarcar'):'Siga a seta dourada · toque para ver no mapa';
 }
 function clearObjectMarkers(){objectMeshes.forEach(m=>{objGroup.remove(m);m.dispose?.()});objectMeshes=[];objGroup.clear()}
 // CSceneObj::_UpdateYaw: o short do .obj entra em Angle2Radian, em graus.
@@ -830,6 +913,7 @@ function updateCombatHud(){
     autoModeButton.classList.toggle('auto-active',mobileAutoModeEnabled);
   }
   const context=primaryContext(),button=$('mobile-attack');
+  navigationContext=context;
   const combatAction=context.type==='attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
   button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
@@ -1033,7 +1117,7 @@ function standUp(){
   };
   const exit=findSafeExit(origin,canStand,9);
   if(!exit){
-    toast('Não encontrei espaço seguro para levantar. Use o minimapa para sair.');
+    toast('Não encontrei espaço seguro para levantar. Use “Voltar a Argent City” no menu para sair.');
     return false;
   }
   seated=null;attackPlaying=false;pendingPose=null;moverTarget=null;waypoint.hide();
@@ -1834,7 +1918,7 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat);
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen());
   combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
   let chasing=false;
   const target=combat?.target;
@@ -1941,6 +2025,7 @@ function update(dt){
     weaponPoseState==='idle'||weaponPoseState==='run',weaponPoseState);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
+  updateNavigationIndicators();
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}
   if(sceneObjs3D && (playerPos.distanceToSquared(lastScenePosition)>20*20 || performance.now()-lastObjUpdate>1100)){
     updateSceneInstances(false);
@@ -2150,7 +2235,7 @@ $('sea-travel').addEventListener('click',()=>{
 });
 $('go-harbor').addEventListener('click',()=>{
   if(!world||hero.hp<=0||boardingBoat||changingCharacter||changingLoadout)return;
-  if(teleport(2204.5,2819.5)){
+  if(teleport(ARGENT_HARBOR.x,ARGENT_HARBOR.z)){
     document.body.classList.remove('mobile-settings-open');$('mobile-settings')?.setAttribute('aria-expanded','false');
     toast('Porto de Argent · toque em Embarcar para navegar.');
   }
@@ -2325,7 +2410,7 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen())return;
+  if(typing||rpgHud?.isOpen()||mapIsOpen())return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
@@ -2369,11 +2454,29 @@ for(const b of document.querySelectorAll('[data-key]')){
   b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(code)});
   const clear=()=>keys.delete(code);b.addEventListener('pointerup',clear);b.addEventListener('pointercancel',clear);
 }
-$('minimap').addEventListener('click',e=>{
-  if(!world)return;
+$('minimap-open').addEventListener('click',openWorldMap);
+$('map-expand').addEventListener('click',openWorldMap);
+$('world-map-close').addEventListener('click',()=>$('world-map-dialog').close());
+$('world-map-dialog').addEventListener('close',()=>{
+  document.body.classList.remove('map-open');keys.clear();touchMove.forward=0;touchMove.sideways=0;
+});
+$('world-map-dialog').addEventListener('click',e=>{
+  if(e.target!==e.currentTarget)return;
   const rect=e.currentTarget.getBoundingClientRect();
-  const nx=(e.clientX-rect.left)/rect.width,nz=(e.clientY-rect.top)/rect.height;
-  if(teleport(world.ox+nx*world.w,world.oz+nz*world.h))toast('Teletransporte no minimapa.');
+  if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();
+});
+$('world-map').addEventListener('click',e=>{
+  if(!world)return;const rect=e.currentTarget.getBoundingClientRect();
+  selectMapDestination(unprojectMap((e.clientX-rect.left)/rect.width*768,(e.clientY-rect.top)/rect.height*768,fullMapView(),768));
+});
+$('map-harbor').addEventListener('click',()=>selectMapDestination(sailing?ARGENT_HARBOR_WATER:ARGENT_HARBOR));
+$('map-travel').addEventListener('click',()=>{
+  if(!mapSelection)return;
+  if(orderMove(mapSelection.x,mapSelection.z,null)){$('world-map-dialog').close();toast(sailing?'Rumo marcado no mar. A costa e bloqueios continuam valendo.':'Destino marcado. Use o joystick se o caminho estiver bloqueado.');}
+});
+$('navigation-hint').addEventListener('click',()=>{
+  if(navigationContext?.destination)void toggleSeaTravel();
+  else{openWorldMap();if(mapIsOpen())selectMapDestination(sailing?ARGENT_HARBOR_WATER:ARGENT_HARBOR);}
 });
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();CAM.dist+=Math.sign(e.deltaY)*1.4;clampCam();},{passive:false});

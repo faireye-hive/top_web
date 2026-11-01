@@ -6,6 +6,7 @@ on:
       - 'tests/*.test.mjs'
       - 'index.html'
       - 'sw.js'
+      - 'navigation-map.css'
       - 'assets/boats/**'
       - 'scripts/build_mobile_boat.py'
       - '.github/workflows/mobile-gameplay.yml'
@@ -24,7 +25,7 @@ jobs:
       - name: Test mobile gameplay and published boat assets
         run: node --test tests/*.test.mjs
       - name: Check navigation syntax
-        run: node --check js/main.js && node --check js/sea-navigation.mjs
+        run: node --check js/main.js && node --check js/sea-navigation.mjs && node --check js/navigation-map.mjs && node --check js/navigation-markers.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

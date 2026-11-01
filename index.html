@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="./combat.css?v=1">
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <link rel="stylesheet" href="./mobile-landscape.css?v=5">
+<link rel="stylesheet" href="./navigation-map.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -148,7 +149,27 @@ font:600 12px system-ui,sans-serif}
   <div class="line"></div>
   <div class="small">Alturas, áreas e bloqueios: <b>garner.map original.</b><br>Texturas base do solo e materiais de objetos: <b>originais</b>. Biblioteca GLB compartilhada com objetos próximos ao personagem (distância ajustável). Transições alpha do terreno e objetos animados ainda precisam de revisão.</div>
 </div>
-<div class="hud minimapbox panel"><div class="maptitle">MINIMAPA <small>Argent City</small></div><canvas id="minimap" class="mapcanvas" width="256" height="256" title="Clique para teletransportar à posição livre mais próxima"></canvas><div class="small" style="margin-top:7px;text-align:center">Clique no mapa para explorar</div></div>
+<div class="hud minimapbox panel">
+ <div class="maptitle">ARREDORES <small>96 m</small></div>
+ <button type="button" id="minimap-open" aria-label="Abrir mapa completo de Argent" aria-haspopup="dialog" aria-controls="world-map-dialog"><canvas id="minimap" class="mapcanvas" width="256" height="256" aria-label="Minimapa dos arredores"></canvas></button>
+ <span class="map-north" aria-hidden="true">N</span>
+ <button type="button" id="map-expand" aria-label="Expandir mapa" aria-haspopup="dialog" aria-controls="world-map-dialog">⛶ Mapa</button>
+</div>
+<button type="button" id="navigation-hint" hidden><span class="navigation-arrow" aria-hidden="true">↑</span><span><strong id="navigation-title"></strong><small id="navigation-detail"></small></span></button>
+<dialog id="world-map-dialog" aria-labelledby="world-map-title" aria-describedby="world-map-help">
+ <header class="world-map-header"><div><h2 id="world-map-title">Mapa de Argent</h2><p id="world-map-help">Toque para marcar um destino · Norte para cima</p></div><button type="button" id="world-map-close" aria-label="Fechar mapa">×</button></header>
+ <div class="world-map-layout">
+  <div class="world-map-surface"><canvas id="world-map" width="768" height="768" aria-label="Mapa completo da região de Argent, com porto e posição atual"></canvas></div>
+  <aside class="world-map-details">
+   <p id="map-location"></p>
+   <ul class="world-map-legend"><li><i class="player"></i>Você</li><li><i class="harbor"></i>Porto · embarque e desembarque</li><li><i class="landing"></i>Transferência disponível</li><li><i class="target"></i>Destino marcado</li></ul>
+   <button type="button" id="map-harbor">⚓ Marcar porto de Argent</button>
+   <p id="map-selection-info" role="status">Selecione um ponto para traçar seu rumo.</p>
+   <button type="button" id="map-travel" disabled>Selecione um destino</button>
+   <p class="map-region-note">Região mobile de Argent · 512 × 512 m. O minimapa acompanha seus arredores. O movimento respeita a costa e os bloqueios.</p>
+  </aside>
+ </div>
+</dialog>
 <div class="hud bottom panel"><button id="idle" class="active">Parado</button><button id="run">Correr</button><button id="atk" aria-pressed="false">⚔ Auto</button><button id="sit">Sentar</button><button id="dance">Acenar</button><button id="show">⊞ Interface</button></div>
 <div class="hud foothelp">Clique no chão: cristal azul até chegar · cursor de cadeira senta · cursor de parede encosta · <span class="kbd">Insert</span> no ponto · brilho no painel</div>
 <div class="hud notice panel">Argent: visuais originais em GLB e combate local com regras novas. Movimento manual interrompe o ataque automático.</div>
@@ -258,7 +279,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=52"></script>
+<script type="module" src="./js/main.js?v=53"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

@@ -3,6 +3,8 @@
 export const SEA_LEVEL=-.1;
 export const BOAT_RADIUS=2.9;
 export const BOARDING_REACH=7;
+export const ARGENT_HARBOR=Object.freeze({x:2204.5,z:2819.5});
+export const ARGENT_HARBOR_WATER=Object.freeze({x:2203,z:2825.5});
 
 export function sailableTile(tile,x,z){
   if(!tile||!Number.isFinite(x)||!Number.isFinite(z)||(tile.region&1))return false;
