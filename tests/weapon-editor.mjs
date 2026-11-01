@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {weaponMeshNodes,WeaponHolster,selectPoseName,readPoseProfiles,poseProfile} from '../js/pose-studio-runtime.mjs';
+import {weaponMeshNodes,WeaponHolster,selectPoseName,readPoseProfiles,poseProfile} from '../js/pose-studio-runtime.mjs?v=7';
 import {MAX_TEXTURE_DATA_CHARS,readWeaponMaterialProfiles,saveWeaponMaterialProfiles,
   parseWeaponMaterialProfiles,weaponPrimitives,weaponMaterialSettings,
   writeWeaponMaterialSettings,applyWeaponMaterialSettings,
   applyWeaponAppearance,applyWeaponAdditiveLayer,isWeaponAdditiveLayer,
-  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs';
+  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=2';
 
 const $=id=>document.getElementById(id);
 const actor=$('actor'),job=$('job'),slot=$('slot'),subset=$('subset');
