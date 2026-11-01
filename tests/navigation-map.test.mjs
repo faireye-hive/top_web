@@ -42,7 +42,8 @@ test('cores de água, terra, areia e pontes permanecem distintas sem branco',()=
 test('mapa ampliado usa largura e altura independentes sem distorcer coordenadas',()=>{
   const view=mapViewRect(world,{x:2230,z:2770},500,1.85);
   assert.equal(view.h,500);
-  assert.equal(view.w,512,'não ultrapassa borda de Garner');
+  assert.equal(view.w,925,'preserva proporção do mapa em vez de esticar a região inteira');
+  assert.ok(view.x<world.ox,'o oceano lateral faz parte do letterbox');
   const point={x:2224.25,z:2805.75},size={width:900,height:420};
   const screen=projectMap(point,view,size);
   const back=unprojectMap(screen.x,screen.y,view,size);
