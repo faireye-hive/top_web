@@ -1,6 +1,13 @@
 import {cameraLiftAtDistance,cameraFovAtDistance} from './camera-behavior.mjs';
 export const LAND_CAMERA_MIN=.38,LAND_CAMERA_DEFAULT=15,LAND_CAMERA_MAX=22;
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+export function cameraFramingValue(value){
+  const n=Number(value);return Number.isFinite(n)?clamp(n,-100,100):0;
+}
+// Projeção deslocada: positivo põe o personagem mais abaixo, mantendo a órbita.
+export function cameraFramingOffset(value,viewportHeight){
+  return -cameraFramingValue(value)/100*.25*Math.max(1,viewportHeight);
+}
 export function landCameraDistance(value){
   const n=Number(value);return Number.isFinite(n)?clamp(n,LAND_CAMERA_MIN,LAND_CAMERA_MAX):LAND_CAMERA_DEFAULT;
 }

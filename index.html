@@ -108,8 +108,15 @@ font:600 12px system-ui,sans-serif}
   <div class="col">
    <label class="small">Brilho <strong id="brightvalue">58</strong></label><input id="brightness" type="range" min="0" max="100" step="1" value="58">
    <div class="seg"><button type="button" data-bright="28">Suave</button><button type="button" data-bright="58">Dia</button><button type="button" data-bright="86">Forte</button></div>
+   <div class="camera-tuning" aria-label="Enquadramento vertical do personagem">
+    <label class="small" for="camera-framing"><strong>Personagem na tela</strong> · <output id="camera-framing-value" for="camera-framing">Atual</output></label>
+    <input id="camera-framing" type="range" min="-100" max="100" step="1" value="0" list="camera-framing-marks" aria-label="Posição vertical do personagem na tela: mais acima, atual ou mais abaixo">
+    <datalist id="camera-framing-marks"><option value="-100" label="Mais acima"></option><option value="0" label="Atual"></option><option value="100" label="Mais abaixo"></option></datalist>
+    <div class="camera-tuning-footer"><span class="small">Mais acima ← Atual → Mais abaixo</span><button type="button" id="camera-framing-reset">Atual</button></div>
+    <div class="small">Escolha onde o personagem aparece na tela. A posição é salva automaticamente.</div>
+   </div>
    <div class="camera-tuning" aria-label="Distância da câmera a pé">
-    <label class="small" for="camera-proximity"><strong>Câmera a pé</strong> · <output id="camera-proximity-value" for="camera-proximity">Vista atual · 15 m</output></label>
+    <label class="small" for="camera-proximity"><strong>Zoom da câmera a pé</strong> · <output id="camera-proximity-value" for="camera-proximity">Vista atual · 15 m</output></label>
     <input id="camera-proximity" type="range" min="0" max="100" step="1" value="0" aria-label="Aproximar câmera da vista atual até quase primeira pessoa">
     <div class="camera-tuning-footer"><span class="small">Vista atual → Quase 1ª pessoa</span><button type="button" id="camera-proximity-reset">Vista clássica</button></div>
     <div class="small">No barco, use as opções de visão abaixo.</div>
@@ -334,7 +341,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=58"></script>
+<script type="module" src="./js/main.js?v=59"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

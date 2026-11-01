@@ -1,7 +1,8 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
-**Câmera e Bolsa:** no Menu, a barra **Câmera a pé** aproxima da vista atual até
-quase primeira pessoa. A Bolsa tem grade clássica, painel com atributos ao lado
+**Câmera e Bolsa:** no Menu, **Personagem na tela** ajusta o enquadramento vertical:
+mais acima, atual ou mais abaixo, com escolha salva. A barra **Zoom da câmera a pé**
+aproxima até quase primeira pessoa. A Bolsa tem grade clássica, painel com atributos ao lado
 e lista detalhada, com escolha salva, busca e filtros. Os três formatos mostram
 os equipamentos reais da classe e os atributos atuais.
 

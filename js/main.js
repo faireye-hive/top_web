@@ -9,7 +9,7 @@ import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=6';
 import {heroInventory} from './inventory-view.mjs';
-import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose} from './camera-distance.mjs';
+import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
@@ -82,6 +82,7 @@ let cameraFollowTarget=null;
 let mobileOrbitYaw=CAM.yaw,mobileOrbitLift=CAM.lift;
 let seatFacingReversed=getPref('topweb_seat_reverse','1')!=='0';
 let visualMode=getPref('topweb_visual_mode','classic');
+let cameraFraming=cameraFramingValue(getPref('topweb_camera_framing_v1','0'));
 function manualCamera(){cameraManualUntil=performance.now()+2500}
 function clampCam(){
   CAM.dist=landCameraDistance(CAM.dist);
@@ -89,6 +90,7 @@ function clampCam(){
   syncCameraDistance();
 }
 function syncCameraDistance(){
+  syncCameraFraming();
   const slider=$('camera-proximity'),label=$('camera-proximity-value');
   const value=String(Math.round(cameraProximityValue(CAM.dist)));
   if(slider&&slider.value!==value)slider.value=value;
@@ -96,6 +98,20 @@ function syncCameraDistance(){
   if($('camera-proximity-reset'))$('camera-proximity-reset').disabled=sailing;
   const text=CAM.dist<.85?'Quase 1ª pessoa':`${CAM.dist<3.2?'Vista próxima':'Vista atual'} · ${CAM.dist.toFixed(1)} m`;
   if(label&&label.textContent!==text)label.textContent=text;
+}
+function syncCameraFraming(){
+  const slider=$('camera-framing'),label=$('camera-framing-value');
+  if(slider){const value=String(cameraFraming);if(slider.value!==value)slider.value=value;slider.disabled=sailing;}
+  if($('camera-framing-reset'))$('camera-framing-reset').disabled=sailing;
+  const text=cameraFraming===0?'Atual':`${cameraFraming>0?'Mais abaixo':'Mais acima'} · ${Math.round(Math.abs(cameraFraming)*.25)}%`;
+  if(label&&label.textContent!==text)label.textContent=text;
+}
+function applyCameraFraming(){
+  const value=sailing?0:cameraFraming;
+  if(value===0){if(camera.view?.enabled)camera.clearViewOffset();return;}
+  const offset=cameraFramingOffset(value,innerHeight),view=camera.view;
+  if(!view?.enabled||view.fullWidth!==innerWidth||view.fullHeight!==innerHeight||view.offsetY!==offset)
+    camera.setViewOffset(innerWidth,innerHeight,0,offset,innerWidth,innerHeight);
 }
 function saveCameraDistance(){setPref('topweb_garner_camera',JSON.stringify({yaw:CAM.yaw,dist:CAM.dist,lift:CAM.lift}));}
 function zoomCamera(delta){CAM.dist=(sailing?Math.max(3.2,CAM.dist):CAM.dist)+delta;clampCam();saveCameraDistance();}
@@ -209,7 +225,7 @@ const tintRGB=new Float32Array(3);
 let lastToast=0;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');lastToast=performance.now();}
 function progress(amount,message){$('progressbar').style.width=`${amount}%`;if(message)$('loadingmessage').textContent=message;}
-function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
+function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;applyCameraFraming();camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 window.addEventListener('resize',resize);resize();
 function getTile(x,z){
   if(!world)return null;
@@ -513,6 +529,7 @@ function updateObjectMarkers(){
 function placeCamera(){
   const cameraPivot=MOBILE_UI?mobileCameraFocus:playerPos;
   clampCam();
+  applyCameraFraming();
   if(sailing&&boatViewMode!=='classic'){
     // Na proa, seguir o casco sem atraso evita entrar nele em alta velocidade.
     const boatPivot=boatViewMode==='bow'?playerPos:cameraPivot;
@@ -1848,6 +1865,7 @@ window.__fx={
           engaged:!!m.engaged,motion:m.motion,moving:!!m.moving,home:m.home,animation:m.action?.getClip().name}))},
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       landCamera:{headHeight:cameraHeadHeight,near:camera.near,avatarVisible:avatar?.visible,
+        framing:cameraFraming,subjectScreenY:(1-new THREE.Vector3(playerPos.x,playerPos.y+LOOK_H,playerPos.z).project(camera).y)/2,
         proximity:cameraProximityValue(CAM.dist),look:[_look.x,_look.y,_look.z]},
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -2501,6 +2519,12 @@ function syncBrightness(v){
   const label=$('brightvalue'); if(label) label.textContent=String(n);
   for(const b of document.querySelectorAll('[data-bright]')) b.classList.toggle('active', Number(b.dataset.bright)===n);
 }
+function setCameraFraming(value){
+  cameraFraming=cameraFramingValue(value);setPref('topweb_camera_framing_v1',cameraFraming);
+  syncCameraFraming();applyCameraFraming();
+}
+$('camera-framing').addEventListener('input',e=>setCameraFraming(e.target.value));
+$('camera-framing-reset').addEventListener('click',()=>setCameraFraming(0));
 $('camera-proximity').addEventListener('input',e=>{
   CAM.dist=cameraProximityDistance(e.target.value);clampCam();saveCameraDistance();placeCamera();updateHUD();
 });

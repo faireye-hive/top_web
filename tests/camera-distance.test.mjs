@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose} from '../js/camera-distance.mjs';
+import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from '../js/camera-distance.mjs';
+test('enquadramento desloca a posição na tela até 25% para cima ou baixo, com atual no centro',()=>{
+  assert.equal(cameraFramingValue(undefined),0);assert.equal(cameraFramingValue('inválido'),0);
+  assert.equal(cameraFramingValue(900),100);assert.equal(cameraFramingValue(-900),-100);
+  assert.ok(cameraFramingOffset(0,400)===0);
+  assert.equal(cameraFramingOffset(100,400),-100);assert.equal(cameraFramingOffset(-100,400),100);
+  assert.equal(cameraFramingOffset(50,800)/800,cameraFramingOffset(50,375)/375);
+});
 test('barra começa na vista de 15 m e aproxima continuamente até 38 cm',()=>{
   assert.equal(cameraProximityDistance(0),15);assert.equal(cameraProximityDistance(100),.38);
   let previous=16;
