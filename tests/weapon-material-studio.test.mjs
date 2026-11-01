@@ -122,6 +122,82 @@ test('material histórico com extras topOriginalBlend=1 também é reconhecido',
  assert.equal(p.profiles['lance:crusader'].slots[6].subsets[1].overlayOpacity,.4);
 });
 
+
+test('todos os 14 GLBs usam textura principal distinta de 1.BMP na arma',()=>{
+ const manifest=JSON.parse(readFileSync(new URL('../assets/equipment/manifest.json',import.meta.url)));
+ let models=0,weapons=0,candidates=0;
+ for(const [job,entry] of Object.entries(manifest.sets)){
+   const expected=entry.items.filter(item=>item.slot===6||item.slot===9).length;
+   for(const [actor,file] of Object.entries(entry.models)){
+     const name=file.replace(/^models\//,'');
+     const bytes=readFileSync(new URL('../assets/equipment/models/'+name,import.meta.url));
+     assert.equal(bytes.subarray(0,4).toString(),'glTF');
+     const len=bytes.readUInt32LE(12);
+     const gltf=JSON.parse(bytes.subarray(20,20+len).toString('utf8'));
+     const nodes=gltf.nodes.filter(node=>
+       node.mesh!==undefined&&(
+         node.extras?.topRole==='weapon'||
+         /^Parte\s+[5-9]\s*·/.test(node.name||'')));
+     assert.equal(nodes.length,expected,actor+'/'+job+' expected weapon count');
+     for(const node of nodes){
+       weapons++;
+       const primitives=gltf.meshes[node.mesh].primitives;
+       assert.equal(primitives.length,2,actor+'/'+job+' needs two subsets');
+       for(let i=0;i<primitives.length;i++){
+         const material=gltf.materials[primitives[i].material];
+         const texture=material.pbrMetallicRoughness.baseColorTexture;
+         assert.ok(texture,actor+'/'+job+' lacks texture '+i);
+         assert.ok(primitives[i].attributes.TEXCOORD_0!==undefined);
+         const filename=gltf.images[gltf.textures[texture.index].source].name;
+         const old={material:{name:material.name,userData:{}},userData:{}};
+         const isOverlay=isWeaponAdditiveLayer(old);
+         if(i===0){
+           assert.notMatch(filename,/^1\.bmp$/i);
+           assert.equal(isOverlay,false,actor+'/'+job+' main texture misclassified');
+         }else{
+           candidates++;
+           assert.match(filename,/^1\.bmp$/i);
+           assert.equal(isOverlay,true,actor+'/'+job+' candidate not recognized');
+         }
+       }
+     }
+     models++;
+   }
+ }
+ assert.equal(models,14);
+ assert.equal(weapons,16);
+ assert.equal(candidates,16);
+});
+
+test('Champion and cleric: main weapon surface stays visible, secondary 1.BMP hides by default',()=>{
+ const make=(name)=>({
+   isMesh:true,material:{
+     name,visible:true,transparent:false,userData:{},opacity:1,depthWrite:true,
+     clone(){return {...this,userData:{...this.userData}}}
+   },userData:{},visible:true
+ });
+ const main=make('02020029.lgo · 02020029.bmp');
+ const overlay=make('02020029.lgo · 1.BMP');
+ const sword={name:'Parte_5__02020029_lgo',
+   userData:{topRole:'weapon',equipmentSlot:9},
+   traverse(fn){fn(this);fn(main);fn(overlay)}};
+ const avatar={traverse(fn){sword.traverse(fn)}};
+ const THREE={AdditiveBlending:'additive'};
+ const result=applyWeaponAppearance(THREE,avatar,'carsise','champion',{version:1,profiles:{}});
+ assert.equal(result,0);
+ assert.equal(main.visible,true);
+ assert.equal(overlay.visible,false);
+ assert.equal(overlay.material.blending,'additive');
+ assert.equal(overlay.material.depthWrite,false);
+ assert.equal(main.material.name,'02020029.lgo · 02020029.bmp');
+ const explicit={version:1,profiles:{'carsise:champion':{slots:{'9':{subsets:{
+   '1':{overlayVisible:true,overlayOpacity:.2}
+ }}}}}};
+ applyWeaponAppearance(THREE,avatar,'carsise','champion',explicit);
+ assert.equal(overlay.visible,true);
+ assert.equal(overlay.material.opacity,.2);
+});
+
 test('editor apresenta controles de texturas originais e refino separado do Pose Studio',()=>{
  const html=readFileSync(new URL('./weapon-editor.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('./weapon-editor.mjs',import.meta.url),'utf8');
