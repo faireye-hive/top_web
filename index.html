@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="./navigation-map.css?v=1">
 <link rel="stylesheet" href="./development-ui.css?v=1">
 <link rel="stylesheet" href="./desktop-hud.css?v=1">
-<link rel="stylesheet" href="./mobile-compact.css?v=1">
+<link rel="stylesheet" href="./mobile-compact.css?v=2">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -202,7 +202,7 @@ font:600 12px system-ui,sans-serif}
  <div class="maptitle">ARREDORES <small>96 m</small></div>
  <button type="button" id="minimap-open" aria-label="Abrir mapa completo de Garner" aria-haspopup="dialog" aria-controls="world-map-dialog"><canvas id="minimap" class="mapcanvas" width="256" height="256" aria-label="Minimapa dos arredores"></canvas></button>
  <span class="map-north" aria-hidden="true">N</span>
- <button type="button" id="map-expand" aria-label="Expandir mapa" aria-haspopup="dialog" aria-controls="world-map-dialog">⛶ Mapa</button>
+ <button type="button" id="map-expand" aria-label="Expandir mapa" aria-haspopup="dialog" aria-controls="world-map-dialog"><span class="map-expand-symbol" aria-hidden="true">⛶</span> <span class="map-expand-word">Mapa</span></button>
 </div>
 <button type="button" id="navigation-hint" hidden><span class="navigation-arrow" aria-hidden="true">↑</span><span><strong id="navigation-title"></strong><small id="navigation-detail"></small></span></button>
 <dialog id="world-map-dialog" aria-labelledby="world-map-title" aria-describedby="world-map-help">
@@ -232,7 +232,7 @@ font:600 12px system-ui,sans-serif}
    <button class="mobile-nav-button" id="mobile-shop" type="button" disabled title="Loja — em desenvolvimento"><svg aria-hidden="true"><use href="#ui-shop"></use></svg><span>Loja</span></button>
    <button class="mobile-nav-button mobile-settings" id="mobile-settings" type="button" aria-label="Configurações" aria-controls="settings" aria-expanded="false"><svg aria-hidden="true"><use href="#ui-menu"></use></svg><span>Menu</span></button>
   </div>
-  <div class="mobile-player-card" aria-label="Informações do personagem">
+  <div class="mobile-player-card" id="mobile-player-open" role="button" tabindex="0" aria-label="Abrir Status do personagem" aria-haspopup="dialog" aria-controls="rpg-panel" aria-expanded="false" title="Abrir Status">
    <div class="mobile-player-portrait"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M4 64c2-23 12-25 28-25s26 2 28 25Z" fill="#426d85"/><ellipse cx="32" cy="29" rx="17" ry="20" fill="#f4c694"/><path d="M13 29C4 13 14 4 26 7c15-11 33 3 28 19L48 17 40 9l-8 14-8-7-11 13Z" fill="#a55d27" stroke="#6c381b" stroke-width="1.5"/><path d="M18 26c4-2 8-2 12 0m5 0c4-2 8-2 12 0" fill="none" stroke="#6b321d" stroke-width="2"/><circle cx="25" cy="30" r="2" fill="#17434a"/><circle cx="40" cy="30" r="2" fill="#17434a"/><path d="M28 41q5 4 10 0" stroke="#8f4f3c" stroke-width="2" fill="none"/></svg></div>
    <div class="mobile-player-data">
     <div class="mobile-player-title"><strong id="mobile-character-name">Lance</strong><span>Argent</span></div>
