@@ -1,10 +1,13 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
-**Navegação marítima mobile:** use **Menu → Ir ao porto de Argent** e toque
-em **Embarcar** no botão grande. Navegue com o joystick e desembarque perto
-de uma margem livre. Inclui o casco Guppy original, colisão marítima e
-retomada da viagem, mar azul e placas de embarque/desembarque. O minimapa
-mostra os arredores; **⛶ Mapa** abre a região completa para marcar destinos.
+**Garner completo e Marina Studio:** o jogo usa agora o mapa original de
+4096 × 4096, carregado por setores. O veleiro padrão tem aproximadamente
+12 m, velas animadas, balanço e rastro de espuma. **Menu → Editor de mapa e
+barco** abre as prévias para ajustar a embarcação, o mar e o terreno, com
+salvamento local e exportação. [Guia dos editores](docs/MARINA_STUDIO.md).
+
+**Navegação marítima mobile:** vá ao porto de Argent e toque em **Embarcar**.
+O minimapa mostra os arredores; **⛶ Mapa** abre Garner com zoom e destinos.
 [Controles e limites](docs/NAVEGACAO_MARITIMA.md).
 
 **Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz

@@ -18,7 +18,8 @@ export function mapTileColor(tile){
   if(tile.region&8)return [181,142,90];
   const paved=[2,3,4,13,20,21,22,37,47,48,49].includes(tile.tex);
   const sand=[14,15,16,34,35,36,44,45,46].includes(tile.tex);
-  const base=paved?[190,179,144]:sand?[208,187,123]:[76,124,78];
+  const snow=[11,26,27,28,29,32,38,40,41].includes(tile.tex);
+  const base=snow?[178,203,209]:paved?[190,179,144]:sand?[208,187,123]:[76,124,78];
   const shade=tile.blocks===15?.82:1;
   return base.map(v=>Math.round(v*shade));
 }

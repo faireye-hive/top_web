@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": 11,
+  "name": "Phantom Galley",
+  "model": "assets/boats/phantom-galley.glb",
+  "slug": "phantom-galley",
+  "radius": 2.119,
+  "length": 3.479,
+  "speed": 5.3,
+  "seaLevel": -0.1,
+  "sourceHull": "2000000000.lgo",
+  "sourceTables": [
+    "shipinfo.txt",
+    "shipiteminfo.txt",
+    "characterinfo.txt"
+  ]
+}

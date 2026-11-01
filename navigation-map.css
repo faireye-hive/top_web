@@ -42,3 +42,6 @@ body.mobile-settings-open #navigation-hint,body.map-open #navigation-hint{displa
  .world-map-legend{grid-template-columns:1fr 1fr;font-size:10px}
 }
 @media(min-width:1000px){#navigation-hint{bottom:90px}}
+
+.map-zoom-tools{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;gap:4px}.map-zoom-tools button{padding:5px 3px;font-size:11px}
+.marine-editor-link{display:block;text-decoration:none;color:#ffe1a3;border:1px solid #d4ad69;border-radius:9px;padding:10px;font-size:12px;text-align:center;background:#163f50}

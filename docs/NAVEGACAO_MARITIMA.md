@@ -1,7 +1,7 @@
 # Navegação marítima mobile
 
 Abra **Menu → Ir ao porto de Argent**. No cais, o botão grande passa a
-**Embarcar**. Toque nele para usar o Guppy; o joystick, WASD, câmera e toque
+**Embarcar**. Toque nele para usar o veleiro; o joystick, WASD, câmera e toque
 no mar controlam a embarcação. Ao chegar perto de uma margem livre, o mesmo
 botão mostra **Desembarcar**. O menu também oferece esse comando.
 
@@ -19,12 +19,14 @@ isso inicia o deslocamento normal, respeitando colisões. O mapa não calcula
 desvios automáticos: use o joystick para contornar obstáculos.
 
 Abrir o mapa pausa movimento e combate; fechar retoma um destino já ativo.
-A água usa azul profundo e ondulações discretas, com transparência na costa.
+Use os botões de zoom e arraste o mapa para explorar Garner inteiro.
+A água tem ondas, reflexos do céu/sol e espuma na costa.
 
-O casco e a textura são os originais do Guppy (`2004000000.lgo`), convertidos
-para um GLB de aproximadamente 144 KiB. A velocidade de 4,5 m/s e a altura
-de −0,1 m vêm de `shipinfo.txt`, `shipiteminfo.txt` e `characterinfo.txt`.
-Corrida não acelera o barco. O personagem e a sombra ficam ocultos no mar.
+O padrão é o Phantom Galley original ampliado para aproximadamente 12 m,
+com velas animadas e rastro de espuma. O Guppy permanece no editor. A
+velocidade padrão é 5,3 m/s e a altura é −0,1 m; o editor permite ajustar
+tamanho, velocidade e aparência. Corrida não acelera o barco. O personagem
+e a sombra ficam ocultos no mar. Veja [Marina Studio](MARINA_STUDIO.md).
 
 A navegação consulta a máscara LAND e os quatro subtiles de bloqueio do
 mapa, conforme `MapFile::sailableAt` do cliente C++. Não depende da altura
@@ -40,14 +42,14 @@ ao sair da página. Na reabertura, o barco só é restaurado em água válida.
 O último local em terra continua separado. **Voltar a Argent City**, no
 menu, mantém o teletransporte para terra como saída de emergência.
 
-A área disponível é o recorte mobile de Argent, de 512 × 512 tiles.
-Esta entrega não inclui combate naval, combustível, comércio ou outros
-mapas. O visual utiliza o casco original, sem novos componentes de barco.
+A área disponível é Garner original, de 4096 × 4096 tiles, carregado por
+setores. Esta entrega não inclui combate naval, combustível, comércio ou
+outros mapas. O tamanho do casco aumenta o espaço necessário para navegar.
 
 Para reconstruir o asset a partir do cliente:
 
 ```bash
-python3 scripts/build_mobile_boat.py /caminho/Client
+python3 scripts/build_mobile_boat.py /caminho/Client --all
 ```
 
 O exportador requer NumPy e Pillow, já usados pelos conversores existentes.

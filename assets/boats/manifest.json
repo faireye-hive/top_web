@@ -1,8 +1,11 @@
 {
-  "version": 1,
+  "version": 2,
   "id": 1,
   "name": "Guppy",
   "model": "assets/boats/guppy.glb",
+  "slug": "guppy",
+  "radius": 3.06,
+  "length": 4.795,
   "speed": 4.5,
   "seaLevel": -0.1,
   "sourceHull": "2004000000.lgo",
@@ -10,5 +13,42 @@
     "shipinfo.txt",
     "shipiteminfo.txt",
     "characterinfo.txt"
+  ],
+  "defaultBoat": "phantom-galley",
+  "boats": [
+    {
+      "version": 1,
+      "id": 1,
+      "name": "Guppy",
+      "model": "assets/boats/guppy.glb",
+      "slug": "guppy",
+      "radius": 3.06,
+      "length": 4.795,
+      "speed": 4.5,
+      "seaLevel": -0.1,
+      "sourceHull": "2004000000.lgo",
+      "sourceTables": [
+        "shipinfo.txt",
+        "shipiteminfo.txt",
+        "characterinfo.txt"
+      ]
+    },
+    {
+      "version": 1,
+      "id": 11,
+      "name": "Phantom Galley",
+      "model": "assets/boats/phantom-galley.glb",
+      "slug": "phantom-galley",
+      "radius": 2.119,
+      "length": 3.479,
+      "speed": 5.3,
+      "seaLevel": -0.1,
+      "sourceHull": "2000000000.lgo",
+      "sourceTables": [
+        "shipinfo.txt",
+        "shipiteminfo.txt",
+        "characterinfo.txt"
+      ]
+    }
   ]
 }

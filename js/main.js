@@ -25,6 +25,9 @@ import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat
 import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
 
 import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {createStreamedWorld} from './streamed-world.mjs?v=1';
+import {readMarineDesign,editedTile} from './marine-design.mjs?v=1';
+import {createSeaMaterial,decorateBoat,createBoatEffects,waveHeight} from './marine-visuals.mjs?v=1';
 import {createNavigationMarkers} from './navigation-markers.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
@@ -42,6 +45,9 @@ const mobileQuery=window.matchMedia('(pointer: coarse), (max-width: 780px), (ori
 let MOBILE_UI=mobileQuery.matches;
 document.body.classList.toggle('mobile-ui', MOBILE_UI);
 const ORIGIN = { x: 2218.5, z: 2776.5 };
+const launchParams=new URLSearchParams(location.search),spawnParts=(launchParams.get('spawn')||'').split(',').map(Number);
+const editorSpawn=spawnParts.length===2&&spawnParts.every(n=>Number.isFinite(n)&&n>=0&&n<4096)?{x:spawnParts[0],z:spawnParts[1]}:null;
+if(editorSpawn){ORIGIN.x=editorSpawn.x;ORIGIN.z=editorSpawn.z;}
 const CHUNK=64, RADIUS=3, STRIDE=7;
 const LOOK_H=1.15;
 const BODY_R=0.22;
@@ -114,7 +120,10 @@ const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .catch(()=>({version:1,profiles:{}}))
   .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
 const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
-let navigationContext=null,mapSelection=null;
+const marineDesign=readMarineDesign();
+const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
+let boatCatalog=null,boatDecoration=null;
+let navigationContext=null,mapSelection=null,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -139,6 +148,7 @@ const ambient=new THREE.DirectionalLight(0x9ad4e2,.3); ambient.position.set(40,3
 const brightness=attachBrightness({renderer, hemi, sun, fill:ambient, scene});
 const waypoint=createWaypoint(THREE, scene);
 const navigationMarkers=createNavigationMarkers(THREE,scene);
+const boatEffects=createBoatEffects(THREE,scene);
 let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
@@ -155,40 +165,7 @@ function writeAtlasUV(dest, offset, tileId, x, z){
 }
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
 // some quando o terreno está acima de −0,5 m, para a praia não ficar coberta.
-const seaMat=new THREE.ShaderMaterial({
-  transparent:true, depthWrite:false, toneMapped:true,
-  uniforms:{uTime:{value:0}},
-  vertexShader:`
-    attribute float aShore;
-    uniform float uTime;
-    varying float vShore;
-    varying vec2 vWorld;
-    void main(){
-      vShore=aShore;
-      vec3 p=position;
-      float wave=sin(p.x*0.72+uTime*1.35)*cos(p.z*0.58-uTime*1.05);
-      p.y+=wave*0.04*aShore;
-      vWorld=p.xz;
-      gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);
-    }`,
-  fragmentShader:`
-    uniform float uTime;
-    varying float vShore;
-    varying vec2 vWorld;
-    void main(){
-      float spark=sin(vWorld.x*1.6+uTime*0.8)*sin(vWorld.y*1.25-uTime*0.55);
-      vec3 deep=vec3(0.006,0.075,0.19);
-      vec3 crest=vec3(0.015,0.21,0.36);
-      vec3 col=mix(deep,crest,0.35+spark*0.18);
-      float glint=pow(max(spark,0.0),12.0)*0.025;
-      col+=vec3(0.10,0.22,0.28)*glint;
-      float alpha=smoothstep(0.0,0.72,vShore)*0.94;
-      if(alpha<0.015) discard;
-      gl_FragColor=vec4(col,alpha);
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-    }`
-});
+const seaMat=createSeaMaterial(THREE,marineDesign.water);
 const chunkMap=new Map();
 const objGroup=new THREE.Group();scene.add(objGroup);
 let sceneObjs3D=null;
@@ -214,11 +191,9 @@ function progress(amount,message){$('progressbar').style.width=`${amount}%`;if(m
 function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 window.addEventListener('resize',resize);resize();
 function getTile(x,z){
-  const ix=Math.floor(x)-world.ox, iz=Math.floor(z)-world.oz;
-  if(ix<0||iz<0||ix>=world.w||iz>=world.h)return null;
-  const i=20+(iz*world.w+ix)*STRIDE, v=world.dv;
-  return {tex:v.getUint8(i),height:v.getInt8(i+1)*.1,
-          rgb:v.getUint16(i+2,true),region:v.getUint16(i+4,true),blocks:v.getUint8(i+6)};
+  if(!world)return null;
+  const base=world.tileAt(x,z);
+  return editedTile(base,x,z,marineDesign);
 }
 function sampleHeight(x,z){
   const tile=getTile(x,z);if(!tile)return 0;
@@ -289,7 +264,7 @@ function writeNormal(out,offset,x,z){
 function buildChunk(cx,cz){
   const baseX=world.ox+cx*CHUNK,baseZ=world.oz+cz*CHUNK;
   const sideX=Math.min(CHUNK,world.w-cx*CHUNK),sideZ=Math.min(CHUNK,world.h-cz*CHUNK);
-  if(sideX<=0||sideZ<=0)return null;
+  if(sideX<=0||sideZ<=0||!world.hasArea(baseX+sideX/2,baseZ+sideZ/2,CHUNK/2+2))return null;
   const count=sideX*sideZ, positions=new Float32Array(count*12),normals=new Float32Array(count*12),colors=new Float32Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
   let j=0,ii=0,sea=false;
   for(let z=0;z<sideZ;z++)for(let x=0;x<sideX;x++){
@@ -348,6 +323,7 @@ function buildChunk(cx,cz){
 }
 function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
 function updateChunks(){
+  void world.focus(playerPos.x,playerPos.z,RADIUS*CHUNK+68).catch(error=>{console.warn('Setor de Garner:',error);});
   const cx=Math.floor((playerPos.x-world.ox)/CHUNK),cz=Math.floor((playerPos.z-world.oz)/CHUNK);
   const need=new Set();let created=0;
   for(let dz=-RADIUS;dz<=RADIUS;dz++)for(let dx=-RADIUS;dx<=RADIUS;dx++){
@@ -362,21 +338,15 @@ function updateChunks(){
   }}
   return created;
 }
-function mapPixels(){
-  const ctx=$('minimap').getContext('2d');
-  const img=ctx.createImageData(world.w,world.h);
-  for(let z=0;z<world.h;z++)for(let x=0;x<world.w;x++){
-    const color=mapTileColor(getTile(world.ox+x,world.oz+z)),at=(z*world.w+x)*4;
-    img.data[at]=color[0];img.data[at+1]=color[1];img.data[at+2]=color[2];img.data[at+3]=255;
-  }
-  return img;
-}
 let minimapBackground=null;
-function generateMinimap(){
-  const hidden=document.createElement('canvas');hidden.width=world.w;hidden.height=world.h;
-  hidden.getContext('2d').putImageData(mapPixels(),0,0);minimapBackground=hidden;
+async function generateMinimap(){
+  if(minimapBackground)return;
+  minimapBackground=await new Promise((resolve,reject)=>{
+    const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('Mapa geral indisponível'));img.src=world.manifest.overview;
+  });
 }
-function fullMapView(){return {x:world.ox,z:world.oz,w:world.w,h:world.h};}
+function fullMapView(){return mapView(world,mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2},mapOverviewSpan);}
+const localMapCanvas=document.createElement('canvas');localMapCanvas.width=localMapCanvas.height=96;
 function mapDot(ctx,point,color,label,full){
   const r=full?13:10;
   ctx.beginPath();ctx.arc(point.x,point.y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
@@ -392,7 +362,20 @@ function mapDot(ctx,point,color,label,full){
 function drawNavigationMap(canvas,view,full=false){
   const ctx=canvas.getContext('2d'),size=canvas.width;
   ctx.clearRect(0,0,size,size);ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(minimapBackground,view.x-world.ox,view.z-world.oz,view.w,view.h,0,0,size,size);
+  const ratioX=minimapBackground.width/world.w,ratioZ=minimapBackground.height/world.h;
+  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,size);
+  if(!full){
+    const local=localMapCanvas.getContext('2d'),image=local.createImageData(96,96);
+    for(let z=0;z<96;z++)for(let x=0;x<96;x++){
+      const t=getTile(view.x+(x+.5)/96*view.w,view.z+(z+.5)/96*view.h),color=mapTileColor(t),at=(z*96+x)*4;
+      image.data[at]=color[0];image.data[at+1]=color[1];image.data[at+2]=color[2];image.data[at+3]=255;
+    }
+    local.putImageData(image,0,0);ctx.drawImage(localMapCanvas,0,0,size,size);
+  }else for(const patch of mapEdits){
+    if(patch.x<view.x||patch.z<view.z||patch.x>view.x+view.w||patch.z>view.z+view.h)continue;
+    const color=mapTileColor({...getTile(patch.x,patch.z),...patch.tile});ctx.fillStyle=`rgb(${color.join(',')})`;
+    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*size,Math.max(1,size/view.w),Math.max(1,size/view.h));
+  }
   ctx.imageSmoothingEnabled=true;
   if(full){
     ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
@@ -438,8 +421,12 @@ function drawMinimap(){
     $('map-location').textContent=`Você: ${playerPos.x.toFixed(0)}, ${playerPos.z.toFixed(0)} · ${sailing?'no mar':'em terra'}`;
   }
 }
-function selectMapDestination(point){
-  mapSelection=point;
+async function selectMapDestination(point){
+  mapSelection=point;const revision=++mapSelectionRevision;
+  $('map-travel').disabled=true;$('map-selection-info').textContent='Carregando o terreno do destino…';
+  try{await world.ensureAround(point.x,point.z,boatRadius()+3);}
+  catch{$('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
+  if(revision!==mapSelectionRevision)return;
   const allowed=sailing?canSail(point.x,point.z):walkable(point.x,point.z);
   $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Destino marcado. Confirme para seguir.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
   $('map-travel').disabled=!allowed;
@@ -452,6 +439,7 @@ function openWorldMap(){
   document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
   mapSelection=null;$('map-travel').disabled=true;$('map-travel').textContent='Selecione um destino';
   $('map-selection-info').textContent='Selecione um ponto para traçar seu rumo.';
+  mapOverviewSpan=world.w;mapOverviewCenter=null;
   document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
 }
 function updateNavigationIndicators(){
@@ -466,7 +454,7 @@ function updateNavigationIndicators(){
   const target=destination||ARGENT_HARBOR;
   const bearing=Math.atan2(target.x-playerPos.x,target.z-playerPos.z);
   hint.style.setProperty('--bearing',`${(CAM.yaw-bearing)*180/Math.PI}deg`);
-  $('navigation-title').textContent=destination?(sailing?'Desembarque disponível':'Embarque no Guppy'):`Porto de Argent · ${Math.round(distance)} m`;
+  $('navigation-title').textContent=destination?(sailing?'Desembarque disponível':'Embarque no veleiro'):`Porto de Argent · ${Math.round(distance)} m`;
   $('navigation-detail').textContent=destination?'Siga a marca verde · toque aqui para '+(sailing?'desembarcar':'embarcar'):'Siga a seta dourada · toque para ver no mapa';
 }
 function clearObjectMarkers(){objectMeshes.forEach(m=>{objGroup.remove(m);m.dispose?.()});objectMeshes=[];objGroup.clear()}
@@ -536,6 +524,10 @@ function faceTravel(dx,dz,dt){
 }
 function teleport(x,z){
   stopCombat(true);
+  if(!world.hasArea(x,z,20)){
+    toast('Carregando o terreno do destino…');
+    void world.ensureAround(x,z,RADIUS*CHUNK+68).then(()=>{if(teleport(x,z)){document.body.classList.remove('mobile-settings-open');toast('Destino carregado.');}}).catch(()=>toast('Não foi possível carregar o destino.'));return false;
+  }
   x=THREE.MathUtils.clamp(x,world.ox+.01,world.ox+world.w-1.01);
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
@@ -567,7 +559,12 @@ function updateHUD(){
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
-function canSail(x,z){return !!world&&sailableAt(getTile,x,z);}
+function boatRadius(){
+  const profile=boatCatalog?.boats?.find(b=>b.slug===marineDesign.boat.hull);
+  return (profile?.radius||(marineDesign.boat.hull==='guppy'?3.06:2.119))*marineDesign.boat.scale;
+}
+function boardingReach(){return Math.min(28,Math.max(7,boatRadius()+6));}
+function canSail(x,z){return !!world&&sailableAt(getTile,x,z,boatRadius());}
 function canLand(x,z){
   if(!landableAt(getTile,x,z,BODY_R))return false;
   const height=footSurface(x,z,SEA_LEVEL+3.5);
@@ -581,11 +578,12 @@ function transferConnected(a,b){
 }
 async function loadBoat(){
   if(!boatReady)boatReady=(async()=>{
-    const response=await fetch('assets/boats/manifest.json?v=1');
+    const response=await fetch('assets/boats/manifest.json?v=2');
     if(!response.ok)throw new Error('Catálogo de barcos indisponível.');
-    const profile=await response.json();
+    boatCatalog=await response.json();
+    const profile=boatCatalog.boats.find(b=>b.slug===marineDesign.boat.hull)||boatCatalog.boats[0];
     const gltf=await new GLTFLoader().loadAsync(profile.model);
-    boatProfile=profile;boat=gltf.scene;boat.visible=false;scene.add(boat);
+    boatProfile={...profile,speed:marineDesign.boat.speed};boat=gltf.scene;boatDecoration=decorateBoat(THREE,boat,marineDesign.boat);boat.visible=false;scene.add(boat);
     return boat;
   })().catch(error=>{boatReady=null;throw error;});
   return boatReady;
@@ -601,7 +599,7 @@ function clearTravelInput(){
   document.dispatchEvent(new Event('topweb:menu-open'));
 }
 function setSailing(enabled,destination){
-  clearTravelInput();sailing=enabled;
+  clearTravelInput();boatEffects.reset();sailing=enabled;
   playerPos.set(destination.x,enabled?boatProfile.seaLevel:footSurface(destination.x,destination.z,SEA_LEVEL+3.5),destination.z);
   if(boat){boat.visible=enabled;boat.position.copy(playerPos);boat.rotation.y=avatar?.rotation.y||0;}
   if(avatar){avatar.visible=!enabled;avatar.position.copy(playerPos);}
@@ -625,13 +623,13 @@ async function toggleSeaTravel(){
     const current=primaryContext();
     if(current.type!=='embark'||hero.hp<=0||rpgHud?.isOpen())return false;
     setSailing(true,current.destination);
-    toast('Guppy · use o joystick ou toque no mar para navegar.');return true;
+    toast('Veleiro · use o joystick ou toque no mar para navegar.');return true;
   }catch(error){console.error('Barco:',error);toast('Não foi possível carregar o barco. Tente embarcar novamente.');return false;}
   finally{boardingBoat=false;}
 }
 function primaryContext(){
-  const boarding=!sailing&&!seated&&world?nearestPosition(playerPos,canSail,7,transferConnected):null;
-  const landing=sailing?nearestPosition(playerPos,canLand,7,transferConnected):null;
+  const boarding=!sailing&&!seated&&world?nearestPosition(playerPos,canSail,boardingReach(),transferConnected):null;
+  const landing=sailing?nearestPosition(playerPos,canLand,boardingReach(),transferConnected):null;
   return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,sailing,boarding,landing,
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
@@ -920,7 +918,7 @@ function updateCombatHud(){
     :combatAction?'Atacar manualmente':context.label);
   if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
   else button?.removeAttribute('aria-pressed');
-  if(sailing){$('combat-mode').textContent='Navegando · Guppy';$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
+  if(sailing){$('combat-mode').textContent='Navegando · '+(boatProfile?.name||'Veleiro');$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
   if(context.npc&&!sailing){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
   button?.classList.toggle('interaction-ready',!combatAction&&context.type!=='recovering');
   button?.classList.toggle('auto-mode-selected',autoAction);
@@ -933,28 +931,23 @@ function updateCombatHud(){
   $('mobile-run').disabled=sailing||boardingBoat;
   $('mobile-joystick').setAttribute('aria-label',sailing?'Joystick para navegar':'Joystick para caminhar');
   const seaButton=$('sea-travel');
-  seaButton.textContent=sailing?'Desembarcar':'Embarcar no Guppy';
+  seaButton.textContent=sailing?'Desembarcar':'Embarcar no veleiro';
   seaButton.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
-  $('sea-status').textContent=sailing?'Guppy · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
+  $('sea-status').textContent=sailing?'Veleiro · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
 
 }
 
 function showLoadingError(error){console.error(error);$('loadingmessage').textContent=`Erro: ${error?.message||error}`;$('loadinghint').textContent='Abra via http://localhost:8000 e verifique sua conexão com a internet.';$('retry').hidden=false;}
 async function fetchMap(){
-  const response=await fetch('assets/argent/region.gmap.gz');
-  if(!response.ok)throw new Error(`Não foi possível carregar o terreno (${response.status})`);
-  if(!('DecompressionStream' in window))throw new Error('Este navegador não oferece DecompressionStream(gzip). Atualize o Firefox/Chrome.');
-  const downloaded=await response.arrayBuffer();
-  const isGzip=new Uint8Array(downloaded,0,2);
-  const buffer=isGzip[0]===0x1f&&isGzip[1]===0x8b
-      ? await new Response(new Blob([downloaded]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
-      : downloaded;
-  const dv=new DataView(buffer);
-  if(String.fromCharCode(...new Uint8Array(buffer,0,4))!=='GNR1')throw new Error('Arquivo .gmap inválido');
-  const ox=dv.getUint32(4,true),oz=dv.getUint32(8,true),w=dv.getUint32(12,true),h=dv.getUint32(16,true);
-  if(buffer.byteLength!==20+w*h*STRIDE||w>4096||h>4096)throw new Error('Formato ou tamanho de mapa incorreto');
-  return {dv,ox,oz,w,h};
+  const streamed=await createStreamedWorld({onLoad:()=>{forceChunks=true;}});
+  let land=null,sea=null;
+  try{land=JSON.parse(getPref('topweb_garner_position','null'));sea=JSON.parse(getPref('topweb_sea_travel_v1','null'));}catch{}
+  const valid=(x,z)=>Number.isFinite(x)&&Number.isFinite(z)&&x>=0&&z>=0&&x<streamed.w&&z<streamed.h;
+  const focus=editorSpawn|| (Array.isArray(land)&&valid(land[0],land[1])?{x:land[0],z:land[1]}:ORIGIN);
+  await streamed.focus(focus.x,focus.z,RADIUS*CHUNK+68);
+  if(sea?.sailing&&valid(sea.x,sea.z))await streamed.ensureAround(sea.x,sea.z,RADIUS*CHUNK+68);
+  return streamed;
 }
 // Volumes do editor em sceneobjinfo (tipo ≠ 0). O cliente histórico não desenha
 // esses cubos: yyyy001 senta, yyyy002 encosta, vermelho bloqueia, azul é piso.
@@ -1142,10 +1135,10 @@ function indexScenePlaces(){
     const basis=yawBasis(yaw);
     const base=sampleHeight(rec[0],rec[1])+(rec[4]||0);
     if(role==='sit'||role==='lean'){
-      const mark={x:rec[0],z:rec[1],yaw,basis,role,base,minX:-0.55,maxX:0.55,minZ:-0.55,maxZ:0.55,file:key};
+      const mark={x:rec[0],z:rec[1],yaw,basis,role,base,rec,minX:-0.55,maxX:0.55,minZ:-0.55,maxZ:0.55,file:key};
       poseMarks.push(mark);pushCell(poseCells,mark.x,mark.z,mark);
     }else if(role==='solid'||role==='floor'){
-      const slab={x:rec[0],z:rec[1],yaw,basis,base,solid:role==='solid',top:0,minX:-0.5,maxX:0.5,minZ:-0.5,maxZ:0.5,file:key};
+      const slab={x:rec[0],z:rec[1],yaw,basis,base,rec,solid:role==='solid',top:0,minX:-0.5,maxX:0.5,minZ:-0.5,maxZ:0.5,file:key};
       (role==='solid'?solidSlabs:floorSlabs).push(slab);
       pushCell(slabCells,slab.x,slab.z,slab);
     }else if(role==='hide'){
@@ -1256,6 +1249,10 @@ function createSceneLibrary(gltf){
       modelGroups.set(name,{meshes,cap:records.length});
       buildWalk(name,meshes);
     }
+  }
+  for(const item of [...poseMarks,...floorSlabs,...solidSlabs,...walkPlaces]){
+    const offset=item.rec?.[4]||0;
+    Object.defineProperty(item,'base',{configurable:true,get(){return sampleHeight(item.x,item.z)+offset;}});
   }
   sceneStats.loaded=modelGroups.size;
   sceneStats.missing=positions.size-modelGroups.size;
@@ -1744,6 +1741,7 @@ window.__fx={
     const gl=renderer.getContext();
     return {
       player:[playerPos.x,playerPos.y,playerPos.z],
+      world:{width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -1780,13 +1778,13 @@ async function boot(){
       landMat.map=terrainAtlas;landMat.needsUpdate=true;
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
-    try{objects=await (await fetch('assets/argent/objects.json?v=1')).json()}catch{objects=[]}
+    try{objects=await (await fetch(world.manifest.objects)).json()}catch{objects=[]}
     indexEffects();
     try{objectCatalog=await (await fetch('assets/objects_catalog.json')).json()}catch{objectCatalog={}}
-    generateMinimap();
+    await generateMinimap();
     let saved=null;
     try{saved=JSON.parse(localStorage.getItem('topweb_garner_position')||'null')}catch{}
-    if(Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
+    if(!editorSpawn&&Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
        saved[0]>=world.ox&&saved[0]<world.ox+world.w&&saved[1]>=world.oz&&saved[1]<world.oz+world.h){
       ORIGIN.x=saved[0];ORIGIN.z=saved[1];
     }
@@ -1808,7 +1806,7 @@ async function boot(){
     updateEquipmentUi();
     progress(78,'Carregando biblioteca compartilhada de casas, árvores e objetos...');
     try {
-      const sceneGltf=await new GLTFLoader().loadAsync('assets/argent/modelos_cenario.glb');
+      const sceneGltf=await new GLTFLoader().loadAsync(world.manifest.scenery);
       createSceneLibrary(sceneGltf);
       updateSceneInstances(true);
     } catch (err) {
@@ -1836,7 +1834,9 @@ async function boot(){
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
-    const seaSaved=restoreSeaPosition(getPref('topweb_sea_travel_v1','null'),canSail);
+    const boatsResponse=await fetch('assets/boats/manifest.json?v=2');boatCatalog=await boatsResponse.json();
+    const savedSeaInput=editorSpawn?(launchParams.get('boat')==='1'?JSON.stringify({version:1,sailing:true,...editorSpawn}):'null'):getPref('topweb_sea_travel_v1','null');
+    const seaSaved=restoreSeaPosition(savedSeaInput,canSail);
     seaTravelReady=true;
     if(seaSaved){
       try{await loadBoat();setSailing(true,seaSaved);}
@@ -2011,7 +2011,15 @@ function update(dt){
     CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
   }
   playerPos.y=sailing?boatProfile.seaLevel:THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
-  if(boat&&sailing)boat.position.copy(playerPos);
+  if(boat&&sailing){
+    boat.position.copy(playerPos);
+    const time=seaMat.uniforms.uTime.value;
+    boat.position.y+=waveHeight(playerPos.x,playerPos.z,time,marineDesign.water.waves)*marineDesign.boat.bob;
+    boat.rotation.x=Math.sin(time*1.15)*.014*marineDesign.boat.bob;
+    boat.rotation.z=Math.sin(time*.9+.8)*.025*marineDesign.boat.bob;
+    boatDecoration?.update(time);
+  }
+  boatEffects.update(dt,playerPos,boat?.rotation.y||0,sailing,marineDesign.boat,boatProfile?.length||4.8);
   if(avatar)avatar.visible=!sailing;
   // Executar a cada frame, DEPOIS de mover o jogador e ANTES de posicionar a câmera.
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
@@ -2465,18 +2473,34 @@ $('world-map-dialog').addEventListener('click',e=>{
   const rect=e.currentTarget.getBoundingClientRect();
   if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();
 });
+let mapPan=null,mapPanned=false;
+$('world-map').addEventListener('pointerdown',e=>{const view=fullMapView();mapPanned=false;mapPan={x:e.clientX,y:e.clientY,view};e.currentTarget.setPointerCapture(e.pointerId);});
+$('world-map').addEventListener('pointermove',e=>{
+  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
+  mapPanned=true;const r=e.currentTarget.getBoundingClientRect(),v=mapPan.view;
+  mapOverviewCenter={x:v.x+v.w/2-(e.clientX-mapPan.x)/r.width*v.w,z:v.z+v.h/2-(e.clientY-mapPan.y)/r.height*v.h};drawMinimap();
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])$('world-map').addEventListener(event,()=>{mapPan=null;});
 $('world-map').addEventListener('click',e=>{
-  if(!world)return;const rect=e.currentTarget.getBoundingClientRect();
+  if(!world||mapPanned)return;const rect=e.currentTarget.getBoundingClientRect();
   selectMapDestination(unprojectMap((e.clientX-rect.left)/rect.width*768,(e.clientY-rect.top)/rect.height*768,fullMapView(),768));
 });
-$('map-harbor').addEventListener('click',()=>selectMapDestination(sailing?ARGENT_HARBOR_WATER:ARGENT_HARBOR));
+$('map-harbor').addEventListener('click',async()=>{
+  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
+  const point=sailing?nearestPosition(ARGENT_HARBOR_WATER,canSail,boardingReach()):ARGENT_HARBOR;
+  if(!point){toast('Carregue a região do porto para marcar uma chegada segura.');return;}
+  mapOverviewCenter=point;mapOverviewSpan=256;await selectMapDestination(point);
+});
+$('map-zoom-in').addEventListener('click',()=>{mapOverviewCenter=mapSelection||playerPos.clone();mapOverviewSpan=Math.max(96,mapOverviewSpan/2);drawMinimap();});
+$('map-zoom-out').addEventListener('click',()=>{mapOverviewSpan=Math.min(world.w,mapOverviewSpan*2);drawMinimap();});
+$('map-world').addEventListener('click',()=>{mapOverviewSpan=world.w;mapOverviewCenter=null;drawMinimap();});
 $('map-travel').addEventListener('click',()=>{
   if(!mapSelection)return;
   if(orderMove(mapSelection.x,mapSelection.z,null)){$('world-map-dialog').close();toast(sailing?'Rumo marcado no mar. A costa e bloqueios continuam valendo.':'Destino marcado. Use o joystick se o caminho estiver bloqueado.');}
 });
 $('navigation-hint').addEventListener('click',()=>{
   if(navigationContext?.destination)void toggleSeaTravel();
-  else{openWorldMap();if(mapIsOpen())selectMapDestination(sailing?ARGENT_HARBOR_WATER:ARGENT_HARBOR);}
+  else{openWorldMap();if(mapIsOpen())$('map-harbor').click();}
 });
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();CAM.dist+=Math.sign(e.deltaY)*1.4;clampCam();},{passive:false});

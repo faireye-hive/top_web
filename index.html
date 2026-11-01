@@ -139,8 +139,9 @@ font:600 12px system-ui,sans-serif}
    <label class="check"><input type="checkbox" id="wire"> Aramado do terreno</label>
    <label class="check"><input type="checkbox" id="noclip"> Ignorar bloqueios (exploração)</label>
    <div class="section">Navegação marítima</div>
+   <a class="marine-editor-link" href="tests/marine-editor.html" target="_blank" rel="noopener">⚒ Editor de mapa e barco</a>
    <button type="button" id="go-harbor">Ir ao porto de Argent</button>
-   <button type="button" id="sea-travel">Embarcar no Guppy</button>
+   <button type="button" id="sea-travel">Embarcar no veleiro</button>
    <div class="small" id="sea-status" role="status">No porto, aproxime-se da água e toque em Embarcar.</div>
    <button type="button" id="combat-training">Ir ao treino · Argent</button>
    <button id="reset">↺ Voltar a Argent City</button>
@@ -151,22 +152,23 @@ font:600 12px system-ui,sans-serif}
 </div>
 <div class="hud minimapbox panel">
  <div class="maptitle">ARREDORES <small>96 m</small></div>
- <button type="button" id="minimap-open" aria-label="Abrir mapa completo de Argent" aria-haspopup="dialog" aria-controls="world-map-dialog"><canvas id="minimap" class="mapcanvas" width="256" height="256" aria-label="Minimapa dos arredores"></canvas></button>
+ <button type="button" id="minimap-open" aria-label="Abrir mapa completo de Garner" aria-haspopup="dialog" aria-controls="world-map-dialog"><canvas id="minimap" class="mapcanvas" width="256" height="256" aria-label="Minimapa dos arredores"></canvas></button>
  <span class="map-north" aria-hidden="true">N</span>
  <button type="button" id="map-expand" aria-label="Expandir mapa" aria-haspopup="dialog" aria-controls="world-map-dialog">⛶ Mapa</button>
 </div>
 <button type="button" id="navigation-hint" hidden><span class="navigation-arrow" aria-hidden="true">↑</span><span><strong id="navigation-title"></strong><small id="navigation-detail"></small></span></button>
 <dialog id="world-map-dialog" aria-labelledby="world-map-title" aria-describedby="world-map-help">
- <header class="world-map-header"><div><h2 id="world-map-title">Mapa de Argent</h2><p id="world-map-help">Toque para marcar um destino · Norte para cima</p></div><button type="button" id="world-map-close" aria-label="Fechar mapa">×</button></header>
+ <header class="world-map-header"><div><h2 id="world-map-title">Mapa de Garner</h2><p id="world-map-help">Toque para marcar um destino · Norte para cima</p></div><button type="button" id="world-map-close" aria-label="Fechar mapa">×</button></header>
  <div class="world-map-layout">
-  <div class="world-map-surface"><canvas id="world-map" width="768" height="768" aria-label="Mapa completo da região de Argent, com porto e posição atual"></canvas></div>
+  <div class="world-map-surface"><canvas id="world-map" width="768" height="768" aria-label="Mapa original de Garner, com porto e posição atual"></canvas></div>
   <aside class="world-map-details">
    <p id="map-location"></p>
    <ul class="world-map-legend"><li><i class="player"></i>Você</li><li><i class="harbor"></i>Porto · embarque e desembarque</li><li><i class="landing"></i>Transferência disponível</li><li><i class="target"></i>Destino marcado</li></ul>
+   <div class="map-zoom-tools"><button type="button" id="map-zoom-out" aria-label="Afastar mapa">−</button><button type="button" id="map-world">Garner inteiro</button><button type="button" id="map-zoom-in" aria-label="Aproximar mapa">+</button></div>
    <button type="button" id="map-harbor">⚓ Marcar porto de Argent</button>
    <p id="map-selection-info" role="status">Selecione um ponto para traçar seu rumo.</p>
    <button type="button" id="map-travel" disabled>Selecione um destino</button>
-   <p class="map-region-note">Região mobile de Argent · 512 × 512 m. O minimapa acompanha seus arredores. O movimento respeita a costa e os bloqueios.</p>
+   <p class="map-region-note">Garner original · 4096 × 4096 m. Explore o continente e suas ilhas. O movimento respeita a costa e os bloqueios.</p>
   </aside>
  </div>
 </dialog>
@@ -279,7 +281,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=53"></script>
+<script type="module" src="./js/main.js?v=54"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

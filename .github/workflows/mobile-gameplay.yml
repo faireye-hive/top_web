@@ -8,6 +8,9 @@ on:
       - 'sw.js'
       - 'navigation-map.css'
       - 'assets/boats/**'
+      - 'assets/garner/**'
+      - 'tests/marine-editor.*'
+      - 'scripts/build_garner_stream.py'
       - 'scripts/build_mobile_boat.py'
       - '.github/workflows/mobile-gameplay.yml'
   push:
@@ -25,9 +28,9 @@ jobs:
       - name: Test mobile gameplay and published boat assets
         run: node --test tests/*.test.mjs
       - name: Check navigation syntax
-        run: node --check js/main.js && node --check js/sea-navigation.mjs && node --check js/navigation-map.mjs && node --check js/navigation-markers.mjs
+        run: node --check js/main.js && node --check js/sea-navigation.mjs && node --check js/navigation-map.mjs && node --check js/navigation-markers.mjs && node --check js/marine-visuals.mjs && node --check js/streamed-world.mjs && node --check js/marine-design.mjs && node --check tests/marine-editor.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Check boat exporter syntax
-        run: python -m py_compile scripts/build_mobile_boat.py
+        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py
