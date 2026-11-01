@@ -442,7 +442,16 @@ function drawNavigationMap(canvas,view,full=false){
   const sizeXY={width:size,height:mapHeight};
   ctx.clearRect(0,0,size,mapHeight);ctx.imageSmoothingEnabled=false;
   const ratioX=minimapBackground.width/world.w,ratioZ=minimapBackground.height/world.h;
-  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,mapHeight);
+  // Square Garner overview stays geometrically accurate inside a landscape
+  // viewport; uncovered sides are ocean, never distorted land pixels.
+  ctx.fillStyle='#0c3149';ctx.fillRect(0,0,size,mapHeight);
+  const bx=Math.max(world.ox,view.x),bz=Math.max(world.oz,view.z);
+  const ex=Math.min(world.ox+world.w,view.x+view.w);
+  const ez=Math.min(world.oz+world.h,view.z+view.h);
+  if(ex>bx&&ez>bz)ctx.drawImage(minimapBackground,
+    (bx-world.ox)*ratioX,(bz-world.oz)*ratioZ,(ex-bx)*ratioX,(ez-bz)*ratioZ,
+    (bx-view.x)/view.w*size,(bz-view.z)/view.h*mapHeight,
+    (ex-bx)/view.w*size,(ez-bz)/view.h*mapHeight);
   if(!full){
     const local=localMapCanvas.getContext('2d'),image=local.createImageData(96,96);
     for(let z=0;z<96;z++)for(let x=0;x<96;x++){
@@ -504,6 +513,11 @@ function drawMinimap(){
   }
 }
 async function selectMapDestination(point){
+  if(point.x<world.ox||point.z<world.oz||
+    point.x>=world.ox+world.w||point.z>=world.oz+world.h){
+    $('map-selection-info').textContent='Fora de Garner. Selecione um ponto dentro do mapa.';
+    return;
+  }
   mapSelection=point;mapSelectionValid=false;const revision=++mapSelectionRevision;
   $('map-travel').disabled=true;$('map-manual').disabled=true;
   $('map-clear').disabled=false;
@@ -2793,6 +2807,9 @@ $('minimap-open').addEventListener('click',openWorldMap);
 $('map-expand').addEventListener('click',openWorldMap);
 $('world-map-close').addEventListener('click',()=>$('world-map-dialog').close());
 $('world-map-dialog').addEventListener('close',()=>{
+  // Ignore asynchronous validation if the dialog was closed mid-fetch.
+  mapSelectionRevision++;
+  mapPointers.clear();mapPan=null;pinch=null;
   document.body.classList.remove('map-open');keys.clear();touchMove.forward=0;touchMove.sideways=0;
 });
 $('world-map-dialog').addEventListener('click',e=>{
@@ -2880,7 +2897,8 @@ $('map-zoom-out').addEventListener('click',()=>{
   mapZoomAt(r.left+r.width/2,r.top+r.height/2,2);
 });
 $('map-world').addEventListener('click',()=>{
-  mapOverviewSpan=world.h;mapOverviewCenter=null;drawMinimap();
+  mapOverviewSpan=Math.max(world.h,world.w/fullMapAspect());
+  mapOverviewCenter=null;drawMinimap();
 });
 $('map-manual').addEventListener('click',()=>{
   if(!mapSelection||!mapSelectionValid)return;
