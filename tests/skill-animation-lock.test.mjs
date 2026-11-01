@@ -53,7 +53,7 @@ test('mover durante skill não cancela cast nem inicia animação de corrida',()
   const loop=code.slice(start,end);
   assert.match(loop,/const manualMove=!skillAnimationLocked&&!!\(dx\|\|dz\|\|moverTarget\)/);
   assert.match(loop,/if\(skillAnimationLocked\)\{dx=0;dz=0;\}/);
-  assert.match(loop,/if\(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying/);
+  assert.match(loop,/if\(approach&&!skillAnimationLocked&&!attackPlaying/);
   assert.match(loop,/if\(!sailing&&!attackPlaying\)\{/);
   assert.match(code,/if\(skillAnimationLocked&&!force\)return/);
   assert.match(code,/if\(skillAnimationLocked\)\{toast\('Aguarde a animação da skill terminar.'\);return false;\}/);

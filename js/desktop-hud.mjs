@@ -129,7 +129,6 @@ export function initDesktopHud({onPrimary,onAuto,onTarget,onRest,onOpen,onMap,on
     $('desktop-player').setAttribute('aria-label',`${stats.name}, nível ${stats.level}. Abrir atributos (C)`);
     $('desktop-auto').setAttribute('aria-pressed',String(!!auto));
     for(const id of ['desktop-primary','desktop-auto','desktop-target','desktop-rest'])$(id).disabled=!!blocked;
-    if(sailing){$('desktop-auto').disabled=true;$('desktop-target').disabled=true;}
     $('desktop-primary').title=`${primaryLabel||context.label||'Atacar'} (Espaço)`;
     $('desktop-primary').setAttribute('aria-label',primaryLabel||context.label||'Atacar');
     const symbol=context.icon||'#ui-swords';

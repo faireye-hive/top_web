@@ -39,12 +39,13 @@ export function createMonsterPopulation({manifest,findSpawn,budget=monsterBudget
     m.status={};m.cooldown=0;m.deathTime=0;m.recoil=0;m.moving=false;m.x=m.home.x;m.z=m.home.z;m.offscreenAt=elapsed;
     if(m.hp>0)m.hp=m.maxHp;
   }
-  function sync(position,target,dt=0){
+  function sync(position,target,dt=0,{habitat=null}={}){
     elapsed+=dt;
     if(!streaming&&monsters.length)return;
     const candidates=streaming?query(position,budget.radius):manifest.spawns.map((s,id)=>({...s,id}));
+    if(habitat)candidates.sort((a,b)=>Number((manifest.species[b.species]?.habitat||'land')===habitat)-Number((manifest.species[a.species]?.habitat||'land')===habitat));
     // Alvo e inimigos em combate conservam sua vaga até deixar a vizinhança.
-    const keep=streaming?monsters.filter(m=>(m===target||m.engaged)&&Math.hypot(m.x-position.x,m.z-position.z)<budget.radius+20)
+    const keep=streaming?monsters.filter(m=>(!habitat||(m.habitat||'land')===habitat)&&(m===target||m.engaged)&&Math.hypot(m.x-position.x,m.z-position.z)<budget.radius+20)
       .sort((a,b)=>(b===target)-(a===target)||Math.hypot(a.x-position.x,a.z-position.z)-Math.hypot(b.x-position.x,b.z-position.z))
       .slice(0,budget.limit):[];
     const desired=new Set(keep.map(m=>m.id));

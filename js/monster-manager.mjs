@@ -70,15 +70,13 @@ export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true
       monster.mixer.addEventListener('finished',event=>{
         if(event.action===monster.action&&monster.hp>0)play(monster,monster.moving?'Correr':'Parado');
       });
-      // O combate naval ainda não existe; criaturas do mar são visuais e
-      // não entram na seleção nem atacam o herói em terra.
-      group.add(monster.object);monster.ready=monster.habitat!=='sea';play(monster,'Parado');
+      group.add(monster.object);monster.ready=true;play(monster,'Parado');
     }catch(error){if(monster.loadVersion===version)monster.failed=true;console.warn('Modelo de monstro indisponível:',monster.model,error);}
     finally{loading--;if(monster.loadVersion===version)monster.pending=false;evict();}
   }
-  function update(dt,position,target,{paused=false}={}) {
+  function update(dt,position,target,{paused=false,habitat='land'}={}) {
     syncTime+=dt;if(!paused)simulationTime+=dt;
-    if(syncTime>=.5){population.sync(position,target,simulationTime);simulationTime=0;syncTime=0;evict();}
+    if(syncTime>=.5){population.sync(position,target,simulationTime,{habitat});simulationTime=0;syncTime=0;evict();}
     for(const m of monsters) {
       const near=Math.hypot(m.x-position.x,m.z-position.z)<budget.radius;
       if(near&&!m.object&&!m.pending&&!m.failed&&loading<budget.loads)void load(m);
@@ -104,8 +102,8 @@ export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true
     if(event.type==='kill'){m.deathTime=1.1;play(m,'Morte',true,1);}
     if(event.type==='respawn'||event.type==='reset'){m.deathTime=0;m.recoil=0;play(m,'Parado');}
   }
-  function pick(raycaster){
-    const candidates=monsters.filter(m=>m.object?.visible&&m.ready&&m.hp>0);
+  function pick(raycaster,{habitat='land'}={}){
+    const candidates=monsters.filter(m=>m.object?.visible&&m.ready&&m.hp>0&&(m.habitat||'land')===habitat);
     const hits=raycaster.intersectObjects(candidates.map(m=>m.object),true);
     if(!hits.length)return null;
     for(const m of candidates){let object=hits[0].object;while(object){if(object===m.object)return m;object=object.parent;}}

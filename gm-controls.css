@@ -4,3 +4,4 @@
 #gm-tools output{flex:1 1 100%;font-size:12px;font-variant-numeric:tabular-nums}
 #settings #gm-tools button{flex:1;min-width:80px;min-height:44px;font-size:12px;touch-action:manipulation}
 #gm-test-note{font-size:11px;line-height:1.5;margin:4px 0 12px;color:#b7ced6;overflow-wrap:anywhere}
+.refinement-summary{font-size:10px;color:#efb27e;line-height:1.4}

@@ -60,6 +60,10 @@ O campo opcional `textureData` contém uma imagem PNG/JPG/WebP em data URL; evit
 
 ## Efeitos de refino futuros
 
+**Atualização:** o jogo já possui refino +0 a +13 com aura vermelha/dourada,
+faíscas e filamentos que acompanham as armas. É uma camada visual independente
+dos ajustes de material deste editor. Veja [refino no jogo](COMBATE_NAVAL_E_REFINO.md).
+
 **Esta primeira etapa prepara os materiais.** Para efeitos históricos verdadeiros, investigar
 as definições `.eff`, `.par`, pontos de attachment e critérios por nível de refino no Client original. O brilho emissivo atual é apenas preview de material: não foi inventado como réplica dos efeitos de +1 a +13.
 

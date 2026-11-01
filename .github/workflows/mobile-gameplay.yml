@@ -9,6 +9,7 @@ on:
       - 'navigation-map.css'
       - 'development-ui.css'
       - 'gm-controls.css'
+      - 'naval-combat.css'
       - 'rpg-hud.css'
       - 'arena.css'
       - 'desktop-hud.css'
@@ -51,6 +52,8 @@ jobs:
         run: python scripts/verify_mobile_assets.py
       - name: Check combat and pet syntax
         run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/monster-population.mjs && node --check js/gm-controls.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
+      - name: Check naval progression and refinement syntax
+        run: node --check js/boat-state.mjs && node --check js/naval-combat.mjs && node --check js/naval-effects.mjs && node --check js/refinement-rules.mjs && node --check js/refinement-effects.mjs
       - name: Check camera and inventory UI syntax
         run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs && node --check js/desktop-hud.mjs
       - name: Check tower syntax

@@ -1,4 +1,4 @@
-import {refreshHero,practiceKey,PRACTICES} from './hero-state.mjs?v=5';
+import {refreshHero,practiceKey,PRACTICES} from './hero-state.mjs?v=6';
 
 // Usa as mesmas faixas aceitas pelo save e pela progressão normal.
 export function gmRaiseHero(hero,amount){

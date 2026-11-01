@@ -60,6 +60,14 @@ test('pontos sem terreno são tentados novamente; alvo em combate mantém vaga',
   p.sync({x:2,z:0},target);assert.equal(p.monsters[0],target);
   p.sync({x:500,z:500},target);assert.equal(p.monsters.length,0);assert.equal(target.engaged,false);
 });
+test('ao embarcar, criaturas do mar têm prioridade sobre inimigos terrestres mais próximos',()=>{
+  const manifest={streaming:true,species:{land:{...type,habitat:'land'},sea:{...type,habitat:'sea'}},
+    spawns:[{species:'land',x:1,z:0},{species:'land',x:2,z:0},{species:'sea',x:12,z:0},{species:'sea',x:14,z:0}]};
+  const p=createMonsterPopulation({manifest,findSpawn:free,budget:{limit:2,radius:55}});
+  p.sync({x:0,z:0},null,0,{habitat:'land'});p.monsters.forEach(m=>m.engaged=true);
+  p.sync({x:0,z:0},null,0,{habitat:'sea'});assert.equal(p.monsters.length,2);
+  assert.ok(p.monsters.every(m=>m.habitat==='sea'));
+});
 test('sair e voltar não revive um monstro antes de seu respawn original',()=>{
   const p=createMonsterPopulation({manifest:data([{x:1,z:0,respawnSeconds:120}]),findSpawn:free});
   p.sync({x:0,z:0});const m=p.monsters[0];m.hp=0;m.respawnIn=120;m.pending=true;

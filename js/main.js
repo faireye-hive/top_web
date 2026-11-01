@@ -8,16 +8,20 @@ import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=10';
-import {initDesktopHud} from './desktop-hud.mjs';
+import {initDesktopHud} from './desktop-hud.mjs?v=2';
 import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
-import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=5';
-import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=8';
+import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement } from './hero-state.mjs?v=6';
+import {createRefinementEffects} from './refinement-effects.mjs';
+import { resolvePrimaryAction } from './context-action.mjs?v=4';
+import { createCombat, COMBAT } from './combat-state.mjs?v=9';
+import {createNavalCombat} from './naval-combat.mjs';
+import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel} from './boat-state.mjs';
+import {createNavalEffects} from './naval-effects.mjs';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
-import { createMonsterManager } from './monster-manager.mjs?v=5';
-import {initGmControls} from './gm-controls.mjs';
+import { createMonsterManager } from './monster-manager.mjs?v=6';
+import {initGmControls} from './gm-controls.mjs?v=2';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
 import {initArenaUi} from './arena-ui.mjs';
@@ -143,6 +147,7 @@ let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null,cameraHeadHeight=1.55;
 let attackPlaying=false, testing=false;
 let rpgHud=null, desktopHud=null, gmControls=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
+let landCombat=null,navalCombat=null;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -173,6 +178,9 @@ const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
 const saveHero=()=>isArenaMap?setArenaSession(ARENA_HERO_KEY,serializeHero(hero)):setPref('topweb_hero_v2',serializeHero(hero));
 const marineDesign=readMarineDesign();
+const boatProgressKey=`topweb_boat_progress_v1_${marineDesign.boat.hull}`;
+const ship=restoreBoat(getPref(boatProgressKey,'null'),marineDesign.boat.hull);
+const saveBoat=()=>{if(!isArenaMap)setPref(boatProgressKey,serializeBoat(ship));};
 const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
 let boatCatalog=null,boatDecoration=null;
 let navigationContext=null,mapSelection=null,mapSelectionValid=false,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
@@ -183,6 +191,8 @@ const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
 const mobileCameraFocus=playerPos.clone();
 const scene=new THREE.Scene();
+const navalEffects=createNavalEffects({THREE,scene,mobile:()=>MOBILE_UI});
+const refinementEffects=createRefinementEffects({THREE,scene});
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
@@ -663,7 +673,7 @@ function teleport(x,z){
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
   desktopHud?.closeSettings();
-  if(sailing){sailing=false;if(boat)boat.visible=false;if(avatar)avatar.visible=true;shadow.visible=true;saveSeaTravel();}
+  if(sailing){sailing=false;combat=landCombat;document.body.classList.remove('sailing-mode');if(boat)boat.visible=false;if(avatar)avatar.visible=true;shadow.visible=true;saveSeaTravel();saveBoat();}
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
@@ -747,6 +757,7 @@ function clearTravelInput(){
 }
 function setSailing(enabled,destination){
   clearTravelInput();boatEffects.reset();sailing=enabled;
+  combat=enabled?navalCombat:landCombat;document.body.classList.toggle('sailing-mode',enabled);
   playerPos.set(destination.x,enabled?boatProfile.seaLevel:footSurface(destination.x,destination.z,SEA_LEVEL+3.5),destination.z);
   if(boat){boat.visible=enabled;boat.position.copy(playerPos);boat.rotation.y=avatar?.rotation.y||0;}
   if(avatar){avatar.visible=!enabled;avatar.position.copy(playerPos);}
@@ -756,8 +767,8 @@ function setSailing(enabled,destination){
   updateHUD();updateCombatHud();drawMinimap();
 }
 async function toggleSeaTravel(){
-  if(!world||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||rpgHud?.isOpen())return false;
-  const context=primaryContext();
+  if(!world||boardingBoat||hero.hp<=0||sailing&&ship.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||rpgHud?.isOpen())return false;
+  const context=sailing?resolvePrimaryAction({sailing:true,landing:nearestPosition(playerPos,canLand,boardingReach(),transferConnected)}):primaryContext();
   if(context.type==='disembark'){
     setSailing(false,context.destination);toast('Em terra. Boa exploração!');return true;
   }
@@ -778,14 +789,15 @@ async function toggleSeaTravel(){
 function primaryContext(){
   const boarding=!isArenaMap&&!sailing&&!seated&&world?nearestPosition(playerPos,canSail,boardingReach(),transferConnected):null;
   const landing=sailing?nearestPosition(playerPos,canLand,boardingReach(),transferConnected):null;
-  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,sailing,boarding,landing,
+  return resolvePrimaryAction({recovering:hero.hp<=0||sailing&&ship.hp<=0,seated:!!seated,sailing,naval:true,
+    navalTarget:!!combat?.target||!!combat?.manualActive||!!combat?.auto,boarding,landing,
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
   if(changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
   const context=primaryContext();
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
-  if(context.type==='attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
+  if(context.type==='attack'||context.type==='naval-attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
   return tryPose();
 }
 function tryPose(){
@@ -877,7 +889,7 @@ function selectMobileAutoMode(){
 }
 function toggleAutoAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0||sailing&&ship.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto){
     combat.toggle(); // Desativa auto, mas conserva alvo para o ataque manual.
@@ -893,7 +905,7 @@ function toggleAutoAttack(){
 }
 function manualAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0||sailing&&ship.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto)return false; // O botão grande é exclusivamente manual.
   const fired=combat.manualAttack(playerPos);
@@ -901,6 +913,7 @@ function manualAttack(){
   return fired;
 }
 function clearAvatar(){
+  refinementEffects.setAvatar(null,null);
   weaponHolster?.dispose();weaponHolster=null;
   mixer?.stopAllAction();if(avatar)mixer?.uncacheRoot(avatar);
   if(!avatar)return;
@@ -944,6 +957,7 @@ async function loadCharacter(id){
     // as mesmas texturas, emissive e cor das espadas empunhadas.
     if(hero.equipped)applyWeaponAppearance(THREE,avatar,id,hero.job,weaponMaterialProfiles);
     weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
+    refinementEffects.setAvatar(avatar,weaponHolster);
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
     skillActionQueue=[];
@@ -1055,20 +1069,56 @@ function combatEvent(event){
   }
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
 }
+function navalEvent(event){
+  combatFeedback.emit(event);monsterManager?.onEvent(event);desktopHud?.recordCombat(event);
+  if(event.type==='notice')toast(event.message);
+  if(event.type==='swing'||event.type==='monster-swing'){
+    navalEffects.fire(event,playerPos);
+    if(event.type==='swing'&&boat)boat.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
+  }
+  if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP do barco${event.levels?' · Barco nível '+ship.level+'!':''}`);
+  if(event.type==='hurt')$('combat-feedback').textContent=event.damage?`Casco atingido: −${event.damage} HP.`:'O barco esquivou.';
+  if(event.type==='hit')$('combat-feedback').textContent=event.damage?`Canhão: −${event.damage} HP em ${event.monster.name}.`:'O alvo esquivou.';
+  if(event.type==='defeat'){navalEffects.update(0,{active:false});toast('Barco afundado. Resgate no porto em 5 segundos…');}
+  if(event.type==='revive'){teleport(ARGENT_HARBOR.x,ARGENT_HARBOR.z);toast('Barco recuperado no porto. Nível e XP preservados.');}
+  if(['hit','hurt','kill','defeat','revive','repaired'].includes(event.type))saveBoat();
+}
+function navalReachable(a,b){
+  const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.5));
+  for(let i=0;i<=steps;i++)if(!sailableAt(getTile,a.x+(b.x-a.x)*i/steps,a.z+(b.z-a.z)*i/steps,.3))return false;
+  return true;
+}
+function updateNavalHud(){
+  const stats=boatSnapshot(ship,boatProfile?.name),hud=$('naval-hud');hud.hidden=!sailing;
+  const write=(id,value)=>{if($(id).textContent!==value)$(id).textContent=value;};
+  write('naval-name',`${stats.name} · Nv. ${ship.level}`);
+  write('naval-hp',`${stats.hp} / ${stats.maxHp} HP`);write('naval-xp',`XP ${stats.xp}`);
+  write('naval-state',ship.hp<=0?'Resgate no porto…':navalCombat?.inCombat?'Em combate':ship.hp<ship.stats.maxHp?'Reparando casco · +4% HP/s':'Casco íntegro');
+  $('naval-hp-fill').style.width=`${100*ship.hp/ship.stats.maxHp}%`;
+  const [xp,maxXp]=stats.xp.split('/').map(Number);$('naval-xp-fill').style.width=`${100*xp/maxXp}%`;
+  for(const [id,value,max] of [['naval-hp-meter',stats.hp,stats.maxHp],['naval-xp-meter',xp,maxXp]]){
+    $(id).setAttribute('aria-valuemin','0');$(id).setAttribute('aria-valuemax',String(max));$(id).setAttribute('aria-valuenow',String(value));
+  }
+  write('gm-boat-level',`Barco · nível ${ship.level} / 100`);
+  for(const button of document.querySelectorAll('[data-gm-boat]'))button.disabled=isArenaMap||!world||boardingBoat||changingCharacter||changingLoadout||skillAnimationLocked||ship.level>=100;
+  write('gm-refinement-level',hero.equipped?`Refino +${currentRefinement(hero)} / +13 · +${2*currentRefinement(hero)} ataque`:'Equipe uma arma na Bolsa para refinar');
+  for(const button of document.querySelectorAll('[data-gm-refinement]'))button.disabled=isArenaMap||!hero.equipped||sailing||!world||boardingBoat||changingCharacter||changingLoadout||skillAnimationLocked||
+    (button.dataset.gmRefinement==='0'?currentRefinement(hero)===0:currentRefinement(hero)>=13);
+}
 function updateCombatHud(){
   const snapshot=heroSnapshot(hero);
   gmControls?.update({arena:isArenaMap,blocked:!world||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||boardingBoat});
   rpgHud?.setStats(snapshot);
   rpgHud?.setCombatState({cooldowns:combat?.cooldowns||{},mp:hero.mp});
-  const target=combat?.target;
+  const target=combat?.target,defeated=hero.hp<=0||sailing&&ship.hp<=0;
   // No mobile, abrir o painel de combate somente quando há alvo
   // ou um ataque ativo; esconder o card vazio devolve espaço ao mundo.
   const combatPanel=document.querySelector('.combat-panel');
   if(combatPanel)combatPanel.dataset.mobileActive=String(
     !!target||!!combat?.auto||!!combat?.manualActive);
-  $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:(MOBILE_UI?'Toque num monstro ou use Alvo':'Clique num monstro ou use T');
+  $('combat-target').textContent=target?`${target.name}${target.level?' · Nv. '+target.level:''} · ${target.hp} / ${target.maxHp} HP`:(MOBILE_UI?'Toque num monstro ou use Alvo':'Clique num monstro ou use T');
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
-  $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
+  $('combat-mode').textContent=defeated?'Recuperando…':combat?.auto
     ?(target?'Auto · combatendo':'Auto · procurando alvo')
     :combat?.manualActive
       ?(target?'Manual · atacando um alvo':'Manual · aguardando alvo')
@@ -1078,7 +1128,7 @@ function updateCombatHud(){
   desktopAuto?.classList.toggle('auto-active',!!combat?.auto);
   const autoModeButton=$('mobile-auto');
   if(autoModeButton){
-    autoModeButton.disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+    autoModeButton.disabled=boardingBoat||defeated||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
     autoModeButton.setAttribute('aria-pressed',String(mobileAutoModeEnabled));
     autoModeButton.setAttribute('aria-label',mobileAutoModeEnabled?'Usar ataque manual':'Usar ataque automático no botão grande');
     autoModeButton.classList.toggle('auto-active',mobileAutoModeEnabled);
@@ -1088,13 +1138,16 @@ function updateCombatHud(){
   navigationHeights.harbor=footSurface(ARGENT_HARBOR.x,ARGENT_HARBOR.z,3.5);
   navigationHeights.destination=context.destination&&sailing?footSurface(context.destination.x,context.destination.z,3.5):0;
   $('boat-view-controls').hidden=!sailing||!!rpgHud?.isOpen();
-  const combatAction=context.type==='attack';
+  const combatAction=context.type==='attack'||context.type==='naval-attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
   button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
     :combatAction?(combat?.manualActive?'Atacando até derrotar o alvo':'Atacar um monstro até derrotá-lo'):context.label);
   if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
   else button?.removeAttribute('aria-pressed');
-  if(sailing){$('combat-mode').textContent='Navegando · '+(boatProfile?.name||'Veleiro');$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
+  if(sailing){
+    $('combat-mode').textContent=(defeated?'Resgate em andamento':navalCombat?.inCombat?'Combate naval':ship.hp<ship.stats.maxHp?'Recuperando casco':'Pronto para navegar')+' · '+(boatProfile?.name||'Guppy');
+    if(!target)$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Use Alvo e Canhão para combater no mar.';
+  }
   if(context.npc&&!sailing){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
   button?.classList.toggle('interaction-ready',!combatAction&&context.type!=='recovering');
   button?.classList.toggle('auto-mode-selected',autoAction);
@@ -1102,21 +1155,24 @@ function updateCombatHud(){
   button?.classList.remove('manual-unavailable');
   const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
   const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':combat?.manualActive?'Atacando':'Atacar'):context.label;
-  if(button)button.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
-  $('mobile-target').disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  if(label&&sailing&&combatAction)label.textContent=mobileAutoModeEnabled?'Auto':combat?.manualActive?'Atirando':'Canhão';
+  if(button)button.disabled=boardingBoat||defeated||changingCharacter||changingLoadout;
+  $('mobile-target').disabled=boardingBoat||defeated||changingCharacter||changingLoadout;
   $('mobile-run').disabled=sailing||boardingBoat;
   $('mobile-joystick').setAttribute('aria-label',sailing?'Joystick para navegar':'Joystick para caminhar');
   const seaButton=$('sea-travel');
   seaButton.textContent=sailing?'Desembarcar':'Embarcar no veleiro';
-  seaButton.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
-  $('sea-status').textContent=sailing?'Veleiro · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
+  seaButton.disabled=boardingBoat||defeated||changingCharacter||changingLoadout;
+  $('sea-status').textContent=sailing?'Alvo seleciona monstros marinhos; Canhão ataca. Fora de combate, o casco recupera HP após 6 s.':'No porto, aproxime-se da água e toque em Embarcar.';
+  $('sea-disembark').disabled=!sailing||defeated||!nearestPosition(playerPos,canLand,boardingReach(),transferConnected);
+  updateNavalHud();
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
   if(isArenaMap){
     $('equipment-toggle').disabled=true;$('hero-character').disabled=true;$('hero-class').disabled=true;
     if(arenaRun&&monsterManager)arenaUi?.update(arenaRun,monsterManager.monsters);
   }
-  desktopHud?.update({stats:snapshot,position:playerPos,context,target,auto:combat?.auto,sailing,
-    blocked:boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||!!arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'),
+  desktopHud?.update({stats:sailing?boatSnapshot(ship,boatProfile?.name):snapshot,position:playerPos,context,target,auto:combat?.auto,sailing,
+    blocked:boardingBoat||defeated||changingCharacter||changingLoadout||skillAnimationLocked||!!arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'),
     character:hero.character,map:isArenaMap?'teampk':'garner',primaryLabel:label?.textContent});
 
 }
@@ -2014,6 +2070,7 @@ async function chooseArenaAttribute(attribute){
     teleport(ARENA_SPAWN.x,ARENA_SPAWN.z);
     await monsterManager.replaceWave(arenaWave(arenaRun.floor));
     combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
+    landCombat=combat;
     arenaUi.update(arenaRun,monsterManager.monsters);rpgHud.setStats(heroSnapshot(hero));
     toast(`Andar ${arenaRun.floor} · ${monsterManager.monsters.length} Forest Spirits`);arenaTransition=false;
   }catch(error){console.error('Horda da Torre:',error);toast('Falha ao carregar a horda. Recarregue para tentar este andar novamente.');}
@@ -2095,6 +2152,8 @@ async function boot(){
         return null;
       }});
       combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
+      landCombat=combat;
+      if(!isArenaMap)navalCombat=createNavalCombat({ship,monsters:monsterManager.monsters,canReach:navalReachable,canSee:navalReachable,onEvent:navalEvent});
       if(isArenaMap)await monsterManager.prepare();
     }catch(error){if(isArenaMap)throw error;console.warn('Monstros indisponíveis:',error);toast('Não foi possível carregar os monstros de Garner.');}
     try{
@@ -2123,7 +2182,7 @@ async function boot(){
       if(arenaRun.phase==='choice')arenaUi.showChoice(arenaRun,hero);
       else toast(`Torre da Provação · Andar ${arenaRun.floor}`);
     }
-    if(sceneObjs3D&&!isArenaMap)toast(MOBILE_UI?'Biblioteca original 3D carregada. Botão direito gira a câmera.':'Argent City · WASD para mover · botão direito para girar a câmera.');
+    if(sceneObjs3D&&!isArenaMap)toast(sailing?'Navegando · use Alvo e Canhão para combater; XP e HP são do barco.':MOBILE_UI?'Biblioteca original 3D carregada. Botão direito gira a câmera.':'Argent City · WASD para mover · botão direito para girar a câmera.');
     if(!isArenaMap&&launchParams.has('arenaResult')){
       setPref('topweb_garner_position',JSON.stringify([playerPos.x,playerPos.z]));
       toast(launchParams.get('arenaResult')==='defeat'?`Tentativa encerrada no andar ${launchParams.get('arenaFloor')}. De volta à Arena Administrator.`:'De volta à Arena Administrator.');
@@ -2203,17 +2262,18 @@ function update(dt){
     }
   }
   const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
-  combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
+  landCombat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
+  navalCombat?.update(dt,playerPos,{active:sailing,paused:combatPaused,moving:manualMove});
   if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
     saveArenaRun();clearTravelInput();arenaUi.showChoice(arenaRun,hero);
   }
   let chasing=false;
   const target=combat?.target;
   const approach=combat?.approach;
-  if(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
+  if(approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
     dx=approach.target.x-playerPos.x;dz=approach.target.z-playerPos.z;chasing=true;
   }
-  if(hero.hp<=0||changingCharacter||combatPaused||arenaRun&&arenaRun.phase!=='fighting'){dx=0;dz=0;}
+  if(hero.hp<=0||sailing&&ship.hp<=0||changingCharacter||combatPaused||arenaRun&&arenaRun.phase!=='fighting'){dx=0;dz=0;}
   const wish=Math.hypot(dx,dz);
   let actuallyMoving=false;
   if(seated && seated.role==='sit' && runningAction && !currentClip.toLowerCase().includes('sentado')){
@@ -2331,6 +2391,7 @@ function update(dt){
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
   if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
+  refinementEffects.update(performance.now()/1000,camera,currentRefinement(hero),{mobile:MOBILE_UI,hidden:sailing||!hero.equipped});
   if(navigationGoal){
     const direction=guidanceDirection(playerPos,navigationGoal);
     if(!direction||direction.distance<.8){
@@ -2352,7 +2413,8 @@ function update(dt){
     // Throttled by NPC manager (mobile <= 8 updates/s).
     npcManager.updateLabels(camera,renderer.domElement,playerPos.x,playerPos.z,MOBILE_UI);
   }
-  monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused||sailing});
+  monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused,habitat:sailing?'sea':'land'});
+  navalEffects.update(dt,{paused:combatPaused,active:sailing});
   combatFeedback.update(); // camera already positioned, labels follow current 3D actors
   petManager?.update(dt,playerPos,{paused:combatPaused});
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
@@ -2519,7 +2581,7 @@ rpgHud=initRpgHud({
 rpgHud.setStats(heroSnapshot(hero));
 desktopHud=initDesktopHud({
   onPrimary:primaryAction,onAuto:toggleAutoAttack,
-  onTarget:()=>{if(!sailing&&!boardingBoat)combat?.cycleTarget(playerPos);},
+  onTarget:()=>{if(!boardingBoat)combat?.cycleTarget(playerPos);},
   onRest:()=>$('idle').click(),onOpen:tab=>rpgHud.open(tab),onMap:openWorldMap,
   onPause:()=>{clearTravelInput();stopCombat();rpgHud?.dismiss();},
   canOpen:()=>!skillAnimationLocked&&!changingCharacter&&!changingLoadout&&!arenaUi?.blocked()&&!arenaTransition&&!mapIsOpen()
@@ -2561,7 +2623,7 @@ $('hero-class').addEventListener('change',e=>{const value=e.target.value;void ch
   selectClass(hero,value);
 });});
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
-$('mobile-target').addEventListener('click',()=>{if(!sailing&&!boardingBoat&&!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
+$('mobile-target').addEventListener('click',()=>{if(!boardingBoat&&!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
 $('mobile-auto').addEventListener('click',selectMobileAutoMode);
 $('boat-camera-mode').value=boatViewMode;
 $('boat-view-toggle').textContent=BOAT_CAMERA_LABELS[boatViewMode];
@@ -2572,6 +2634,7 @@ $('sea-travel').addEventListener('click',()=>{
   document.body.classList.remove('mobile-settings-open');
   $('mobile-settings')?.setAttribute('aria-expanded','false');void toggleSeaTravel();
 });
+$('sea-disembark').addEventListener('click',()=>void toggleSeaTravel());
 $('go-harbor').addEventListener('click',()=>{
   if(!world||hero.hp<=0||boardingBoat||changingCharacter||changingLoadout)return;
   if(teleport(ARGENT_HARBOR.x,ARGENT_HARBOR.z)){
@@ -2585,6 +2648,17 @@ $('combat-training').addEventListener('click',()=>{
     toast('Arredores de Argent · monstros da região original.');
   }
 });
+$('naval-training').addEventListener('click',async()=>{
+  if(isArenaMap||!world||boardingBoat||hero.hp<=0||ship.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked)return;
+  boardingBoat=true;clearTravelInput();
+  try{
+    await loadBoat();await world.ensureAround(2336.9,2909.2,96);
+    const destination=nearestPosition({x:2336.9,z:2909.2},canSail,16);
+    if(!destination){toast('Sem espaço para este casco na região. Reduza a escala no editor.');return;}
+    setSailing(true,destination);saveBoat();toast('Mar de Garner · use Alvo e Canhão. A XP recebida evolui seu barco.');
+  }catch(error){console.error('Destino naval:',error);toast('Não foi possível carregar o destino naval.');}
+  finally{boardingBoat=false;}
+});
 gmControls=initGmControls({hero,
   canUse:()=>!!world&&!isArenaMap&&hero.hp>0&&!changingCharacter&&!changingLoadout&&!skillAnimationLocked&&!boardingBoat,
   onChange:message=>{
@@ -2593,8 +2667,17 @@ gmControls=initGmControls({hero,
     saveHero();updateCombatHud();toast(`GM · ${message}`);
   }
 });
-window.addEventListener('blur',()=>{stopCombat();saveHero();});
-window.addEventListener('pagehide',()=>{saveHero();if(world)saveSeaTravel();});
+for(const button of document.querySelectorAll('[data-gm-boat]'))button.addEventListener('click',()=>{
+  if(isArenaMap||!world||boardingBoat||changingCharacter||changingLoadout||skillAnimationLocked)return;
+  if(raiseBoatLevel(ship,Number(button.dataset.gmBoat))){saveBoat();updateCombatHud();toast(`GM · Barco nível ${ship.level}`);}
+});
+for(const button of document.querySelectorAll('[data-gm-refinement]'))button.addEventListener('click',()=>{
+  if(isArenaMap||!hero.equipped||sailing||!world||boardingBoat||changingCharacter||changingLoadout||skillAnimationLocked)return;
+  const value=Number(button.dataset.gmRefinement),level=value===1?Math.min(13,currentRefinement(hero)+1):value;
+  if(setRefinement(hero,level)){saveHero();updateCombatHud();toast(`GM · Refino +${level} · brilho e partículas da arma atualizados`);}
+});
+window.addEventListener('blur',()=>{stopCombat();saveHero();saveBoat();});
+window.addEventListener('pagehide',()=>{saveHero();saveBoat();if(world)saveSeaTravel();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCombat();});
 
 $('colormode').addEventListener('change',e=>{colorMode=e.target.value;landMat.map=colorMode==='textured'?terrainAtlas:null;landMat.needsUpdate=true;clearChunks();updateChunks();generateMinimap();drawMinimap();});
@@ -2996,8 +3079,8 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(moved>7)return;
   _aim.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);
   _caster.setFromCamera(_aim,camera);
-  const monster=monsterManager?.pick(_caster);
-  if(!sailing&&monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
+  const monster=monsterManager?.pick(_caster,{habitat:sailing?'sea':'land'});
+  if(monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
   if(showMarkers){
     const hits=_caster.intersectObjects(objectMeshes,false);
     if(hits.length){const hit=hits[0],rec=hit.object.userData.records?.[hit.instanceId];
@@ -3020,6 +3103,7 @@ setInterval(()=>{
   if(world&&playerPos&&Number.isFinite(playerPos.x))try{
     if(!seaTravelReady)return;
     saveSeaTravel();
+    saveBoat();
     if(!isArenaMap&&!sailing)localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}

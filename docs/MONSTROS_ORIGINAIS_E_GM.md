@@ -11,7 +11,8 @@ Os modelos, texturas e animações vêm do Client. HP, ataque médio, defesa, ac
 esquiva, velocidade e nível vêm do CharacterInfo. O combate continua usando as
 fórmulas web; XP recebida é `10 + 3 × nível do monstro`. As plantas com ataque zero
 não revidam. IA 10 inicia combate por proximidade; os demais inimigos revidam.
-Criaturas marinhas são visuais: o sistema de combate naval ainda não existe.
+Criaturas marinhas participam do [combate naval](COMBATE_NAVAL_E_REFINO.md),
+com seleção, canhões, retaliação e XP própria do barco.
 Eventos e criações adicionais por scripts de servidor não são executados.
 
 ## Celular e desktop
