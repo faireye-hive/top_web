@@ -21,7 +21,7 @@ import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrat
 import {initArenaUi} from './arena-ui.mjs';
 import { createPetManager } from './pet-manager.mjs?v=1';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs?v=5';
+import { createNpcManager } from './npc-manager.mjs?v=6';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
@@ -2270,7 +2270,12 @@ function update(dt){
   if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
-  if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
+  if(npcManager){
+    npcManager.update(dt,playerPos.x,playerPos.z);
+    // Update readable NPC names after the camera has been positioned.
+    // Throttled by NPC manager (mobile <= 8 updates/s).
+    npcManager.updateLabels(camera,renderer.domElement,playerPos.x,playerPos.z,MOBILE_UI);
+  }
   monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused||sailing});
   petManager?.update(dt,playerPos,{paused:combatPaused});
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
