@@ -4,6 +4,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,POSE_STATES,POSE_DEFAULTS,profileKey,poseProfile,
   parsePoseProfiles,readPoseProfiles,savePoseProfiles,selectPoseName,weaponDefaults,
   availableBones} from '../js/pose-studio-runtime.mjs?v=6';
+import {readWeaponMaterialProfiles,applyWeaponAppearance} from '../js/weapon-materials.mjs?v=2';
 import {weaponBankForJob,catalogForActor,filterHistoricalActions,historicalAction,actionNumber,ACTION_CATEGORIES,
   missingHistoricalActions,missingActionReportText,HISTORICAL_LAB_BY_ACTOR} from '../js/pose-action-catalog.mjs?v=2';
 
@@ -23,6 +24,7 @@ const controls=new OrbitControls(camera,panel);controls.target.set(0,1,0);
 controls.enableDamping=true;controls.enablePan=false;controls.minDistance=1;controls.maxDistance=20;controls.update();
 let model=null,mixer=null,clips=[],action=null,holster=null,skeletonHelper=null;
 let equipment=null,store={version:1,profiles:{}},profile=null,selectedState='idle';
+let weaponMaterialStore={version:1,profiles:{}};
 let historicalCatalog=null,selectedHistoricalId=null;
 let selectedPart='weapon-0',playing=true,loading=0,clock=new THREE.Clock();
 function status(msg){$('status').textContent=msg;}
@@ -327,6 +329,8 @@ async function loadCharacter(){
   mixer=new THREE.AnimationMixer(model);
   profile=poseProfile(store,actor,job);
   ensureProfile();
+  if($('equipped').checked)
+    applyWeaponAppearance(THREE,model,actor,job,weaponMaterialStore);
   holster=$('equipped').checked?new WeaponHolster(THREE,model,job,profile,actor):null;
   skeletonHelper=new THREE.SkeletonHelper(model);skeletonHelper.visible=$('skeleton').checked;scene.add(skeletonHelper);
   $('stow').checked=profile.stowOnIdle!==false;
@@ -500,10 +504,11 @@ $('file').onchange=async()=>{
 };
 (async()=>{
  try{
-  const [resModel,resPoses,resCatalog]=await Promise.all([
+  const [resModel,resPoses,resCatalog,resWeapons]=await Promise.all([
     fetch('assets/equipment/manifest.json?v=1'),
     fetch('assets/poses/overrides.json?v=1'),
-    fetch('assets/poses/historical-catalog.json?v=1')
+    fetch('assets/poses/historical-catalog.json?v=1'),
+    fetch('assets/weapons/overrides.json?v=2')
   ]);
   if(!resModel.ok)throw Error('manifest.json de equipamentos indisponível');
   equipment=await resModel.json();
@@ -511,6 +516,8 @@ $('file').onchange=async()=>{
   historicalCatalog=await resCatalog.json();
   const shipped=resPoses.ok?await resPoses.json():{version:1,profiles:{}};
   store=readPoseProfiles(globalThis.localStorage,shipped);
+  weaponMaterialStore=readWeaponMaterialProfiles(globalThis.localStorage,
+    resWeapons.ok?await resWeapons.json():{version:1,profiles:{}});
   updateJobs();await loadCharacter();
  }catch(e){console.error(e);status('Não foi possível iniciar: '+e.message);}
 })();
