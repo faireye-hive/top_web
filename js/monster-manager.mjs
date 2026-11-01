@@ -13,7 +13,10 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     if(!type||!/^models\/[\w-]+\.glb$/.test(type.model))return [];
     const free=findSpawn(spawn.x,spawn.z);
     if(!free)return [];
-    return [{...type,id:index,species:spawn.species,x:free[0],z:free[1],hp:type.maxHp,
+    const patrol=(spawn.route||[]).flatMap(point=>{
+      const p=findSpawn(point[0],point[1]);return p?[{x:p[0],z:p[1]}]:[];
+    });
+    return [{...type,id:index,species:spawn.species,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
       ready:false,object:null,mixer:null,pending:false,failed:false,action:null}];
   });
   const ring=new THREE.Mesh(new THREE.RingGeometry(.8,.93,32),
@@ -24,6 +27,7 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
     const clip=monster.clips.find(c=>c.name.includes(match));
     if(!clip)return;
     const action=monster.mixer.clipAction(clip);
+    if(!once&&monster.action===action&&action.isRunning())return;
     if(monster.action&&monster.action!==action)monster.action.fadeOut(.12);
     action.reset().setEffectiveWeight(1).setEffectiveTimeScale(period?clip.duration/period:1).fadeIn(.12);
     action.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
@@ -41,28 +45,38 @@ export async function createMonsterManager({scene,heightAt,findSpawn,url='assets
       monster.object.position.set(monster.x,heightAt(monster.x,monster.z),monster.z);
       monster.object.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
       monster.clips=gltf.animations;monster.mixer=new THREE.AnimationMixer(monster.object);
-      monster.mixer.addEventListener('finished',()=>play(monster,'Parado'));
+      monster.mixer.addEventListener('finished',event=>{
+        if(event.action===monster.action&&monster.hp>0)play(monster,monster.moving?'Correr':'Parado');
+      });
       group.add(monster.object);monster.ready=true;play(monster,'Parado');
     }catch(error){monster.failed=true;console.warn('Modelo de monstro indisponível:',monster.model,error);}
     finally{monster.pending=false;}
   }
-  function update(dt,position,target) {
+  function update(dt,position,target,{paused=false}={}) {
     for(const m of monsters) {
       const near=Math.hypot(m.x-position.x,m.z-position.z)<45;
       if(near&&!m.object&&!m.pending&&!m.failed)void load(m);
       if(!m.object)continue;
-      m.object.visible=near&&m.hp>0;
+      if(!paused){m.deathTime=Math.max(0,(m.deathTime||0)-dt);m.recoil=Math.max(0,(m.recoil||0)-dt);}
+      m.object.visible=near&&(m.hp>0||m.deathTime>0);
       if(m.object.visible) {
-        if(m.engaged)m.object.rotation.y=Math.atan2(m.x-position.x,m.z-position.z);
-        m.mixer.update(dt);
+        if(m.engaged&&!m.moving)m.object.rotation.y=Math.atan2(m.x-position.x,m.z-position.z);
+        else if(m.moving)m.object.rotation.y=m.facing;
+        const recoil=m.hp>0?Math.sin((m.recoil||0)/.18*Math.PI)*.12:0;
+        m.object.position.set(m.x+Math.sin(m.object.rotation.y)*recoil,heightAt(m.x,m.z),m.z+Math.cos(m.object.rotation.y)*recoil);
+        if(m.hp>0&&(!m.action||m.action.loop!==THREE.LoopOnce))play(m,m.moving?'Correr':'Parado');
+        if(!paused)m.mixer.update(dt);
       }
     }
     ring.visible=!!target?.object&&target.hp>0;
     if(ring.visible)ring.position.set(target.x,heightAt(target.x,target.z)+.08,target.z);
   }
   function onEvent(event) {
-    if(event.type==='hurt')play(event.monster,'Ataque 1',true,1/event.monster.attackSpeed);
-    if(event.type==='respawn'||event.type==='reset')play(event.monster,'Parado');
+    const m=event.monster;
+    if(event.type==='monster-swing')play(m,'Ataque 1',true,event.period*.85);
+    if((event.type==='hit'||event.type==='skillhit')&&event.damage>0)m.recoil=.18;
+    if(event.type==='kill'){m.deathTime=1.1;play(m,'Morte',true,1);}
+    if(event.type==='respawn'||event.type==='reset'){m.deathTime=0;m.recoil=0;play(m,'Parado');}
   }
   function pick(raycaster){
     const candidates=monsters.filter(m=>m.object?.visible&&m.hp>0);

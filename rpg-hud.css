@@ -67,3 +67,50 @@ body.mobile-ui .rpg-item-slot{border-radius:8px}
 }
 @media(max-width:365px){body.mobile-ui .rpg-skill-hotbar{gap:4px}body.mobile-ui .rpg-skill-hotbar button{width:42px;height:42px}}
 @media(prefers-reduced-motion:reduce){.rpg-skill-hotbar button{transition:none}}
+
+/* As três Bolsas compartilham os mesmos itens, seleção e atributos reais. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.bag-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.bag-toolbar h3{margin:0 0 3px;font-size:15px;text-transform:none;letter-spacing:0}
+.bag-caption,.bag-toolbar label{font-size:11px;color:#acc7ce}
+.bag-toolbar label{display:flex;align-items:center;gap:7px;max-width:58%}
+.bag-toolbar select,.bag-filters select,.bag-search input{min-height:44px;width:100%;font-size:13px}
+.bag-workspace{display:grid;gap:12px;min-width:0}
+.bag-hero{padding:12px;background:#0a202bd9;border:1px solid #8baea13b;border-radius:12px;min-width:0}
+.bag-hero-title{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.bag-hero-title>strong{font-size:16px;color:#ffe6ac}.bag-hero-title>span{font-size:11px;color:#bbd2d8}
+.bag-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 6px;margin:12px 0}
+.bag-stats div{min-width:0}.bag-stats dt{font-size:11px;color:#a7c4cd}.bag-stats dd{font-size:14px;color:#f4eddc;margin:3px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bag-practice{border-top:1px solid #b2c5aa2b;padding-top:9px;font-size:12px;color:#dac792}.bag-practice small{display:inline-block;margin-left:9px;color:#b5cad0}
+.bag-pet{display:flex;gap:7px;align-items:center;margin-top:8px;font-size:12px;color:#c8d3fa}.bag-pet small{font-size:10px;color:#a1cbbe}
+.bag-content{min-width:0}.bag-filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-bottom:10px;align-items:center}.bag-filters label{min-width:0}
+.bag-search input{background:#091f2c;border:1px solid #647e7b;border-radius:9px;color:#edf7fa;padding:8px 10px;min-width:0}
+.bag-search input::placeholder{color:#a1bbc3}.bag-filters select{padding:7px}
+.bag-content .rpg-inventory-grid{grid-template-columns:repeat(auto-fill,minmax(44px,56px))}
+.bag-content .rpg-item-slot{min-height:44px;min-width:44px;touch-action:manipulation}
+.rpg-item-slot[aria-pressed="true"]{border-color:#9ce4cc;outline:2px solid #9ce4cc;outline-offset:1px;background:#1d4b50}
+.bag-item-label,.bag-item-state{display:none}.bag-equipped-marker{position:absolute;right:4px;top:2px;font-size:11px;color:#b5f9da}
+.bag-detail{padding:11px;margin:12px 0;border:1px solid #a0ba996b;background:#132d36;border-radius:10px;font-size:12px;overflow-wrap:anywhere}
+.bag-detail strong{color:#ffe7ae;display:block}.bag-detail p{margin:6px 0;color:#b7cdd3}.bag-detail>span{color:#a9d3c7;font-size:11px}
+.bag-detail[hidden],.rpg-info-note[hidden]{display:none!important}
+.bag-content #equipment-toggle{width:100%;min-height:44px}.bag-equipment-info{margin-top:10px;font-size:12px;color:#b9cdd0}.bag-equipment-info summary{min-height:44px;display:flex;align-items:center;text-decoration:underline;cursor:pointer}
+body .rpg-panel[data-bag-layout="split"][data-active-tab="inventory"]{width:min(780px,calc(100vw - 24px))}
+.rpg-panel[data-bag-layout="split"] .bag-workspace{grid-template-columns:180px minmax(0,1fr);gap:14px;height:clamp(170px,calc(100dvh - 220px),440px)}
+.rpg-panel[data-bag-layout="split"] .bag-hero,.rpg-panel[data-bag-layout="split"] .bag-content{overflow-y:auto;overscroll-behavior:contain;min-height:0}
+.rpg-panel[data-bag-layout="split"] .bag-content{padding:3px 4px}
+.rpg-panel[data-bag-layout="split"] .bag-hero-title{display:grid;gap:4px}
+.rpg-panel[data-bag-layout="split"] .bag-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 9px}.rpg-panel[data-bag-layout="split"] .bag-pet{display:grid;gap:3px}
+.rpg-panel[data-bag-layout="list"] .rpg-inventory-grid{grid-template-columns:1fr;gap:7px}
+.rpg-panel[data-bag-layout="list"] .rpg-item-slot{aspect-ratio:auto;display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:auto auto;gap:3px 9px;text-align:left;padding:9px 13px;min-height:62px}
+.rpg-panel[data-bag-layout="list"] .rpg-item-slot:disabled{display:none}
+.rpg-panel[data-bag-layout="list"] .rpg-item-icon{grid-column:1;grid-row:1/3;font-size:25px;text-align:center}
+.rpg-panel[data-bag-layout="list"] .bag-item-label{display:block;grid-column:2;font-size:12px;overflow-wrap:anywhere;padding-right:8px}
+.rpg-panel[data-bag-layout="list"] .bag-item-state{display:block;grid-column:2;font-size:11px;color:#adc7cd}
+body.mobile-ui .bag-search input{font-size:16px}
+@media(max-width:600px){
+ .rpg-panel[data-bag-layout="split"] .bag-workspace{grid-template-columns:1fr;height:auto}
+ .rpg-panel[data-bag-layout="split"] .bag-hero,.rpg-panel[data-bag-layout="split"] .bag-content{overflow:visible}
+ .rpg-panel[data-bag-layout="split"] .bag-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .bag-toolbar{align-items:start;gap:7px}.bag-toolbar label{max-width:55%}.bag-toolbar select{max-width:100%;font-size:12px;padding:6px}
+}
+@media(max-width:370px){.bag-content .rpg-inventory-grid{grid-template-columns:repeat(4,minmax(44px,1fr))}.bag-toolbar{display:grid}.bag-toolbar label{max-width:100%}}

@@ -7,12 +7,15 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
-import { initRpgHud } from './rpg-hud.mjs?v=5';
+import { initRpgHud } from './rpg-hud.mjs?v=6';
+import {heroInventory} from './inventory-view.mjs';
+import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=4';
-import { createMonsterManager } from './monster-manager.mjs?v=2';
+import { createCombat, COMBAT } from './combat-state.mjs?v=5';
+import { createMonsterManager } from './monster-manager.mjs?v=3';
+import { createPetManager } from './pet-manager.mjs?v=1';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
@@ -79,11 +82,39 @@ let cameraFollowTarget=null;
 let mobileOrbitYaw=CAM.yaw,mobileOrbitLift=CAM.lift;
 let seatFacingReversed=getPref('topweb_seat_reverse','1')!=='0';
 let visualMode=getPref('topweb_visual_mode','classic');
+let cameraFraming=cameraFramingValue(getPref('topweb_camera_framing_v1','0'));
 function manualCamera(){cameraManualUntil=performance.now()+2500}
 function clampCam(){
-  CAM.dist=THREE.MathUtils.clamp(Number.isFinite(CAM.dist)?CAM.dist:15,3.2,22);
+  CAM.dist=landCameraDistance(CAM.dist);
   CAM.lift=THREE.MathUtils.clamp(Number.isFinite(CAM.lift)?CAM.lift:1.85,1.35,2.4);
+  syncCameraDistance();
 }
+function syncCameraDistance(){
+  syncCameraFraming();
+  const slider=$('camera-proximity'),label=$('camera-proximity-value');
+  const value=String(Math.round(cameraProximityValue(CAM.dist)));
+  if(slider&&slider.value!==value)slider.value=value;
+  if(slider)slider.disabled=sailing;
+  if($('camera-proximity-reset'))$('camera-proximity-reset').disabled=sailing;
+  const text=CAM.dist<.85?'Quase 1ª pessoa':`${CAM.dist<3.2?'Vista próxima':'Vista atual'} · ${CAM.dist.toFixed(1)} m`;
+  if(label&&label.textContent!==text)label.textContent=text;
+}
+function syncCameraFraming(){
+  const slider=$('camera-framing'),label=$('camera-framing-value');
+  if(slider){const value=String(cameraFraming);if(slider.value!==value)slider.value=value;slider.disabled=sailing;}
+  if($('camera-framing-reset'))$('camera-framing-reset').disabled=sailing;
+  const text=cameraFraming===0?'Atual':`${cameraFraming>0?'Mais abaixo':'Mais acima'} · ${Math.round(Math.abs(cameraFraming)*.25)}%`;
+  if(label&&label.textContent!==text)label.textContent=text;
+}
+function applyCameraFraming(){
+  const value=sailing?0:cameraFraming;
+  if(value===0){if(camera.view?.enabled)camera.clearViewOffset();return;}
+  const offset=cameraFramingOffset(value,innerHeight),view=camera.view;
+  if(!view?.enabled||view.fullWidth!==innerWidth||view.fullHeight!==innerHeight||view.offsetY!==offset)
+    camera.setViewOffset(innerWidth,innerHeight,0,offset,innerWidth,innerHeight);
+}
+function saveCameraDistance(){setPref('topweb_garner_camera',JSON.stringify({yaw:CAM.yaw,dist:CAM.dist,lift:CAM.lift}));}
+function zoomCamera(delta){CAM.dist=(sailing?Math.max(3.2,CAM.dist):CAM.dist)+delta;clampCam();saveCameraDistance();}
 // Único lugar que constrói o referencial da câmera. O olho é colocado com este
 // mesmo vetor; o movimento não recalcula o yaw com outro sin/cos.
 const _fwd=new THREE.Vector3(), _right=new THREE.Vector3();
@@ -98,9 +129,9 @@ const touchMove={sideways:0,forward:0};
 let touchRunning=false;
 let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, objectCatalog={};
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
-let headBone=null, tailBone=null;
+let headBone=null, tailBone=null,cameraHeadHeight=1.55;
 let attackPlaying=false, testing=false;
-let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
+let rpgHud=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -194,7 +225,7 @@ const tintRGB=new Float32Array(3);
 let lastToast=0;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');lastToast=performance.now();}
 function progress(amount,message){$('progressbar').style.width=`${amount}%`;if(message)$('loadingmessage').textContent=message;}
-function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
+function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;applyCameraFraming();camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 window.addEventListener('resize',resize);resize();
 function getTile(x,z){
   if(!world)return null;
@@ -498,6 +529,7 @@ function updateObjectMarkers(){
 function placeCamera(){
   const cameraPivot=MOBILE_UI?mobileCameraFocus:playerPos;
   clampCam();
+  applyCameraFraming();
   if(sailing&&boatViewMode!=='classic'){
     // Na proa, seguir o casco sem atraso evita entrar nele em alta velocidade.
     const boatPivot=boatViewMode==='bow'?playerPos:cameraPivot;
@@ -507,24 +539,33 @@ function placeCamera(){
     _look.set(boatPivot.x+pose.look.x,boatPivot.y+pose.look.y,boatPivot.z+pose.look.z);
     _eye.y=Math.max(_eye.y,sampleHeight(_eye.x,_eye.z)+.7);
     if(Math.abs(camera.fov-pose.fov)>.05){camera.fov=pose.fov;camera.updateProjectionMatrix();}
+    if(camera.near!==.3){camera.near=.3;camera.updateProjectionMatrix();}
     camera.position.copy(_eye);camera.lookAt(_look);return;
   }
-  const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
-  const desiredFov=cameraFovAtDistance(CAM.dist);
+  const pose=landCameraPose({distance:sailing?Math.max(3.2,CAM.dist):CAM.dist,lift:CAM.lift,headHeight:cameraHeadHeight});
+  const desiredFov=pose.fov;
   if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
+  const near=pose.distance<3.2?.06:.3;
+  if(camera.near!==near){camera.near=near;camera.updateProjectionMatrix();}
   const {fwd}=cameraBasis();
-  _look.set(cameraPivot.x,cameraPivot.y+LOOK_H,cameraPivot.z);
-  let dist=CAM.dist;
-  const eyeY=cameraPivot.y+CAM.dist*pitch;
+  // Perto do rosto, seguir a posição real evita que o atraso mobile atravesse o avatar.
+  const blend=THREE.MathUtils.clamp((3.2-pose.distance)/2,0,1);
+  const px=THREE.MathUtils.lerp(cameraPivot.x,playerPos.x,blend),pz=THREE.MathUtils.lerp(cameraPivot.z,playerPos.z,blend);
+  const py=THREE.MathUtils.lerp(cameraPivot.y,playerPos.y,blend);
+  _look.set(px+fwd.x*pose.lookAhead,py+pose.lookHeight,pz+fwd.z*pose.lookAhead);
+  let dist=pose.distance;
+  const eyeY=py+pose.eyeHeight;
   const steps=12;
   for(let i=1;i<=steps;i++){
     const t=i/steps;
-    const x=_look.x-fwd.x*CAM.dist*t;
-    const z=_look.z-fwd.z*CAM.dist*t;
+    const x=THREE.MathUtils.lerp(_look.x,px-fwd.x*pose.distance,t);
+    const z=THREE.MathUtils.lerp(_look.z,pz-fwd.z*pose.distance,t);
     const y=_look.y+(eyeY-_look.y)*t;
-    if(sampleHeight(x,z)+.55>y){dist=Math.max(2.4,CAM.dist*(i-1)/steps);break;}
+    if(sampleHeight(x,z)+(pose.distance<3.2?.4:.55)>y){dist=Math.max(Math.min(2.4,pose.distance),pose.distance*(i-1)/steps);break;}
   }
-  _eye.set(_look.x-fwd.x*dist,cameraPivot.y+dist*pitch,_look.z-fwd.z*dist);
+  const eyeHeight=pose.distance>=3.2?dist*cameraLiftAtDistance(CAM.lift,pose.distance):pose.eyeHeight;
+  _eye.set(px-fwd.x*dist,py+eyeHeight,pz-fwd.z*dist);
+  _eye.y=Math.max(_eye.y,sampleHeight(_eye.x,_eye.z)+.4);
   camera.position.copy(_eye);
   camera.lookAt(_look);
 }
@@ -815,6 +856,8 @@ async function loadCharacter(id){
       else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
+    const headY=headBone?.getWorldPosition(new THREE.Vector3()).y-playerPos.y;
+    cameraHeadHeight=Number.isFinite(headY)&&headY>.6&&headY<2.5?headY:({ami:.9,carsise:1.9,phyllis:1.5,lance:1.55}[id]);
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;cityCombatUntil=0;
     await Promise.all([poseProfilesReady,weaponMaterialsReady]);
     activePoseProfile=poseProfile(poseProfiles,id,hero.job);
@@ -919,7 +962,10 @@ function combatEvent(event){
   if(event.type==='hit'){saveHero();if(event.improved)toast('Sua prática de ataque melhorou!');}
   if(event.type==='kill')saveHero();
   if(event.type==='hit'&&feedback)feedback.textContent=event.damage?`${event.monster.name}: −${event.damage} HP`:'O alvo esquivou.';
-  if(event.type==='hurt'&&feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
+  if(event.type==='hurt'){
+    extendCityCombatPose();
+    if(feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
+  }
   if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
   if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
@@ -1813,7 +1859,14 @@ window.__fx={
       cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
       cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
       resources:renderResources(),
+      pet:petManager?.diagnostics()||null,
+      combat:{hp:hero.hp,auto:combat?.auto,target:combat?.target?.id,
+        monsters:(monsterManager?.monsters||[]).map(m=>({id:m.id,x:m.x,z:m.z,hp:m.hp,ready:m.ready,
+          engaged:!!m.engaged,motion:m.motion,moving:!!m.moving,home:m.home,animation:m.action?.getClip().name}))},
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
+      landCamera:{headHeight:cameraHeadHeight,near:camera.near,avatarVisible:avatar?.visible,
+        framing:cameraFraming,subjectScreenY:(1-new THREE.Vector3(playerPos.x,playerPos.y+LOOK_H,playerPos.z).project(camera).y)/2,
+        proximity:cameraProximityValue(CAM.dist),look:[_look.x,_look.y,_look.z]},
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
       batches:batches.slice(0,8)
@@ -1904,6 +1957,10 @@ async function boot(){
       }});
       combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
     }catch(error){console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
+    try{
+      petManager=await createPetManager({scene,camera});
+      petManager.update(0,playerPos);
+    }catch(error){console.error('Mordo Jr indisponível:',error);toast('Não foi possível carregar o Mordo Jr. Recarregue para tentar novamente.');}
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
@@ -2093,7 +2150,7 @@ function update(dt){
     boatDecoration?.update(time);
   }
   boatEffects.update(dt,playerPos,boat?.rotation.y||0,sailing,marineDesign.boat,boatProfile?.length||4.8);
-  if(avatar)avatar.visible=!sailing;
+  if(avatar)avatar.visible=!sailing&&!landCameraPose({distance:CAM.dist}).hideAvatar;
   // Executar a cada frame, DEPOIS de mover o jogador e ANTES de posicionar a câmera.
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
   if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
@@ -2120,7 +2177,8 @@ function update(dt){
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
-  monsterManager?.update(dt,playerPos,combat?.target);
+  monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused||sailing});
+  petManager?.update(dt,playerPos,{paused:combatPaused});
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
   if(performance.now()-hudTime>250){updateCombatHud();updateHUD();drawMinimap();hudTime=performance.now();}
   if($('toast').classList.contains('show')&&performance.now()-lastToast>2200)$('toast').classList.remove('show');
@@ -2280,6 +2338,7 @@ function updateEquipmentUi(){
   for(const option of $('hero-character').options)option.disabled=!CLASSES[hero.job].characters.includes(option.value);
   $('equipment-toggle').textContent=hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1';
   const items=equipmentManifest?.sets?.[hero.job]?.items||[];
+  rpgHud?.setItems(heroInventory(hero,equipmentManifest));
   const labels={2:'Corpo',3:'Mãos',4:'Pés',6:'Mão esquerda',9:'Mão direita'};
   const list=$('equipment-list');list.replaceChildren();
   for(const item of items){
@@ -2460,6 +2519,19 @@ function syncBrightness(v){
   const label=$('brightvalue'); if(label) label.textContent=String(n);
   for(const b of document.querySelectorAll('[data-bright]')) b.classList.toggle('active', Number(b.dataset.bright)===n);
 }
+function setCameraFraming(value){
+  cameraFraming=cameraFramingValue(value);setPref('topweb_camera_framing_v1',cameraFraming);
+  syncCameraFraming();applyCameraFraming();
+}
+$('camera-framing').addEventListener('input',e=>setCameraFraming(e.target.value));
+$('camera-framing-reset').addEventListener('click',()=>setCameraFraming(0));
+$('camera-proximity').addEventListener('input',e=>{
+  CAM.dist=cameraProximityDistance(e.target.value);clampCam();saveCameraDistance();placeCamera();updateHUD();
+});
+$('camera-proximity-reset').addEventListener('click',()=>{
+  CAM.dist=15;CAM.lift=1.85;mobileOrbitLift=CAM.lift;clampCam();saveCameraDistance();placeCamera();updateHUD();
+});
+syncCameraDistance();
 if($('brightness')){
   syncBrightness(brightness.value);
   $('brightness').addEventListener('input',e=>syncBrightness(Number(e.target.value)));
@@ -2522,7 +2594,7 @@ function configureMobileControls(){
     onMove:(sideways,forward)=>{touchMove.sideways=sideways;touchMove.forward=forward;},
     onRun:enabled=>{touchRunning=enabled;},
     onAttack:primaryAction,
-    onZoom:delta=>{CAM.dist+=delta;clampCam();}
+    onZoom:zoomCamera
   });
 }
 configureMobileControls();
@@ -2584,7 +2656,7 @@ $('navigation-hint').addEventListener('click',()=>{
   else{openWorldMap();if(mapIsOpen())$('map-harbor').click();}
 });
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
-renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();CAM.dist+=Math.sign(e.deltaY)*1.4;clampCam();},{passive:false});
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();zoomCamera(Math.sign(e.deltaY)*1.4);},{passive:false});
 let mouseDown=null,drag=null;
 renderer.domElement.addEventListener('pointerdown',e=>{
   if(e.button===2||e.pointerType==='touch'){

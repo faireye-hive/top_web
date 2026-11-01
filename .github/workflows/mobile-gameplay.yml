@@ -8,11 +8,15 @@ on:
       - 'sw.js'
       - 'navigation-map.css'
       - 'development-ui.css'
+      - 'rpg-hud.css'
       - 'assets/boats/**'
+      - 'assets/pets/**'
+      - 'assets/monsters/**'
       - 'assets/garner/**'
       - 'tests/marine-editor.*'
       - 'scripts/build_garner_stream.py'
       - 'scripts/build_mobile_boat.py'
+      - 'scripts/build_default_pet.py'
       - '.github/workflows/mobile-gameplay.yml'
   push:
     branches: [main]
@@ -34,4 +38,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check boat exporter syntax
-        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py
+        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py scripts/build_default_pet.py
+      - name: Check combat and pet syntax
+        run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
+      - name: Check camera and inventory UI syntax
+        run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs

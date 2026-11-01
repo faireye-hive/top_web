@@ -45,7 +45,7 @@ test('alvo que morre concede XP uma vez, permite outro alvo e reaparece',()=>{
 });
 test('derrota suspende ataque e recupera o herói sem ataques acumulados',()=>{
   const {combat,hero,enemies,events}=setup([monster({engaged:true,attack:1000})]);
-  combat.update(.05,{x:0,z:0});assert.equal(hero.hp,0);assert.equal(combat.auto,false);
+  advance(combat,.65);assert.equal(hero.hp,0);assert.equal(combat.auto,false);
   advance(combat,COMBAT.recovery+.1);
   assert.equal(hero.hp,hero.stats.maxHp);assert.equal(enemies[0].engaged,false);
   assert.ok(events.some(e=>e.type==='revive'));
@@ -134,4 +134,54 @@ test('manual precisa de alcance e escolhe alvo próximo sem ligar auto',()=>{
   assert.ok(events.some(e=>e.type==='notice'&&/Aproxime-se/.test(e.message)));
   enemy.x=1;
   assert.equal(combat.manualAttack(pos),true);
+});
+
+test('monstro pacífico só persegue e revida após receber ataque, com preparação antes do dano',()=>{
+  const {combat,hero,enemies,events}=setup();const pos={x:0,z:0},m=enemies[0];
+  advance(combat,1,pos);assert.equal(m.engaged,undefined);assert.equal(hero.hp,hero.stats.maxHp);
+  combat.manualAttack(pos);advance(combat,.5,pos);
+  assert.equal(m.engaged,true);assert.ok(events.some(e=>e.type==='monster-swing'));
+  assert.equal(hero.hp,hero.stats.maxHp,'dano espera a preparação do contra-ataque');
+  advance(combat,.6,pos);assert.ok(hero.hp<hero.stats.maxHp);
+  const before=m.x;advance(combat,.5,{x:9,z:0});assert.ok(m.x>before,'monstro persegue quem se afasta');
+});
+test('sair do alcance, bloquear visão ou atordoar cancela impacto inimigo pendente',()=>{
+  for(const mode of ['range','wall','stun']){
+    const hero=createHero(),m=monster({engaged:true});let visible=true;
+    const combat=createCombat({hero,monsters:[m],random:()=>0,canSee:()=>visible});
+    combat.update(.05,{x:0,z:0});assert.ok(m.attackPending);
+    if(mode==='wall')visible=false;if(mode==='stun')m.status.stun=2;
+    advance(combat,.6,mode==='range'?{x:10,z:0}:{x:0,z:0});
+    assert.equal(hero.hp,hero.stats.maxHp);
+  }
+});
+test('leash inicia retorno sem atravessar mapa; respawn volta ao ponto original sem veneno ou ataque acumulado',()=>{
+  const m=monster({x:8,home:{x:1,z:0},engaged:true,hp:20}),{combat,events}=setup([m]);
+  combat.update(.05,{x:40,z:0});assert.equal(m.engaged,false);assert.equal(m.motion,'return');
+  assert.equal(m.hp,m.maxHp);assert.ok(events.some(e=>e.type==='reset'));
+  assert.equal(nearestMonster([m],{x:1,z:0}),null,'retorno não pode virar alvo novamente');
+  assert.ok(m.x>1&&m.x<8,'retorno caminha, sem teleporte');
+  advance(combat,3,{x:40,z:0});assert.equal(m.motion,'patrol');
+  m.x=8;m.hp=0;m.respawnIn=.1;m.poisonTick=.8;m.status={poison:2};m.attackPending={time:.1};
+  advance(combat,.15,{x:0,z:0});assert.equal(m.x,1);assert.equal(m.hp,m.maxHp);
+  assert.equal(m.poisonTick,0);assert.deepEqual(m.status,{});assert.equal(m.attackPending,null);
+});
+test('menus congelam patrulha, perseguição, impacto inimigo e reaparecimento',()=>{
+  const m=monster({engaged:true}),{combat,hero}=setup([m]);
+  combat.update(.05,{x:0,z:0});const pending=m.attackPending.time;
+  advance(combat,2,{x:10,z:0},{paused:true});assert.equal(m.x,1);assert.equal(m.attackPending.time,pending);assert.equal(hero.hp,hero.stats.maxHp);
+  m.hp=0;m.respawnIn=5;advance(combat,2,{x:0,z:0},{paused:true});assert.equal(m.respawnIn,5);
+});
+test('monstro procura passagem mesmo se parede estiver dentro do alcance de ataque',()=>{
+  const hero=createHero(),m=monster({x:0,engaged:true}),position={x:2,z:0};
+  const canReach=(a,b)=>{
+    for(let i=0;i<=30;i++){
+      const x=a.x+(b.x-a.x)*i/30,z=a.z+(b.z-a.z)*i/30;
+      if(x>.7&&x<1.3&&Math.abs(z)<.8)return false;
+    }
+    return true;
+  };
+  const combat=createCombat({hero,monsters:[m],canReach,canSee:canReach,random:()=>0});
+  advance(combat,4,position);
+  assert.ok(canReach(m,position),'encontra lado visível da parede');assert.ok(hero.hp<hero.stats.maxHp,'consegue revidar sem atacar através da parede');
 });
