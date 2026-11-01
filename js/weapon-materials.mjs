@@ -80,17 +80,23 @@ export function weaponPrimitives(node){
  node.traverse?.(child=>{if(child!==node&&(child.isMesh||child.isSkinnedMesh))result.push(child)});
  return result;
 }
-// LGO material type 1 is an additive pass in the original OpenGL client
-// (SRC_ALPHA, ONE). The old GLB converter exported it as opaque PBR instead.
-// Legacy Lance/Phyllis models do not yet have extras on that material.
+// Prefer explicit blend metadata in future exports. The 14 old GLBs
+// discarded original blend flags; their 16 equipped weapons all contain
+// a separate material named "<LGO filename> · 1.BMP". The Dance of
+// Evanescence was verified as additive. For the other classes, this is
+// an additive *candidate*: hidden by default, user-selectable in Studio.
+// Only weapon meshes are handled in applyWeaponAppearance(), not armor.
 export function isWeaponAdditiveLayer(mesh){
  const material=mesh?.userData?.topWeaponBaseMaterial||mesh?.material;
  if(!material)return false;
  const extras=material.userData||{};
  if(extras.topOriginalBlend===1||extras.topBlend===1||extras.topLayer==='additive-overlay')
    return true;
- return /^01010021(?:\.lgo)?\s*·\s*1\.bmp$/i.test(String(material.name||''));
+ // Legacy compatibility: the shared 1.BMP effect name ONLY, not every
+ // extra texture or the main weapon surface. Preserve all other passes.
+ return /^.+\.lgo\s*·\s*1\.bmp$/i.test(String(material.name||''));
 }
+
 function ensureEditableMaterial(mesh){
  if(!mesh.userData.topWeaponBaseMaterial){
    mesh.userData.topWeaponBaseMaterial=mesh.material;
