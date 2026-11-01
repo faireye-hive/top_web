@@ -12,6 +12,8 @@ on:
       - 'tests/test_lance_socket_rebuilder.py'
       - 'assets/equipment/models/lance-crusader.glb'
       - 'js/main.js'
+      - 'js/city-combat-pose.mjs'
+      - 'tests/city-combat-pose.test.mjs'
       - 'js/pose-studio-runtime.mjs'
       - 'scripts/inspect_lance_model.py'
       - 'js/historical-weapon-dummies.mjs'
@@ -40,10 +42,10 @@ jobs:
         with:
           node-version: '22'
       - name: Validate Pose Studio and historical action tests
-        run: node --test tests/pose-studio.test.mjs tests/pose-action-catalog.test.mjs tests/pose-missing-report.test.mjs
+        run: node --test tests/pose-studio.test.mjs tests/pose-action-catalog.test.mjs tests/pose-missing-report.test.mjs tests/city-combat-pose.test.mjs
       - name: Verify reconstructed Lance GLB sockets
         run: python scripts/rebuild_lance_glb_sockets.py --verify-only
       - name: Inspect real equipped GLB meshes and extras
         run: python scripts/inspect_lance_model.py
       - name: Check JS syntax
-        run: node --check js/main.js && node --check js/pose-studio-runtime.mjs && node --check tests/pose-editor.mjs
+        run: node --check js/main.js && node --check js/pose-studio-runtime.mjs && node --check js/city-combat-pose.mjs && node --check tests/pose-editor.mjs
