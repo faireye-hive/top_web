@@ -14,7 +14,7 @@ import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCame
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=5';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=6';
+import { createCombat, COMBAT } from './combat-state.mjs?v=7';
 import { createMonsterManager } from './monster-manager.mjs?v=4';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
@@ -801,7 +801,7 @@ function stopCombat(force=false){
   if(skillAnimationLocked&&!force)return;
   if(force){skillAnimationLocked=false;cityCombatUntil=0;}
   skillActionQueue=[];
-  const wasActive=!!combat?.auto||attackPlaying;
+  const wasActive=!!combat?.auto||!!combat?.manualActive||attackPlaying;
   combat?.stop(); // Trocar de guarda para descanso só depois de desativar Auto.
   if(wasActive){attackPlaying=false;playClip('Parado');}
 }
@@ -814,7 +814,7 @@ function selectMobileAutoMode(){
   setPref('topweb_mobile_attack_mode',mobileAutoModeEnabled?'auto':'manual');
   toast(mobileAutoModeEnabled
     ?'Modo Auto selecionado. Toque no botão grande para começar.'
-    :'Modo manual selecionado. O botão grande dá um golpe por toque.');
+    :'Modo manual selecionado. Um toque ataca o monstro até derrotá-lo.');
   updateCombatHud();
   return mobileAutoModeEnabled;
 }
@@ -1005,7 +1005,9 @@ function updateCombatHud(){
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
   $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
     ?(target?'Auto · combatendo':'Auto · procurando alvo')
-    :(mobileAutoModeEnabled&&MOBILE_UI?'Modo Auto · pronto':'Modo manual');
+    :combat?.manualActive
+      ?(target?'Manual · atacando um alvo':'Manual · aguardando alvo')
+      :(mobileAutoModeEnabled&&MOBILE_UI?'Modo Auto · pronto':'Modo manual');
   const desktopAuto=$('atk');
   desktopAuto?.setAttribute('aria-pressed',String(!!combat?.auto));
   desktopAuto?.classList.toggle('auto-active',!!combat?.auto);
@@ -1024,7 +1026,7 @@ function updateCombatHud(){
   const combatAction=context.type==='attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
   button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
-    :combatAction?'Atacar manualmente':context.label);
+    :combatAction?(combat?.manualActive?'Atacando até derrotar o alvo':'Atacar um monstro até derrotá-lo'):context.label);
   if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
   else button?.removeAttribute('aria-pressed');
   if(sailing){$('combat-mode').textContent='Navegando · '+(boatProfile?.name||'Veleiro');$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
@@ -1034,7 +1036,7 @@ function updateCombatHud(){
   button?.classList.toggle('auto-active',autoAction&&!!combat?.auto);
   button?.classList.remove('manual-unavailable');
   const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
-  const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':'Atacar'):context.label;
+  const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':combat?.manualActive?'Atacando':'Atacar'):context.label;
   if(button)button.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
   $('mobile-target').disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
   $('mobile-run').disabled=sailing||boardingBoat;
@@ -2121,7 +2123,7 @@ function update(dt){
   if(!skillAnimationLocked&&combat?.auto&&npcManager?.nearest(playerPos.x,playerPos.z))stopCombat();
   // Durante skill, ignorar movimento; não cancelar combate e nem o clip GLB.
   const manualMove=!skillAnimationLocked&&!!(dx||dz||moverTarget);
-  if(manualMove&&(combat?.auto||attackPlaying))stopCombat();
+  if(manualMove&&(combat?.auto||combat?.manualActive||attackPlaying))stopCombat();
   if(skillAnimationLocked){dx=0;dz=0;}
   else if(dx||dz){moverTarget=null;pendingPose=null;waypoint.hide();}
   else if(moverTarget){
