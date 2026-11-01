@@ -438,10 +438,11 @@ function mapDot(ctx,point,color,label,full){
   }
 }
 function drawNavigationMap(canvas,view,full=false){
-  const ctx=canvas.getContext('2d'),size=canvas.width;
-  ctx.clearRect(0,0,size,size);ctx.imageSmoothingEnabled=false;
+  const ctx=canvas.getContext('2d'),size=canvas.width,mapHeight=canvas.height;
+  const sizeXY={width:size,height:mapHeight};
+  ctx.clearRect(0,0,size,mapHeight);ctx.imageSmoothingEnabled=false;
   const ratioX=minimapBackground.width/world.w,ratioZ=minimapBackground.height/world.h;
-  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,size);
+  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,mapHeight);
   if(!full){
     const local=localMapCanvas.getContext('2d'),image=local.createImageData(96,96);
     for(let z=0;z<96;z++)for(let x=0;x<96;x++){
@@ -452,15 +453,15 @@ function drawNavigationMap(canvas,view,full=false){
   }else for(const patch of isArenaMap?[]:mapEdits){
     if(patch.x<view.x||patch.z<view.z||patch.x>view.x+view.w||patch.z>view.z+view.h)continue;
     const color=mapTileColor({...getTile(patch.x,patch.z),...patch.tile});ctx.fillStyle=`rgb(${color.join(',')})`;
-    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*size,Math.max(1,size/view.w),Math.max(1,size/view.h));
+    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*mapHeight,Math.max(1,size/view.w),Math.max(1,mapHeight/view.h));
   }
   ctx.imageSmoothingEnabled=true;
   if(full){
     ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
-    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,size);ctx.moveTo(0,n*size/8);ctx.lineTo(size,n*size/8);ctx.stroke();}
+    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,mapHeight);ctx.moveTo(0,n*mapHeight/8);ctx.lineTo(size,n*mapHeight/8);ctx.stroke();}
   }
-  const project=p=>projectMap(p,view,size),player=project(playerPos);
-  const destination=mapSelection&&full?mapSelection:moverTarget;
+  const project=p=>projectMap(p,view,sizeXY),player=project(playerPos);
+  const destination=full?(mapSelection||navigationGoal):(navigationGoal||moverTarget);
   if(destination){
     const p=project(destination);
     ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(p.x,p.y);
@@ -490,13 +491,14 @@ function drawNavigationMap(canvas,view,full=false){
     ctx.fillStyle='#fff4cb';ctx.font='bold 24px sans-serif';ctx.textAlign='right';ctx.fillText('N ↑',size-18,32);
     const local=mapView(world,playerPos),p=project({x:local.x,z:local.z});
     ctx.strokeStyle='#fff8cf88';ctx.lineWidth=2;ctx.setLineDash([7,6]);
-    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*size);ctx.setLineDash([]);
+    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*mapHeight);ctx.setLineDash([]);
   }
 }
 function drawMinimap(){
   if(!minimapBackground)return;
   drawNavigationMap($('minimap'),mapView(world,playerPos));
   if(mapIsOpen()){
+    resizeExpandedMap();
     drawNavigationMap($('world-map'),fullMapView(),true);
     $('map-location').textContent=`Você: ${playerPos.x.toFixed(0)}, ${playerPos.z.toFixed(0)} · ${sailing?'no mar':'em terra'}`;
   }
