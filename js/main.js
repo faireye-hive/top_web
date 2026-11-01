@@ -20,6 +20,7 @@ import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=6';
+import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -86,6 +87,7 @@ let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingChar
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
+let cityCombatUntil=0; // após skill, postura de combate permanece por 3,5 s na cidade
 // Pacote binário opcional: até ser instalado, o jogo conserva o HUD anterior.
 const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
   mobileSkillCatalog=catalog;
@@ -504,9 +506,20 @@ function isRunningPose(){
   return currentClip.toLowerCase().includes('correr') ||
     ['run','armedRun'].some(state=>selectPoseName(state,activePoseProfile,animations,currentWeaponPoseBank())===currentClip);
 }
+function currentCityPose(moving=false,performing=false){
+  return resolveCityCombatPose({
+    inCity:isInsideCity(playerPos.x,playerPos.z),
+    moving,autoCombat:!!combat?.auto,performing,
+    holdUntil:cityCombatUntil,now:performance.now()
+  });
+}
+function extendCityCombatPose(){
+  if(isInsideCity(playerPos.x,playerPos.z))
+    cityCombatUntil=extendCombatHold(cityCombatUntil,performance.now());
+}
 function poseResolvedName(match){
-  const state=match==='Parado'?(combat?.auto?'guard':'idle'):
-    match==='Correr'?(combat?.auto?'armedRun':'run'):
+  const state=match==='Parado'?currentCityPose(false):
+    match==='Correr'?currentCityPose(true):
     match==='Ataque 1'?'attack':null;
   return state?selectPoseName(state,activePoseProfile,animations,currentWeaponPoseBank()):match;
 }
@@ -535,7 +548,7 @@ function stopCombat(force=false){
   // Um movimento, clique ou abertura de HUD não deve interromper a skill GLB.
   // Interrupção explícita só para troca de personagem/teleporte/derrota.
   if(skillAnimationLocked&&!force)return;
-  if(force)skillAnimationLocked=false;
+  if(force){skillAnimationLocked=false;cityCombatUntil=0;}
   skillActionQueue=[];
   const wasActive=!!combat?.auto||attackPlaying;
   combat?.stop(); // Trocar de guarda para descanso só depois de desativar Auto.
@@ -613,7 +626,7 @@ async function loadCharacter(id){
       else if((o.name.includes('Bip01_Head')||o.name.includes('Bip01 Head'))&&!o.name.includes('Nub'))headBone=o;
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
-    animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;
+    animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;cityCombatUntil=0;
     await poseProfilesReady;
     activePoseProfile=poseProfile(poseProfiles,id,hero.job);
     weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
@@ -629,10 +642,14 @@ async function loadCharacter(id){
         if(playClip(next,true))return;
       }
       if(seated){if(seated.role==='sit'&&!currentClip.toLowerCase().includes('sentado'))playClip('Sentado');return;}
+      // Contagem começa APÓS o último clipe da skill, não durante a animação.
+      if(attackPlaying||skillAnimationLocked)extendCityCombatPose();
       skillAnimationLocked=false;
       attackPlaying=false;playClip('Parado');
     });
-    playClip('Parado');weaponHolster?.setStowed(true);rpgHud?.setClips(animations);
+    playClip('Parado');
+    weaponHolster?.setStowed(currentCityPose()==='idle','idle');
+    rpgHud?.setClips(animations);
     if(mobileSkillCatalog)rpgHud?.setClassSkills(mobileSkillCatalog,hero.job,id,animations);
     rpgHud?.setStats(heroSnapshot(hero));
     void skillVisuals.warm(mobileSkillCatalog?.classes?.[hero.job]?.skills||[]);
@@ -669,6 +686,7 @@ function playSkillAnimation(skill){
   if(!played){skillActionQueue=[];return false;}
   skillAnimationLocked=true;
   attackPlaying=true;
+  extendCityCombatPose();
   return true;
 }
 let stealthAvatar=null,stealthActive=false;
@@ -686,6 +704,7 @@ function combatEvent(event){
   if(event.type==='notice')toast(event.message);
   if(event.type==='interrupt'&&!skillAnimationLocked){skillActionQueue=[];attackPlaying=false;playClip('Parado');}
   if(event.type==='cast'){
+    extendCityCombatPose();
     if(event.monster&&avatar)avatar.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
     playSkillAnimation(event.skill);
     skillVisuals.play(event.skill,playerPos,event.monster,event.flight,null,{
@@ -697,6 +716,7 @@ function combatEvent(event){
   if(event.type==='practice'){saveHero();if(event.improved)toast('Sua prática de ataque melhorou!');}
 
   if(event.type==='swing'){
+    extendCityCombatPose();
     if(avatar)avatar.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
     attackPlaying=playClip('Ataque 1',true);
     skillVisuals.basic(hero,playerPos,event.monster,event.flight,event.period);
@@ -708,7 +728,7 @@ function combatEvent(event){
   if(event.type==='hit'&&feedback)feedback.textContent=event.damage?`${event.monster.name}: −${event.damage} HP`:'O alvo esquivou.';
   if(event.type==='hurt'&&feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
   if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
-  if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
+  if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
 }
 function updateCombatHud(){
@@ -1732,6 +1752,7 @@ function update(dt){
   }
   if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
   const wish=Math.hypot(dx,dz);
+  let actuallyMoving=false;
   if(seated && seated.role==='sit' && runningAction && !currentClip.toLowerCase().includes('sentado')){
     const sitClip=runningAction.getClip();
     if(sitClip && runningAction.time>=sitClip.duration-1/30)playClip('Sentado');
@@ -1785,11 +1806,23 @@ function update(dt){
     }
     if(!attackPlaying){
       if(moved){
+        actuallyMoving=true;
         playClip('Correr');
         if(runningAction&&currentClip.toLowerCase().includes('correr'))runningAction.setEffectiveTimeScale(running?1.2:1);
       }else if(isRunningPose())playClip('Parado');
     }
   }else if(!seated && !attackPlaying&&isRunningPose())playClip('Parado');
+  // Atualiza as poses mesmo estando parado, ao cruzar o limite da cidade
+  // ou quando os 3,5 s de guarda temporária terminam.
+  if(!seated&&!attackPlaying&&!skillAnimationLocked){
+    const bank=currentWeaponPoseBank();
+    const normalStates=['idle','guard','run','armedRun']
+      .map(state=>selectPoseName(state,activePoseProfile,animations,bank));
+    if(actuallyMoving||normalStates.includes(currentClip)){
+      const desired=poseResolvedName(actuallyMoving?'Correr':'Parado');
+      if(desired!==currentClip)playClip(actuallyMoving?'Correr':'Parado');
+    }
+  }
   // No movimento puramente lateral, espera soltar o controle antes de girar
   // atrás do personagem: evita transformar A/D em uma órbita infinita.
   if(!MOBILE_UI && wish<=.01 && autoCameraEnabled && !seated && cameraFollowTarget!==null &&
@@ -1801,15 +1834,12 @@ function update(dt){
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
   if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
   if(avatar)avatar.position.copy(playerPos);
-  // Cidade / exploração: arma guardada no osso configurado. Combate/skill
-  // mostram a arma original na mão, sem modificar o GLB histórico.
-  // O clipe do corpo e a exibição de cada arma são independentes.
-  // Salvos no Pose Studio por estado: auto / sem arma / mão / costas.
-  const weaponAttackState=attackPlaying||skillAnimationLocked||combat?.casting;
-  const weaponMovingState=isRunningPose();
-  const weaponPoseState=weaponAttackState?'attack':
-    combat?.auto?(weaponMovingState?'armedRun':'guard'):(weaponMovingState?'run':'idle');
-  weaponHolster?.setStowed(!combat?.auto&&!weaponAttackState,weaponPoseState);
+  // Guarda temporária após skill na cidade; fora dela, sempre postura
+  // de combate. O Pose Studio ainda pode substituir cada arma por estado.
+  const weaponPoseState=currentCityPose(actuallyMoving,
+    attackPlaying||skillAnimationLocked||!!combat?.casting);
+  weaponHolster?.setStowed(
+    weaponPoseState==='idle'||weaponPoseState==='run',weaponPoseState);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}
@@ -1960,7 +1990,7 @@ rpgHud=initRpgHud({
     if(seated){toast('Levante antes de executar uma skill.');return false;}
     if(attackPlaying)return false;
     const played=playClip(clip,true);
-    if(played){attackPlaying=true;skillAnimationLocked=true;}
+    if(played){attackPlaying=true;skillAnimationLocked=true;extendCityCombatPose();}
     else toast('A animação não está disponível no personagem atual.');
     return played;
   },
