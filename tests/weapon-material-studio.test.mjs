@@ -182,7 +182,7 @@ test('Champion and cleric: main weapon surface stays visible, secondary 1.BMP hi
    userData:{topRole:'weapon',equipmentSlot:9},
    traverse(fn){fn(this);fn(main);fn(overlay)}};
  const avatar={traverse(fn){sword.traverse(fn)}};
- const THREE={AdditiveBlending:'additive'};
+ const THREE={AdditiveBlending:'additive',TextureLoader:class{}};
  const result=applyWeaponAppearance(THREE,avatar,'carsise','champion',{version:1,profiles:{}});
  assert.equal(result,0);
  assert.equal(main.visible,true);
