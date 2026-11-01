@@ -9,10 +9,13 @@ on:
       - 'navigation-map.css'
       - 'development-ui.css'
       - 'assets/boats/**'
+      - 'assets/pets/**'
+      - 'assets/monsters/**'
       - 'assets/garner/**'
       - 'tests/marine-editor.*'
       - 'scripts/build_garner_stream.py'
       - 'scripts/build_mobile_boat.py'
+      - 'scripts/build_default_pet.py'
       - '.github/workflows/mobile-gameplay.yml'
   push:
     branches: [main]
@@ -34,4 +37,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check boat exporter syntax
-        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py
+        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py scripts/build_default_pet.py
+      - name: Check combat and pet syntax
+        run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs

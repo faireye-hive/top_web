@@ -1,11 +1,12 @@
 import {gainExperience,trainAttack} from './hero-state.mjs?v=4';
 import {basicAttackRange,skillWithRules,inSkillArea} from './skill-rules.mjs';
+import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs';
 export const COMBAT=Object.freeze({targetRadius:30,range:2.2,leash:34,respawn:12,recovery:5});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function nearestMonster(monsters,position,radius=COMBAT.targetRadius,canReach=()=>true){
   let best=null,closest=radius;
   for(const monster of monsters){
-    if(monster.hp<=0||monster.ready===false)continue;
+    if(monster.hp<=0||monster.ready===false||monster.motion==='return')continue;
     const d=distance(monster,position);
     if(d<=closest&&canReach(position,monster)){best=monster;closest=d;}
   }
@@ -20,7 +21,7 @@ const CLASS_SKILLS={crusader:[81,84,123,86],cleric:[99,97,106,255],sharpshooter:
 export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,onEvent=()=>{},random=Math.random}){
   let auto=false,target=null,manual=false,pending=null,intent=null,casting=null,cooldown=0,scan=0,recovery=0,quiet=0;
   const cooldowns={},buffs={};
-  const visible=m=>m&&m.hp>0&&m.ready!==false;
+  const visible=m=>m&&m.hp>0&&m.ready!==false&&m.motion!=='return';
   const valid=(m,p)=>visible(m)&&distance(m,p)<=COMBAT.targetRadius&&canSee(p,m);
   function notice(message){onEvent({type:'notice',message});return false;}
   function stop(preserveTarget=false){
@@ -85,11 +86,11 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       attackSpeed:hero.stats.attackSpeed*(buffs.berserk?1.2:1),accuracy:hero.stats.accuracy*(buffs.awareness?1.15:1)};
   }
   function damageMonster(m,damage,type,skill){
-    if(m.hp<=0)return;
+    if(m.hp<=0||m.motion==='return')return;
     m.hp=Math.max(0,m.hp-damage);m.engaged=true;quiet=0;
     onEvent({type,monster:m,damage,skill});
     if(m.hp===0){
-      m.respawnIn=COMBAT.respawn;m.engaged=false;m.status={};
+      m.respawnIn=COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
       const levels=gainExperience(hero,m.xp);onEvent({type:'kill',monster:m,levels});
       if(m===target){target=null;manual=false;scan=0;}
     }
@@ -119,10 +120,11 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     for(const id of Object.keys(cooldowns))cooldowns[id]=Math.max(0,cooldowns[id]-dt);
     for(const name of Object.keys(buffs))buffs[name]=Math.max(0,buffs[name]-dt);
     for(const m of monsters){
+      initMonsterMotion(m);
       m.cooldown=Math.max(0,(m.cooldown||0)-dt);
       if(m.hp<=0){
         m.respawnIn-=dt;
-        if(m.respawnIn<=0){m.hp=m.maxHp;m.engaged=false;m.status={};onEvent({type:'respawn',monster:m});}
+        if(m.respawnIn<=0){m.hp=m.maxHp;m.status={};returnMonsterHome(m,{teleport:true});onEvent({type:'respawn',monster:m});}
         continue;
       }
       m.status??={};
@@ -131,13 +133,18 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
         if(m.poisonTick>=1){m.poisonTick-=1;damageMonster(m,Math.max(1,Math.round(hero.stats.magic*.25)),'dot');}
       }else m.poisonTick=0;
       for(const status of Object.keys(m.status))m.status[status]=Math.max(0,m.status[status]-dt);
-      if(m.engaged&&distance(position,m)>COMBAT.leash){m.hp=m.maxHp;m.engaged=false;m.status={};onEvent({type:'reset',monster:m});}
+      if(m.hp<=0)continue;
+      if(m.engaged&&(distance(position,m.home)>COMBAT.leash||distance(m,m.home)>COMBAT.leash)){
+        m.hp=m.maxHp;m.status={};returnMonsterHome(m);onEvent({type:'reset',monster:m});
+      }
+      if(hero.hp>0)updateMonsterMotion(m,dt,position,{canReach,
+        range:m.engaged&&!canSee(m,position)?.3:COMBAT.range+.15});
     }
     if(hero.hp<=0){
       stop();recovery+=dt;
       if(recovery>=COMBAT.recovery){
         hero.hp=hero.stats.maxHp;hero.mp=hero.stats.maxMp;recovery=0;
-        for(const m of monsters){m.engaged=false;m.status={};if(m.hp>0)m.hp=m.maxHp;}
+        for(const m of monsters){m.status={};if(m.hp>0){m.hp=m.maxHp;returnMonsterHome(m);}}
         for(const name of Object.keys(buffs))delete buffs[name];
         onEvent({type:'revive'});
       }
@@ -179,9 +186,18 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     if(auto&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
       startSwing(target,position);
     for(const m of monsters){
-      if(!m.engaged||m.hp<=0||m.cooldown>0||m.ready===false||m.status.stun>0||buffs.stealth>0)continue;
+      if(!m.engaged||m.hp<=0||m.ready===false)continue;
+      if(m.status.stun>0||buffs.stealth>0){m.attackPending=null;continue;}
+      if(!m.attackPending){
+        if(m.cooldown>0||distance(position,m)>COMBAT.range+.4||!canSee(position,m))continue;
+        const period=1/m.attackSpeed*(m.status.slow>0?1.6:1);
+        m.cooldown=period;m.attackPending={time:period*.35};m.moving=false;
+        onEvent({type:'monster-swing',monster:m,period});continue;
+      }
+      m.attackPending.time-=dt;
+      if(m.attackPending.time>0)continue;
+      m.attackPending=null;
       if(distance(position,m)>COMBAT.range+.4||!canSee(position,m))continue;
-      m.cooldown=1/m.attackSpeed*(m.status.slow>0?1.6:1);
       const attack=m.attack*(m.status.weak>0?.65:1);
       let damage=rollDamage({...m,attack},hero.stats,random);
       if(buffs.crystal)damage=0;else if(buffs.shield)damage=Math.round(damage*.55);

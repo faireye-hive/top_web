@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "map": "argent",
   "note": "Somente visuais históricos. Posições de treino e atributos são novos do TOP Web.",
   "species": {
@@ -13,7 +13,9 @@
       "accuracy": 65,
       "evasion": 4,
       "attackSpeed": 0.65,
-      "xp": 10
+      "xp": 10,
+      "moveSpeed": 3.2,
+      "patrolSpeed": 1.0
     },
     "mini-bee": {
       "name": "Mini Bee",
@@ -25,7 +27,9 @@
       "accuracy": 70,
       "evasion": 12,
       "attackSpeed": 0.8,
-      "xp": 10
+      "xp": 10,
+      "moveSpeed": 3.2,
+      "patrolSpeed": 1.0
     },
     "cuddly-lamb": {
       "name": "Cuddly Lamb",
@@ -37,39 +41,149 @@
       "accuracy": 60,
       "evasion": 2,
       "attackSpeed": 0.55,
-      "xp": 14
+      "xp": 14,
+      "moveSpeed": 3.2,
+      "patrolSpeed": 1.0
     }
   },
   "spawns": [
     {
       "species": "forest-spirit",
       "x": 2219.5,
-      "z": 2770.5
+      "z": 2770.5,
+      "route": [
+        [
+          2219.5,
+          2770.5
+        ],
+        [
+          2221.0,
+          2770.5
+        ],
+        [
+          2221.0,
+          2772.0
+        ],
+        [
+          2219.5,
+          2772.0
+        ]
+      ]
     },
     {
       "species": "mini-bee",
       "x": 2223.5,
-      "z": 2770.5
+      "z": 2770.5,
+      "route": [
+        [
+          2223.5,
+          2770.5
+        ],
+        [
+          2225.0,
+          2770.5
+        ],
+        [
+          2225.0,
+          2772.0
+        ],
+        [
+          2223.5,
+          2772.0
+        ]
+      ]
     },
     {
       "species": "cuddly-lamb",
       "x": 2225.5,
-      "z": 2774.5
+      "z": 2774.5,
+      "route": [
+        [
+          2225.5,
+          2774.5
+        ],
+        [
+          2227.0,
+          2774.5
+        ],
+        [
+          2227.0,
+          2776.0
+        ],
+        [
+          2225.5,
+          2776.0
+        ]
+      ]
     },
     {
       "species": "forest-spirit",
       "x": 2223.5,
-      "z": 2778.5
+      "z": 2778.5,
+      "route": [
+        [
+          2223.5,
+          2778.5
+        ],
+        [
+          2225.0,
+          2778.5
+        ],
+        [
+          2225.0,
+          2780.0
+        ],
+        [
+          2223.5,
+          2780.0
+        ]
+      ]
     },
     {
       "species": "mini-bee",
       "x": 2219.5,
-      "z": 2778.5
+      "z": 2778.5,
+      "route": [
+        [
+          2219.5,
+          2778.5
+        ],
+        [
+          2221.0,
+          2778.5
+        ],
+        [
+          2221.0,
+          2780.0
+        ],
+        [
+          2219.5,
+          2780.0
+        ]
+      ]
     },
     {
       "species": "cuddly-lamb",
       "x": 2219.5,
-      "z": 2774.5
+      "z": 2774.5,
+      "route": [
+        [
+          2219.5,
+          2774.5
+        ],
+        [
+          2221.0,
+          2774.5
+        ],
+        [
+          2221.0,
+          2776.0
+        ],
+        [
+          2219.5,
+          2776.0
+        ]
+      ]
     }
   ]
 }

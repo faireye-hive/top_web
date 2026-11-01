@@ -11,8 +11,9 @@ import { initRpgHud } from './rpg-hud.mjs?v=5';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
 import { resolvePrimaryAction } from './context-action.mjs?v=3';
-import { createCombat, COMBAT } from './combat-state.mjs?v=4';
-import { createMonsterManager } from './monster-manager.mjs?v=2';
+import { createCombat, COMBAT } from './combat-state.mjs?v=5';
+import { createMonsterManager } from './monster-manager.mjs?v=3';
+import { createPetManager } from './pet-manager.mjs?v=1';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
@@ -100,7 +101,7 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null;
 let attackPlaying=false, testing=false;
-let rpgHud=null, npcManager=null, monsterManager=null, combat=null, changingCharacter=false;
+let rpgHud=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -919,7 +920,10 @@ function combatEvent(event){
   if(event.type==='hit'){saveHero();if(event.improved)toast('Sua prática de ataque melhorou!');}
   if(event.type==='kill')saveHero();
   if(event.type==='hit'&&feedback)feedback.textContent=event.damage?`${event.monster.name}: −${event.damage} HP`:'O alvo esquivou.';
-  if(event.type==='hurt'&&feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
+  if(event.type==='hurt'){
+    extendCityCombatPose();
+    if(feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
+  }
   if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
   if(event.type==='defeat'){skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');toast('Você caiu. Recuperando em 5 segundos…');}
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
@@ -1813,6 +1817,10 @@ window.__fx={
       cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
       cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
       resources:renderResources(),
+      pet:petManager?.diagnostics()||null,
+      combat:{hp:hero.hp,auto:combat?.auto,target:combat?.target?.id,
+        monsters:(monsterManager?.monsters||[]).map(m=>({id:m.id,x:m.x,z:m.z,hp:m.hp,ready:m.ready,
+          engaged:!!m.engaged,motion:m.motion,moving:!!m.moving,home:m.home,animation:m.action?.getClip().name}))},
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -1904,6 +1912,10 @@ async function boot(){
       }});
       combat=createCombat({hero,monsters:monsterManager.monsters,canReach:combatReachable,canSee:combatLineOfSight,onEvent:combatEvent});
     }catch(error){console.warn('Treino indisponível:',error);toast('Monstros indisponíveis. Confira os assets de treino.');}
+    try{
+      petManager=await createPetManager({scene,camera});
+      petManager.update(0,playerPos);
+    }catch(error){console.error('Mordo Jr indisponível:',error);toast('Não foi possível carregar o Mordo Jr. Recarregue para tentar novamente.');}
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
@@ -2120,7 +2132,8 @@ function update(dt){
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
-  monsterManager?.update(dt,playerPos,combat?.target);
+  monsterManager?.update(dt,playerPos,combat?.target,{paused:combatPaused||sailing});
+  petManager?.update(dt,playerPos,{paused:combatPaused});
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
   if(performance.now()-hudTime>250){updateCombatHud();updateHUD();drawMinimap();hudTime=performance.now();}
   if($('toast').classList.contains('show')&&performance.now()-lastToast>2200)$('toast').classList.remove('show');

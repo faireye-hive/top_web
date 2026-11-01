@@ -1,5 +1,10 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Combate e pet:** monstros voltam a patrulhar, perseguir e revidar com animação e
+impacto sincronizados. Rotas contornam bloqueios e retornam à origem após a
+perseguição. **Mordo Jr** acompanha todos os personagens por padrão, com voo e
+aura dos arquivos originais. [Comportamento e validação](docs/COMBATE_E_MORDO_JR.md).
+
 **Garner completo e Marina Studio:** o jogo usa agora o mapa original de
 4096 × 4096, carregado por setores. O barco padrão voltou ao **Guppy pequeno**,
 com aproximadamente 4,8 m, sem mastros adicionais, com balanço e rastro de
