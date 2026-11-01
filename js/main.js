@@ -7,7 +7,7 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
-import { initRpgHud } from './rpg-hud.mjs?v=9';
+import { initRpgHud } from './rpg-hud.mjs?v=10';
 import {initDesktopHud} from './desktop-hud.mjs';
 import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
