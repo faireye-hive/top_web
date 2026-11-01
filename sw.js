@@ -1,5 +1,5 @@
 /* TOP Web PWA: installable shell, without caching heavy GLBs or game data. */
-const CACHE_NAME='top-web-shell-20261101-12';
+const CACHE_NAME='top-web-shell-20261101-13';
 const SHELL=['./','./index.html','./manifest.webmanifest','./pwa/top-icon.svg'];
 const allowShell=url=>url.origin===self.location.origin&&
   (url.pathname.endsWith('/index.html')||
