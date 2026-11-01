@@ -20,6 +20,7 @@ import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=6';
+import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=1';
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
@@ -97,6 +98,11 @@ const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
 const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
 let equipmentManifest=null,changingLoadout=false;
 let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
+let weaponMaterialProfiles={version:1,profiles:{}};
+const weaponMaterialsReady=fetch('assets/weapons/overrides.json?v=1')
+  .then(r=>r.ok?r.json():{version:1,profiles:{}})
+  .catch(()=>({version:1,profiles:{}}))
+  .then(data=>{weaponMaterialProfiles=readWeaponMaterialProfiles(globalThis.localStorage,data);});
 const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .then(r=>r.ok?r.json():{version:1,profiles:{}})
   .catch(()=>({version:1,profiles:{}}))
@@ -627,8 +633,12 @@ async function loadCharacter(id){
     });
     avatar.position.copy(playerPos);avatar.rotation.y=yaw;
     animations=[...gltf.animations,...extraClips];runningAction=null;currentClip='';attackPlaying=false;skillAnimationLocked=false;cityCombatUntil=0;
-    await poseProfilesReady;
+    await Promise.all([poseProfilesReady,weaponMaterialsReady]);
     activePoseProfile=poseProfile(poseProfiles,id,hero.job);
+    // Sobrescritas de materiais são independentes das animações e da pose.
+    // Aplicar ANTES do WeaponHolster, para as cópias das costas usarem
+    // as mesmas texturas, emissive e cor das espadas empunhadas.
+    if(hero.equipped)applyWeaponAppearance(THREE,avatar,id,hero.job,weaponMaterialProfiles);
     weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
@@ -1851,6 +1861,7 @@ function update(dt){
   }
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
+  if(avatar)updateWeaponMaterialGlow(avatar,performance.now());
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);

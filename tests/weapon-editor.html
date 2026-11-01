@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../"><meta name="theme-color" content="#071923">
+<title>TOP Web · Weapon Material Studio</title>
+<link rel="stylesheet" href="tests/weapon-editor.css?v=1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<header class="top">
+ <div class="brand"><span>⚔</span><div><strong>Weapon <em>Material Studio</em></strong><small>TOP Web · diagnóstico, textura e prévia de refino</small></div></div>
+ <nav>
+  <a href="tests/pose-editor.html">← Poses</a><a href="index.html">Jogo</a>
+  <button id="save">💾 Salvar</button><button id="export" class="primary">↓ Exportar JSON</button>
+  <button id="import">↑ Importar</button><input id="json-file" type="file" accept=".json,application/json" hidden>
+ </nav>
+</header>
+<main>
+ <aside class="panel">
+  <h2>Arma / personagem</h2>
+  <label>Personagem<select id="actor"><option value="lance">Lance</option><option value="phyllis">Phyllis</option><option value="carsise">Carsise</option><option value="ami">Ami</option></select></label>
+  <label>Classe<select id="job"></select></label>
+  <label>Peça equipada<select id="slot"><option>Carregando...</option></select></label>
+  <label>Submalha / material<select id="subset"><option>Carregando...</option></select></label>
+  <div class="notice" id="info" aria-live="polite">Carregando equipamento...</div>
+  <div class="split"><label class="check"><input type="checkbox" id="body" checked> Mostrar personagem</label><label class="check"><input type="checkbox" id="grid" checked> Grade</label></div>
+  <label>Animação de teste<select id="animation"><option value="idle">Descanso</option><option value="guard">Guarda</option><option value="run">Corrida normal</option><option value="armedRun">Corrida armada</option><option value="attack">Ataque</option></select></label>
+  <label>Armas na prévia<select id="placement"><option value="hand">Nas mãos</option><option value="back">Nas costas</option><option value="hidden">Ocultas</option></select></label>
+  <div class="actions"><button id="pause">❚❚ Pausar</button><button id="reset-camera">◎ Centralizar</button></div>
+  <div class="source"><h3>Fonte original</h3><div id="source" aria-live="polite"></div><canvas id="texture-preview" width="256" height="128" aria-label="Imagem da textura aplicada"></canvas></div>
+ </aside>
+ <section class="viewer">
+  <div class="viewer-caption"><strong>Prévia Three.js</strong><span>Arraste para girar · scroll para aproximar</span></div>
+  <canvas id="view" aria-label="Prévia 3D da arma equipada"></canvas>
+  <div id="status" class="status" aria-live="polite">Abrindo modelo GLB...</div>
+ </section>
+ <aside class="panel settings">
+  <h2>Material selecionado</h2>
+  <p class="hint">Edite separadamente lâmina, guarda ou outra submalha. A textura original não é substituída até você escolher uma imagem.</p>
+  <div class="color-row"><label>Cor base<input id="color" type="color" value="#ffffff"></label><label>Cor de brilho<input id="emissive" type="color" value="#000000"></label></div>
+  <label>Rugosidade <output id="roughness-value">0.85</output><input id="roughness" type="range" min="0" max="1" step=".01" value=".85"></label>
+  <label>Metalização <output id="metalness-value">0</output><input id="metalness" type="range" min="0" max="1" step=".01" value="0"></label>
+  <label>Brilho de refino (prévia) <output id="glow-value">0</output><input id="glow" type="range" min="0" max="4" step=".05" value="0"></label>
+  <label>Pulsação do brilho <output id="pulse-value">0</output><input id="pulse" type="range" min="0" max="1" step=".05" value="0"></label>
+  <label>Velocidade da pulsação <output id="pulseSpeed-value">2</output><input id="pulseSpeed" type="range" min=".2" max="10" step=".1" value="2"></label>
+  <label class="check"><input type="checkbox" id="flipV"> Inverter UV vertical (diagnóstico)</label>
+  <div class="divider"></div>
+  <h2>Textura</h2>
+  <p class="hint">Use PNG, JPG ou WebP para testar outra imagem no material. A importação não altera o GLB original.</p>
+  <input id="texture-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+  <div class="actions"><button id="upload">↑ Testar imagem</button><button id="original">Restaurar original</button></div>
+  <div class="divider"></div>
+  <h2>Salvar / publicar</h2>
+  <p class="hint">Salvar aplica neste navegador também no jogo (mesma origem). Exportar gera <code>overrides.json</code> para publicar em <code>assets/weapons/overrides.json</code>. Imagens personalizadas são incluídas no JSON e podem aumentar seu tamanho.</p>
+  <div class="actions"><button id="reset-part">Restaurar este material</button></div>
+  <p class="hint warn">Os efeitos do refino histórico (.eff/.par) serão uma etapa separada. O brilho aqui é apenas visualização de material emissivo.</p>
+ </aside>
+</main>
+<script type="module" src="tests/weapon-editor.mjs?v=1"></script>
+</body></html>
