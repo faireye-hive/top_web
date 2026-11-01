@@ -45,3 +45,67 @@ body.mobile-settings-open #navigation-hint,body.map-open #navigation-hint{displa
 
 .map-zoom-tools{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;gap:4px}.map-zoom-tools button{padding:5px 3px;font-size:11px}
 .marine-editor-link{display:block;text-decoration:none;color:#ffe1a3;border:1px solid #d4ad69;border-radius:9px;padding:10px;font-size:12px;text-align:center;background:#163f50}
+
+/* Expanded map: prioritize the interactive canvas over the legend. Desktop
+   and mobile share touch-friendly controls, without changing the minimap. */
+#world-map-dialog{
+  width:min(1140px,calc(100vw - 18px));
+  height:min(780px,calc(100dvh - 16px));
+  --map-dialog-height:min(780px,calc(100dvh - 16px));
+  padding:10px 12px;
+  border-radius:15px;
+}
+#world-map-dialog[open]{gap:8px}
+.world-map-header h2{font-size:17px}
+.world-map-header p{font-size:10px}
+.world-map-layout{
+  grid-template-columns:minmax(0,1fr) minmax(175px,205px);
+  gap:10px;min-height:0;
+}
+.world-map-surface{
+  position:relative;width:100%;height:100%;aspect-ratio:auto;
+  align-self:stretch;justify-self:stretch;
+  min-height:0;overflow:hidden;border-radius:10px;
+  border:1px solid #4b8da1;background:#0e4a6a;
+}
+#world-map{
+  width:100%;height:100%;
+  display:block;border:0;border-radius:0;
+  cursor:crosshair;touch-action:none;
+}
+.map-gesture-tip{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  color:#e4edf2;background:#062132d9;border:1px solid #7191a17d;
+  border-radius:6px;padding:3px 7px;font-size:10px;white-space:nowrap;
+  pointer-events:none;opacity:.8;
+}
+.world-map-details{gap:7px;min-height:0;overflow:auto;font-size:11px}
+.world-map-legend{gap:4px;font-size:10px}
+.world-map-details button{min-height:34px}
+.map-action-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.map-action-buttons button{font-size:11px;padding:5px}
+#map-manual{border-color:#e8bd71;background:#594621;color:#ffedb5}
+#map-travel{border-color:#73dbcd;background:#175863;color:#e5fbf5}
+#map-clear{min-height:30px;border-color:#728492;color:#b6cbd5;background:#102c3b}
+#map-manual:disabled,#map-travel:disabled,#map-clear:disabled{opacity:.42}
+@media (max-height:430px) and (orientation:landscape){
+  #world-map-dialog{padding:6px 9px;border-radius:12px}
+  #world-map-dialog[open]{gap:4px}
+  .world-map-header h2{font-size:15px}
+  .world-map-header p{display:none}
+  #world-map-close{min-width:36px;min-height:36px}
+  .world-map-layout{grid-template-columns:minmax(0,1fr) 190px;gap:7px}
+  .world-map-details{gap:5px}
+  .world-map-details .world-map-legend{display:none}
+  .map-region-note{display:none}
+  .world-map-details button{min-height:32px}
+  .map-zoom-tools{grid-template-columns:32px minmax(0,1fr) 32px}
+  .map-action-buttons button{font-size:10px}
+}
+@media(max-width:600px) and (orientation:portrait){
+  #world-map-dialog{height:calc(100dvh - 16px)}
+  .world-map-layout{display:flex;flex-direction:column;overflow:hidden}
+  .world-map-surface{flex:1 1 auto;min-height:130px}
+  .world-map-details{flex:0 0 auto;max-height:33%;overflow:auto}
+  .world-map-legend{display:none}
+}
