@@ -469,7 +469,7 @@ function updateHUD(){
   $('coords').textContent=`${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
   $('height').textContent=`${playerPos.y.toFixed(2)} m`;
   $('texid').textContent=t?`#${t.tex}`:'fora';
-  $('region').textContent=t?`${t.region} ${t.region&9?'· terra':'· sem passagem'}`:'fora';
+  $('region').textContent=t?`${t.region} ${t.region&9?'· terra':'· sem passagem'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
   $('objcount').textContent=objects.length.toLocaleString('pt-BR');
   const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
   const sitBtn=$('sit');
