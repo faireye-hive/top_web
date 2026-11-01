@@ -292,3 +292,220 @@ body.mobile-ui #map-expand .map-expand-symbol{
   line-height:1;
   transform:translateY(-1px);
 }
+
+/* Mobile-exclusive set preview; desktop continues to use the historical
+   equipment details and three original bag layout choices. */
+.bag-mobile-set-summary{display:none}
+
+@media (orientation:landscape){
+  /* Reuse the actual tabs in the title bar (no duplicate nav row). */
+  body.mobile-ui .rpg-panel{
+    isolation:isolate;
+  }
+  body.mobile-ui .rpg-panel-header{
+    position:relative;
+    height:43px;
+    min-height:43px;
+    flex:0 0 43px;
+    padding:3px 6px;
+    align-items:center;
+  }
+  body.mobile-ui .rpg-panel-header>div{
+    position:absolute;
+    width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;white-space:nowrap;
+    clip-path:inset(50%);
+  }
+  body.mobile-ui .rpg-panel-header #rpg-close{
+    position:absolute;
+    right:4px;top:3px;
+    width:37px;height:37px;min-height:37px;
+    border-radius:9px;z-index:3;
+  }
+  body.mobile-ui .rpg-tabs{
+    position:absolute;
+    top:3px;left:6px;right:45px;
+    height:37px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    padding:0;gap:4px;
+    border:0;
+    z-index:2;
+  }
+  body.mobile-ui .rpg-tabs button{
+    width:100%;min-width:0;min-height:37px;
+    padding:4px 6px;
+    border-radius:8px;
+    font-size:12px;
+    line-height:1.1;
+  }
+  body.mobile-ui .rpg-tabs button.active{
+    border-color:#d8b873;
+    background:#695c3b96;
+    color:#fff1bf;
+  }
+
+  /* Inventory: no page heading, redundant item count or hidden search.
+     Split remaining room into bag slots + actual equip/unequip set. */
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-toolbar,
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-filters{
+    display:none!important;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-panel-body{
+    padding:7px 9px 9px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content{
+    display:grid!important;
+    grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
+    grid-template-rows:18px auto auto auto;
+    column-gap:9px;row-gap:5px;
+    min-height:0;
+    align-content:start;
+    align-items:start;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content::before,
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content::after{
+    display:block;align-self:center;
+    font-size:10px;font-weight:800;
+    letter-spacing:.055em;
+    color:#f4dc9b;
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+    line-height:18px;
+    grid-row:1;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content::before{
+    content:"Itens";
+    grid-column:1;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content::after{
+    content:"Conjunto";
+    grid-column:2;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #rpg-inventory-grid{
+    grid-column:1;
+    grid-row:2 / span 3;
+    align-self:start;
+    display:grid!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:4px!important;
+    min-width:0;
+    width:100%;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #rpg-inventory-grid .rpg-item-slot{
+    min-width:0!important;
+    width:100%;
+    min-height:0;
+    aspect-ratio:1;
+    padding:2px!important;
+    border-radius:7px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #rpg-inventory-grid .rpg-item-icon{
+    font-size:20px;line-height:1;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #equipment-toggle{
+    grid-column:2;
+    grid-row:2;
+    min-width:0;min-height:39px;
+    width:100%;
+    padding:6px;
+    border-radius:8px;
+    font-size:11px;
+    line-height:1.2;
+    white-space:normal;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-mobile-set-summary{
+    display:grid;
+    grid-column:2;
+    grid-row:3;
+    gap:4px;
+    width:100%;
+    min-width:0;
+    margin:0;
+  }
+  body.mobile-ui .bag-mobile-set-row{
+    display:grid;
+    grid-template-columns:25px minmax(0,1fr) 14px;
+    align-items:center;
+    gap:5px;
+    min-width:0;min-height:27px;
+    padding:2px 6px;
+    border-radius:6px;
+    background:#0b2531e6;
+    border:1px solid #4b687559;
+  }
+  body.mobile-ui .bag-mobile-set-icon{
+    font-size:17px;
+    text-align:center;
+    line-height:1;
+  }
+  body.mobile-ui .bag-mobile-set-name{
+    min-width:0;
+    font-size:10px;
+    font-weight:600;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    color:#d6e3e5;
+  }
+  body.mobile-ui .bag-mobile-set-state{
+    font-size:12px;
+    color:#9de5c1;
+    text-align:right;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #bag-item-detail{
+    grid-column:2;
+    grid-row:4;
+    margin:0;
+    padding:5px 7px;
+    font-size:10px;
+    line-height:1.2;
+    max-height:66px;
+    overflow-y:auto;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #bag-item-detail strong{
+    font-size:11px;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #bag-item-description{
+    margin:2px 0;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #bag-item-status{
+    display:none;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #rpg-inventory-empty{
+    grid-column:1;grid-row:5;
+    margin:0;
+    font-size:10px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-equipment-info{
+    display:none!important;
+  }
+}
+@media (orientation:landscape) and (max-width:600px){
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content{
+    grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);
+    column-gap:6px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] #rpg-inventory-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+@media (orientation:landscape) and (max-height:340px){
+  body.mobile-ui .rpg-panel-header{
+    height:39px;min-height:39px;flex-basis:39px;
+  }
+  body.mobile-ui .rpg-tabs{height:34px;top:2px}
+  body.mobile-ui .rpg-tabs button{min-height:34px;font-size:11px}
+  body.mobile-ui .rpg-panel-header #rpg-close{
+    height:34px;min-height:34px;width:35px;top:2px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-panel-body{
+    padding:4px 7px 6px;
+  }
+  body.mobile-ui .bag-mobile-set-row{min-height:24px;padding:1px 5px}
+}
