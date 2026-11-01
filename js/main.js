@@ -5,15 +5,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
-import { createArgentFountain } from './fountain.js?v=3';
+import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=5';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero } from './hero-state.mjs?v=4';
-import { resolvePrimaryAction } from './context-action.mjs?v=2';
+import { resolvePrimaryAction } from './context-action.mjs?v=3';
 import { createCombat, COMBAT } from './combat-state.mjs?v=4';
 import { createMonsterManager } from './monster-manager.mjs?v=2';
-import { calculateMovementSpeed } from './movement-speed.mjs';
+import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
 import { createNpcManager } from './npc-manager.mjs?v=4';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
@@ -22,6 +22,16 @@ import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=7';
 import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=3';
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
+import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
+
+import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {boatCameraMode,boatCameraPose,BOAT_CAMERA_MODES,BOAT_CAMERA_LABELS} from './boat-camera.mjs?v=1';
+import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=2';
+import {renderBudget,instanceCapacity,resolutionStep} from './render-budget.mjs?v=1';
+import {createStreamedWorld} from './streamed-world.mjs?v=1';
+import {readMarineDesign,editedTile} from './marine-design.mjs?v=2';
+import {createSeaMaterial,decorateBoat,createBoatEffects,waveHeight} from './marine-visuals.mjs?v=2';
+import {createNavigationMarkers} from './navigation-markers.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
 // compartilham um referencial só. O que pode crescer com o porte fica ao lado:
@@ -33,17 +43,23 @@ import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat
 // yaw 0 olha para +Z; yaw π olha para −Z e o olho fica no +Z (o lado do rosto).
 // W anda nesse olhar. D anda na direita da tela (no yaw π, isso é +X).
 const $ = id => document.getElementById(id);
+const mapIsOpen=()=>!!$('world-map-dialog').open;
 const mobileQuery=window.matchMedia('(pointer: coarse), (max-width: 780px), (orientation: landscape) and (max-height: 600px)');
 let MOBILE_UI=mobileQuery.matches;
 document.body.classList.toggle('mobile-ui', MOBILE_UI);
 const ORIGIN = { x: 2218.5, z: 2776.5 };
-const CHUNK=64, RADIUS=3, STRIDE=7;
+const launchParams=new URLSearchParams(location.search),spawnParts=(launchParams.get('spawn')||'').split(',').map(Number);
+const editorSpawn=spawnParts.length===2&&spawnParts.every(n=>Number.isFinite(n)&&n>=0&&n<4096)?{x:spawnParts[0],z:spawnParts[1]}:null;
+if(editorSpawn){ORIGIN.x=editorSpawn.x;ORIGIN.z=editorSpawn.z;}
+const BUDGET=renderBudget(MOBILE_UI),CHUNK=BUDGET.chunk,RADIUS=BUDGET.radius,STRIDE=7;
 const LOOK_H=1.15;
 const BODY_R=0.22;
 // Mesmos limites de sources/Engine/include/top/ClassicCamera.h.
 const CAM={yaw:Math.PI-0.35,dist:15,lift:1.85};
 const getPref=(key,fallback)=>{try{return localStorage.getItem(key)??fallback}catch{return fallback}};
 const setPref=(key,val)=>{try{localStorage.setItem(key,String(val))}catch{}};
+let boatViewMode=boatCameraMode(getPref('topweb_boat_camera','chase'));
+let boatCameraSize={length:12,height:10};
 let autoCameraEnabled=getPref('topweb_auto_camera','1')!=='0';
 // Modo novo por padrão; o jogador pode escolher a órbita livre e o valor fica salvo.
 let mobileCameraMode=getPref('topweb_mobile_camera_mode','follow')==='free'?'free':'follow';
@@ -97,6 +113,7 @@ const skillCatalogReady=loadMobileSkillCatalog().then(catalog=>{
 });
 const hero=restoreHero(getPref('topweb_hero_v2','null'),getPref('topweb_character','lance'));
 let equipmentManifest=null,changingLoadout=false;
+let sailing=false,boardingBoat=false,boat=null,boatProfile=null,boatReady=null,seaTravelReady=false;
 let poseProfiles={version:1,profiles:{}},activePoseProfile=null,weaponHolster=null;
 let weaponMaterialProfiles={version:1,profiles:{}};
 const weaponMaterialsReady=fetch('assets/weapons/overrides.json?v=1')
@@ -108,6 +125,11 @@ const poseProfilesReady=fetch('assets/poses/overrides.json?v=1')
   .catch(()=>({version:1,profiles:{}}))
   .then(data=>{poseProfiles=readPoseProfiles(globalThis.localStorage,data);return poseProfiles;});
 const saveHero=()=>setPref('topweb_hero_v2',serializeHero(hero));
+const marineDesign=readMarineDesign();
+const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
+let boatCatalog=null,boatDecoration=null;
+let navigationContext=null,mapSelection=null,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationHeights={harbor:0,destination:0};
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -116,7 +138,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
-let maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
+let maxPixelRatio=Math.min(window.devicePixelRatio || 1,BUDGET.pixelRatio);
 let renderPixelRatio=maxPixelRatio;
 renderer.setPixelRatio(renderPixelRatio);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -131,6 +153,8 @@ const sun=new THREE.DirectionalLight(0xffe6b0,1.22); sun.position.set(-50,90,70)
 const ambient=new THREE.DirectionalLight(0x9ad4e2,.3); ambient.position.set(40,30,-50);scene.add(ambient);
 const brightness=attachBrightness({renderer, hemi, sun, fill:ambient, scene});
 const waypoint=createWaypoint(THREE, scene);
+const navigationMarkers=createNavigationMarkers(THREE,scene);
+const boatEffects=createBoatEffects(THREE,scene);
 let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
@@ -147,43 +171,13 @@ function writeAtlasUV(dest, offset, tileId, x, z){
 }
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
 // some quando o terreno está acima de −0,5 m, para a praia não ficar coberta.
-const seaMat=new THREE.ShaderMaterial({
-  transparent:true, depthWrite:false, toneMapped:true,
-  uniforms:{uTime:{value:0}},
-  vertexShader:`
-    attribute float aShore;
-    uniform float uTime;
-    varying float vShore;
-    varying vec2 vWorld;
-    void main(){
-      vShore=aShore;
-      vec3 p=position;
-      float wave=sin(p.x*0.72+uTime*1.35)*cos(p.z*0.58-uTime*1.05);
-      p.y+=wave*0.04*aShore;
-      vWorld=p.xz;
-      gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);
-    }`,
-  fragmentShader:`
-    uniform float uTime;
-    varying float vShore;
-    varying vec2 vWorld;
-    void main(){
-      float spark=sin(vWorld.x*1.6+uTime*0.8)*sin(vWorld.y*1.25-uTime*0.55);
-      vec3 deep=vec3(0.18,0.45,0.66);
-      vec3 crest=vec3(0.62,0.84,0.90);
-      vec3 col=mix(deep,crest,spark*0.5+0.5);
-      col=mix(col,vec3(0.549,0.549,0.863),0.42);
-      float alpha=vShore*(0.78+0.08*spark);
-      if(alpha<0.015) discard;
-      gl_FragColor=vec4(col,alpha);
-    }`
-});
+const seaMat=createSeaMaterial(THREE,marineDesign.water,{lightweight:MOBILE_UI});
 const chunkMap=new Map();
 const objGroup=new THREE.Group();scene.add(objGroup);
 let sceneObjs3D=null;
 let modelInstances=[]; // instancing dinâmico: geometria única por modelo
 let modelGroups=new Map(), spatialGroups=new Map();
-let sceneVisibilityRadius=MOBILE_UI?100:180, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
+let sceneVisibilityRadius=BUDGET.objects, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
 let sceneStats={loaded:0,missing:0,active:0};
 const instanceTemp=new THREE.Object3D();
 
@@ -203,11 +197,9 @@ function progress(amount,message){$('progressbar').style.width=`${amount}%`;if(m
 function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 window.addEventListener('resize',resize);resize();
 function getTile(x,z){
-  const ix=Math.floor(x)-world.ox, iz=Math.floor(z)-world.oz;
-  if(ix<0||iz<0||ix>=world.w||iz>=world.h)return null;
-  const i=20+(iz*world.w+ix)*STRIDE, v=world.dv;
-  return {tex:v.getUint8(i),height:v.getInt8(i+1)*.1,
-          rgb:v.getUint16(i+2,true),region:v.getUint16(i+4,true),blocks:v.getUint8(i+6)};
+  if(!world)return null;
+  const base=world.tileAt(x,z);
+  return editedTile(base,x,z,marineDesign);
 }
 function sampleHeight(x,z){
   const tile=getTile(x,z);if(!tile)return 0;
@@ -273,13 +265,13 @@ function writeNormal(out,offset,x,z){
   const dhz=gridHeight(x,z+1)-gridHeight(x,z-1);
   const nx=-dhx, ny=2, nz=-dhz;
   const len=Math.hypot(nx,ny,nz)||1;
-  out[offset]=nx/len; out[offset+1]=ny/len; out[offset+2]=nz/len;
+  out[offset]=Math.round(nx/len*127);out[offset+1]=Math.round(ny/len*127);out[offset+2]=Math.round(nz/len*127);
 }
 function buildChunk(cx,cz){
   const baseX=world.ox+cx*CHUNK,baseZ=world.oz+cz*CHUNK;
   const sideX=Math.min(CHUNK,world.w-cx*CHUNK),sideZ=Math.min(CHUNK,world.h-cz*CHUNK);
-  if(sideX<=0||sideZ<=0)return null;
-  const count=sideX*sideZ, positions=new Float32Array(count*12),normals=new Float32Array(count*12),colors=new Float32Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
+  if(sideX<=0||sideZ<=0||!world.hasArea(baseX+sideX/2,baseZ+sideZ/2,CHUNK/2+2))return null;
+  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
   let j=0,ii=0,sea=false;
   for(let z=0;z<sideZ;z++)for(let x=0;x<sideX;x++){
     const gx=baseX+x,gz=baseZ+z, t=getTile(gx,gz),clr=colorFor(t,gx,gz);
@@ -292,7 +284,7 @@ function buildChunk(cx,cz){
     writeNormal(normals,j*12+3,gx+1,gz);
     writeNormal(normals,j*12+6,gx,gz+1);
     writeNormal(normals,j*12+9,gx+1,gz+1);
-    for(let k=0;k<4;k++)colors.set(clr,j*12+k*3);
+    for(let k=0;k<4;k++)for(let c=0;c<3;c++)colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);
     // 4 vertices: (x,z), (x+1,z), (x,z+1), (x+1,z+1)
     writeAtlasUV(uvs,j*8,t?.tex??0,gx,gz);
     writeAtlasUV(uvs,j*8+2,t?.tex??0,gx+1,gz);
@@ -304,8 +296,8 @@ function buildChunk(cx,cz){
   }
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  geom.setAttribute('normal',new THREE.BufferAttribute(normals,3));
-  geom.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  geom.setAttribute('normal',new THREE.BufferAttribute(normals,3,true));
+  geom.setAttribute('color',new THREE.BufferAttribute(colors,3,true));
   geom.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
   geom.setIndex(new THREE.BufferAttribute(indices,1));
   const mesh=new THREE.Mesh(geom,landMat);mesh.userData.terrain=true;mesh.frustumCulled=true;scene.add(mesh);
@@ -337,6 +329,7 @@ function buildChunk(cx,cz){
 }
 function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
 function updateChunks(){
+  void world.focus(playerPos.x,playerPos.z,(RADIUS+1)*CHUNK+4).catch(error=>{console.warn('Setor de Garner:',error);});
   const cx=Math.floor((playerPos.x-world.ox)/CHUNK),cz=Math.floor((playerPos.z-world.oz)/CHUNK);
   const need=new Set();let created=0;
   for(let dz=-RADIUS;dz<=RADIUS;dz++)for(let dx=-RADIUS;dx<=RADIUS;dx++){
@@ -351,38 +344,124 @@ function updateChunks(){
   }}
   return created;
 }
-function mapPixels(){
-  const cnv=$('minimap'),ctx=cnv.getContext('2d',{willReadFrequently:false});
-  const img=ctx.createImageData(256,256);
-    for(let y=0;y<256;y++)for(let x=0;x<256;x++){
-    const xx=world.ox+(x+.5)/256*world.w,zz=world.oz+(y+.5)/256*world.h;
-    const t=getTile(xx,zz),clr=colorFor(t,Math.floor(xx),Math.floor(zz));
-    const at=(y*256+x)*4;
-    const sea=t?.height<-.4;
-    img.data[at]=Math.floor(Math.min(1,sea ? .25+clr[0]*.9 : clr[0])*255);
-    img.data[at+1]=Math.floor(Math.min(1,sea ? .45+clr[1]*.7 : clr[1])*255);
-    img.data[at+2]=Math.floor(Math.min(1,sea ? .57+clr[2]*.7 : clr[2])*255);
-    img.data[at+3]=255;
-  }
-  return img;
-}
 let minimapBackground=null;
-function generateMinimap(){
-  const hidden=document.createElement('canvas');hidden.width=256;hidden.height=256;
-  hidden.getContext('2d').putImageData(mapPixels(),0,0);
-  minimapBackground=hidden;
+async function generateMinimap(){
+  if(minimapBackground)return;
+  minimapBackground=await new Promise((resolve,reject)=>{
+    const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('Mapa geral indisponível'));img.src=world.manifest.overview;
+  });
+}
+function fullMapView(){return mapView(world,mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2},mapOverviewSpan);}
+const localMapCanvas=document.createElement('canvas');localMapCanvas.width=localMapCanvas.height=96;
+function mapDot(ctx,point,color,label,full){
+  const r=full?13:10;
+  ctx.beginPath();ctx.arc(point.x,point.y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='#082638';ctx.lineWidth=full?3:4;ctx.stroke();
+  if(label){
+    ctx.font=full?'bold 32px sans-serif':'bold 26px sans-serif';
+    ctx.textAlign=full?'left':'center';ctx.textBaseline='middle';
+    ctx.lineWidth=full?7:5;ctx.strokeStyle='#082638';ctx.fillStyle=color;
+    const x=point.x+(full?15:0),y=point.y+(point.labelDy??(full?0:22));
+    ctx.strokeText(label,x,y);ctx.fillText(label,x,y);
+  }
+}
+function drawNavigationMap(canvas,view,full=false){
+  const ctx=canvas.getContext('2d'),size=canvas.width;
+  ctx.clearRect(0,0,size,size);ctx.imageSmoothingEnabled=false;
+  const ratioX=minimapBackground.width/world.w,ratioZ=minimapBackground.height/world.h;
+  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,size);
+  if(!full){
+    const local=localMapCanvas.getContext('2d'),image=local.createImageData(96,96);
+    for(let z=0;z<96;z++)for(let x=0;x<96;x++){
+      const t=getTile(view.x+(x+.5)/96*view.w,view.z+(z+.5)/96*view.h),color=mapTileColor(t),at=(z*96+x)*4;
+      image.data[at]=color[0];image.data[at+1]=color[1];image.data[at+2]=color[2];image.data[at+3]=255;
+    }
+    local.putImageData(image,0,0);ctx.drawImage(localMapCanvas,0,0,size,size);
+  }else for(const patch of mapEdits){
+    if(patch.x<view.x||patch.z<view.z||patch.x>view.x+view.w||patch.z>view.z+view.h)continue;
+    const color=mapTileColor({...getTile(patch.x,patch.z),...patch.tile});ctx.fillStyle=`rgb(${color.join(',')})`;
+    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*size,Math.max(1,size/view.w),Math.max(1,size/view.h));
+  }
+  ctx.imageSmoothingEnabled=true;
+  if(full){
+    ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
+    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,size);ctx.moveTo(0,n*size/8);ctx.lineTo(size,n*size/8);ctx.stroke();}
+  }
+  const project=p=>projectMap(p,view,size),player=project(playerPos);
+  const destination=mapSelection&&full?mapSelection:moverTarget;
+  if(destination){
+    const p=project(destination);
+    ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(p.x,p.y);
+    ctx.setLineDash([full?12:6,full?8:4]);ctx.lineWidth=full?3:2;ctx.strokeStyle='#ffd37d';ctx.stroke();ctx.setLineDash([]);
+    mapDot(ctx,p,'#ffb94f',full?'Destino':'',full);
+  }
+  const harbor=full?project(ARGENT_HARBOR):mapEdgePoint(ARGENT_HARBOR,view,size,30);
+  if(full)harbor.labelDy=-24;
+  mapDot(ctx,harbor,'#ffd37d',full?'Porto de Argent':'P',full);
+  if(navigationContext?.destination){
+    const p=project(navigationContext.destination);
+    if(full)p.labelDy=24;
+    mapDot(ctx,p,'#6dffcf',full?(sailing?'Desembarque livre':'Embarque livre'):'',full);
+  }
+  if(!full)for(const monster of monsterManager?.monsters||[]){
+    if(monster.hp>0&&Math.hypot(monster.x-playerPos.x,monster.z-playerPos.z)<40)
+      mapDot(ctx,project(monster),'#e68b72','',false);
+  }
+  const heading=sailing&&boat?boat.rotation.y+Math.PI:avatar?avatar.rotation.y+Math.PI:CAM.yaw;
+  ctx.save();ctx.translate(player.x,player.y);ctx.rotate(Math.PI-heading);
+  const radius=full?16:13;
+  ctx.beginPath();ctx.moveTo(0,-radius);ctx.lineTo(radius*.7,radius*.7);ctx.lineTo(0,radius*.35);ctx.lineTo(-radius*.7,radius*.7);ctx.closePath();
+  ctx.fillStyle='#fff8cf';ctx.strokeStyle='#062433';ctx.lineWidth=full?3:4;ctx.fill();ctx.stroke();ctx.restore();
+  if(full){
+    ctx.fillStyle='#fff4cb';ctx.font='bold 24px sans-serif';ctx.textAlign='right';ctx.fillText('N ↑',size-18,32);
+    const local=mapView(world,playerPos),p=project({x:local.x,z:local.z});
+    ctx.strokeStyle='#fff8cf88';ctx.lineWidth=2;ctx.setLineDash([7,6]);
+    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*size);ctx.setLineDash([]);
+  }
 }
 function drawMinimap(){
   if(!minimapBackground)return;
-  const ctx=$('minimap').getContext('2d');ctx.clearRect(0,0,256,256);
-  ctx.drawImage(minimapBackground,0,0);
-  const mx=(playerPos.x-world.ox)/world.w*256,mz=(playerPos.z-world.oz)/world.h*256;
-  const {fwd}=cameraBasis();
-  ctx.beginPath();ctx.moveTo(mx,mz);ctx.lineTo(mx+fwd.x*18,mz+fwd.z*18);
-  ctx.strokeStyle='#fff3c4';ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(mx,mz,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#072633';ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(mx,mz,9,0,Math.PI*2);ctx.strokeStyle='#b2fff0';ctx.lineWidth=1.4;ctx.stroke();
-  if(moverTarget){ctx.beginPath();ctx.arc((moverTarget.x-world.ox)/world.w*256,(moverTarget.z-world.oz)/world.h*256,3,0,Math.PI*2);ctx.strokeStyle='#ffe6ad';ctx.stroke()}
+  drawNavigationMap($('minimap'),mapView(world,playerPos));
+  if(mapIsOpen()){
+    drawNavigationMap($('world-map'),fullMapView(),true);
+    $('map-location').textContent=`Você: ${playerPos.x.toFixed(0)}, ${playerPos.z.toFixed(0)} · ${sailing?'no mar':'em terra'}`;
+  }
+}
+async function selectMapDestination(point){
+  mapSelection=point;const revision=++mapSelectionRevision;
+  $('map-travel').disabled=true;$('map-selection-info').textContent='Carregando o terreno do destino…';
+  try{await world.ensureAround(point.x,point.z,boatRadius()+3);}
+  catch{$('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
+  if(revision!==mapSelectionRevision)return;
+  const allowed=sailing?canSail(point.x,point.z):walkable(point.x,point.z);
+  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Destino marcado. Confirme para seguir.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
+  $('map-travel').disabled=!allowed;
+  $('map-travel').textContent=sailing?'Navegar até aqui':'Caminhar até aqui';drawMinimap();
+}
+function openWorldMap(){
+  if(!world||!seaTravelReady||mapIsOpen())return;
+  if(skillAnimationLocked){toast('Aguarde a skill terminar para abrir o mapa.');return;}
+  stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
+  document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
+  mapSelection=null;$('map-travel').disabled=true;$('map-travel').textContent='Selecione um destino';
+  $('map-selection-info').textContent='Selecione um ponto para traçar seu rumo.';
+  mapOverviewSpan=world.w;mapOverviewCenter=null;
+  document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
+}
+function updateNavigationIndicators(){
+  if(!seaTravelReady)return;
+  const context=navigationContext,destination=context?.destination;
+  navigationMarkers.update({harbor:ARGENT_HARBOR,
+    harborHeight:navigationHeights.harbor,player:playerPos,context,
+    heightAt:()=>navigationHeights.destination,time:performance.now()/1000});
+  const distance=Math.hypot(ARGENT_HARBOR.x-playerPos.x,ARGENT_HARBOR.z-playerPos.z);
+  const hint=$('navigation-hint');hint.hidden=hero.hp<=0||!!rpgHud?.isOpen()||(!destination&&!sailing&&distance>110);
+  hint.classList.toggle('transfer-ready',!!destination);
+  const target=destination||ARGENT_HARBOR;
+  const bearing=Math.atan2(target.x-playerPos.x,target.z-playerPos.z);
+  hint.style.setProperty('--bearing',`${(CAM.yaw-bearing)*180/Math.PI}deg`);
+  $('navigation-title').textContent=destination?(sailing?'Desembarque disponível':'Embarque no veleiro'):`Porto de Argent · ${Math.round(distance)} m`;
+  $('navigation-detail').textContent=destination?'Siga a marca verde · toque aqui para '+(sailing?'desembarcar':'embarcar'):'Siga a seta dourada · toque para ver no mapa';
 }
 function clearObjectMarkers(){objectMeshes.forEach(m=>{objGroup.remove(m);m.dispose?.()});objectMeshes=[];objGroup.clear()}
 // CSceneObj::_UpdateYaw: o short do .obj entra em Angle2Radian, em graus.
@@ -419,6 +498,17 @@ function updateObjectMarkers(){
 function placeCamera(){
   const cameraPivot=MOBILE_UI?mobileCameraFocus:playerPos;
   clampCam();
+  if(sailing&&boatViewMode!=='classic'){
+    // Na proa, seguir o casco sem atraso evita entrar nele em alta velocidade.
+    const boatPivot=boatViewMode==='bow'?playerPos:cameraPivot;
+    const pose=boatCameraPose({mode:boatViewMode,yaw:CAM.yaw,boatYaw:boat?.rotation.y||0,
+      distance:CAM.dist,lift:CAM.lift,radius:boatRadius(),...boatCameraSize});
+    _eye.set(boatPivot.x+pose.eye.x,boatPivot.y+pose.eye.y,boatPivot.z+pose.eye.z);
+    _look.set(boatPivot.x+pose.look.x,boatPivot.y+pose.look.y,boatPivot.z+pose.look.z);
+    _eye.y=Math.max(_eye.y,sampleHeight(_eye.x,_eye.z)+.7);
+    if(Math.abs(camera.fov-pose.fov)>.05){camera.fov=pose.fov;camera.updateProjectionMatrix();}
+    camera.position.copy(_eye);camera.lookAt(_look);return;
+  }
   const pitch=cameraLiftAtDistance(CAM.lift,CAM.dist);
   const desiredFov=cameraFovAtDistance(CAM.dist);
   if(Math.abs(camera.fov-desiredFov)>.05){camera.fov=desiredFov;camera.updateProjectionMatrix();}
@@ -451,10 +541,15 @@ function faceTravel(dx,dz,dt){
 }
 function teleport(x,z){
   stopCombat(true);
+  if(!world.hasArea(x,z,20)){
+    toast('Carregando o terreno do destino…');
+    void world.ensureAround(x,z,CHUNK+4).then(()=>{if(teleport(x,z)){document.body.classList.remove('mobile-settings-open');toast('Destino carregado.');}}).catch(()=>toast('Não foi possível carregar o destino.'));return false;
+  }
   x=THREE.MathUtils.clamp(x,world.ox+.01,world.ox+world.w-1.01);
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
+  if(sailing){sailing=false;if(boat)boat.visible=false;if(avatar)avatar.visible=true;shadow.visible=true;saveSeaTravel();}
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
   playerPos.set(free[0],sampleHeight(free[0],free[1]),free[1]);
@@ -475,19 +570,106 @@ function updateHUD(){
   $('coords').textContent=`${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
   $('height').textContent=`${playerPos.y.toFixed(2)} m`;
   $('texid').textContent=t?`#${t.tex}`:'fora';
-  $('region').textContent=t?`${t.region} ${t.region&9?'· terra':'· sem passagem'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
+  $('region').textContent=t?`${t.region} ${sailing?'· navegando':t.region&9?'· terra':'· mar'} · ${isInsideCity(playerPos.x,playerPos.z)?'Cidade (aprox.)':'Exterior'}`:'fora';
   $('objcount').textContent=objects.length.toLocaleString('pt-BR');
-  const cam=$('caminfo'); if(cam) cam.textContent=`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
+  const cam=$('caminfo'); if(cam) cam.textContent=sailing&&boatViewMode!=='classic'?BOAT_CAMERA_LABELS[boatViewMode]+' · '+Math.round(camera.fov)+'°':`${CAM.dist.toFixed(0)} m · ${Math.round(Math.atan(cameraLiftAtDistance(CAM.lift,CAM.dist))*180/Math.PI)}°`;
   const sitBtn=$('sit');
   if(sitBtn) sitBtn.classList.toggle('active', !!seated || !!poseHere(playerPos.x, playerPos.z));
 }
+function boatRadius(){
+  const profile=boatCatalog?.boats?.find(b=>b.slug===marineDesign.boat.hull);
+  return (profile?.radius||(marineDesign.boat.hull==='guppy'?3.06:2.119))*marineDesign.boat.scale;
+}
+function boardingReach(){return Math.min(28,Math.max(7,boatRadius()+6));}
+function lookAheadFromBoat(){
+  if(!sailing||!boat)return;
+  CAM.yaw=boat.rotation.y+Math.PI;mobileOrbitYaw=CAM.yaw;
+  mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;cameraFollowTarget=CAM.yaw;
+  manualCamera();placeCamera();
+}
+function setBoatView(mode){
+  boatViewMode=boatCameraMode(mode);setPref('topweb_boat_camera',boatViewMode);
+  $('boat-camera-mode').value=boatViewMode;
+  $('boat-view-toggle').textContent=BOAT_CAMERA_LABELS[boatViewMode];
+  $('boat-view-toggle').setAttribute('aria-label','Vista do barco: '+BOAT_CAMERA_LABELS[boatViewMode]+'. Toque para alternar.');
+  if(sailing&&boatViewMode==='bow')lookAheadFromBoat();else placeCamera();
+}
+function canSail(x,z){return !!world&&sailableAt(getTile,x,z,boatRadius());}
+function canLand(x,z){
+  if(!landableAt(getTile,x,z,BODY_R))return false;
+  const height=footSurface(x,z,SEA_LEVEL+3.5);
+  return height>=SEA_LEVEL-.3&&height<=SEA_LEVEL+3.5&&!solidAt(x,z,height);
+}
+function transferConnected(a,b){
+  return clearTransfer(a,b,getTile,(x,z)=>{
+    const height=footSurface(x,z,SEA_LEVEL+3.5);
+    return height>SEA_LEVEL+3.5||solidAt(x,z,height);
+  });
+}
+async function loadBoat(){
+  if(!boatReady)boatReady=(async()=>{
+    const response=await fetch('assets/boats/manifest.json?v=2');
+    if(!response.ok)throw new Error('Catálogo de barcos indisponível.');
+    boatCatalog=await response.json();
+    const profile=boatCatalog.boats.find(b=>b.slug===marineDesign.boat.hull)||boatCatalog.boats[0];
+    const gltf=await new GLTFLoader().loadAsync(profile.model);
+    boatProfile={...profile,speed:marineDesign.boat.speed};boat=gltf.scene;boatDecoration=decorateBoat(THREE,boat,marineDesign.boat);
+    boat.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(boat).getSize(new THREE.Vector3());
+    boatCameraSize={length:Math.max(size.x,size.z),height:size.y};boat.visible=false;scene.add(boat);
+    return boat;
+  })().catch(error=>{boatReady=null;throw error;});
+  return boatReady;
+}
+function saveSeaTravel(){
+  if(!seaTravelReady)return;
+  setPref('topweb_sea_travel_v1',JSON.stringify({version:1,sailing,x:playerPos.x,z:playerPos.z}));
+}
+function clearTravelInput(){
+  stopCombat(true);keys.clear();touchMove.forward=0;touchMove.sideways=0;
+  moverTarget=null;pendingPose=null;waypoint.hide();
+  mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;cameraFollowTarget=null;
+  document.dispatchEvent(new Event('topweb:menu-open'));
+}
+function setSailing(enabled,destination){
+  clearTravelInput();boatEffects.reset();sailing=enabled;
+  playerPos.set(destination.x,enabled?boatProfile.seaLevel:footSurface(destination.x,destination.z,SEA_LEVEL+3.5),destination.z);
+  if(boat){boat.visible=enabled;boat.position.copy(playerPos);boat.rotation.y=avatar?.rotation.y||0;}
+  if(avatar){avatar.visible=!enabled;avatar.position.copy(playerPos);}
+  shadow.visible=!enabled;mobileCameraFocus.copy(playerPos);
+  if(enabled&&boatViewMode==='bow')lookAheadFromBoat();
+  playClip('Parado');saveSeaTravel();placeCamera();forceChunks=true;
+  updateHUD();updateCombatHud();drawMinimap();
+}
+async function toggleSeaTravel(){
+  if(!world||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||rpgHud?.isOpen())return false;
+  const context=primaryContext();
+  if(context.type==='disembark'){
+    setSailing(false,context.destination);toast('Em terra. Boa exploração!');return true;
+  }
+  if(context.type!=='embark'){
+    toast(sailing?'Aproxime-se de uma margem livre para desembarcar.':'Aproxime-se da água no porto para embarcar.');return false;
+  }
+  boardingBoat=true;clearTravelInput();
+  try{
+    await loadBoat();
+    // O jogador pode ter voltado à cidade ou aberto um menu durante o download.
+    const current=primaryContext();
+    if(current.type!=='embark'||hero.hp<=0||rpgHud?.isOpen())return false;
+    setSailing(true,current.destination);
+    toast('Veleiro · use o joystick ou toque no mar para navegar.');return true;
+  }catch(error){console.error('Barco:',error);toast('Não foi possível carregar o barco. Tente embarcar novamente.');return false;}
+  finally{boardingBoat=false;}
+}
 function primaryContext(){
-  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,
+  const boarding=!sailing&&!seated&&world?nearestPosition(playerPos,canSail,boardingReach(),transferConnected):null;
+  const landing=sailing?nearestPosition(playerPos,canLand,boardingReach(),transferConnected):null;
+  return resolvePrimaryAction({recovering:hero.hp<=0,seated:!!seated,sailing,boarding,landing,
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
   if(changingLoadout||changingCharacter||rpgHud?.isOpen())return;
   const context=primaryContext();
+  if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
   return tryPose();
 }
@@ -496,6 +678,7 @@ function tryPose(){
   stopCombat();
   const context=primaryContext();
   if(context.type==='recovering')return false;
+  if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='stand'){if(standUp())toast('Em pé.');return true;}
   if(context.type==='npc'){toast(context.npc.name+' · diálogo em desenvolvimento');return true;}
   if(context.type==='pose'){
@@ -575,7 +758,7 @@ function selectMobileAutoMode(){
 }
 function toggleAutoAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto){
     combat.toggle(); // Desativa auto, mas conserva alvo para o ataque manual.
@@ -591,7 +774,7 @@ function toggleAutoAttack(){
 }
 function manualAttack(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
-  if(!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
+  if(sailing||boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
   if(combat.auto)return false; // O botão grande é exclusivamente manual.
   const fired=combat.manualAttack(playerPos);
@@ -755,46 +938,54 @@ function updateCombatHud(){
   desktopAuto?.classList.toggle('auto-active',!!combat?.auto);
   const autoModeButton=$('mobile-auto');
   if(autoModeButton){
-    autoModeButton.disabled=hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
+    autoModeButton.disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||!!skillAnimationLocked||!!seated;
     autoModeButton.setAttribute('aria-pressed',String(mobileAutoModeEnabled));
     autoModeButton.setAttribute('aria-label',mobileAutoModeEnabled?'Usar ataque manual':'Usar ataque automático no botão grande');
     autoModeButton.classList.toggle('auto-active',mobileAutoModeEnabled);
   }
   const context=primaryContext(),button=$('mobile-attack');
+  navigationContext=context;
+  navigationHeights.harbor=footSurface(ARGENT_HARBOR.x,ARGENT_HARBOR.z,3.5);
+  navigationHeights.destination=context.destination&&sailing?footSurface(context.destination.x,context.destination.z,3.5):0;
+  $('boat-view-controls').hidden=!sailing||!!rpgHud?.isOpen();
   const combatAction=context.type==='attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
   button?.setAttribute('aria-label',autoAction?(combat?.auto?'Parar ataque automático':'Iniciar ataque automático')
     :combatAction?'Atacar manualmente':context.label);
   if(autoAction)button?.setAttribute('aria-pressed',String(!!combat?.auto));
   else button?.removeAttribute('aria-pressed');
-  if(context.npc){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
+  if(sailing){$('combat-mode').textContent='Navegando · '+(boatProfile?.name||'Veleiro');$('combat-target').textContent=context.type==='disembark'?'Margem livre · desembarque disponível':'Aproxime-se da margem para desembarcar';}
+  if(context.npc&&!sailing){$('combat-mode').textContent='Conversa disponível';$('combat-target').textContent=context.npc.name;}
   button?.classList.toggle('interaction-ready',!combatAction&&context.type!=='recovering');
   button?.classList.toggle('auto-mode-selected',autoAction);
   button?.classList.toggle('auto-active',autoAction&&!!combat?.auto);
   button?.classList.remove('manual-unavailable');
   const icon=button?.querySelector('use');if(icon)icon.setAttribute('href',context.icon);
   const label=button?.querySelector('small');if(label)label.textContent=combatAction?(mobileAutoModeEnabled?'Auto':'Atacar'):context.label;
-  if(button)button.disabled=hero.hp<=0||changingCharacter||changingLoadout;
-  $('mobile-target').disabled=hero.hp<=0||changingCharacter||changingLoadout;
+  if(button)button.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('mobile-target').disabled=sailing||boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('mobile-run').disabled=sailing||boardingBoat;
+  $('mobile-joystick').setAttribute('aria-label',sailing?'Joystick para navegar':'Joystick para caminhar');
+  const seaButton=$('sea-travel');
+  seaButton.textContent=sailing?'Desembarcar':'Embarcar no veleiro';
+  seaButton.disabled=boardingBoat||hero.hp<=0||changingCharacter||changingLoadout;
+  $('sea-status').textContent=sailing?'Veleiro · joystick para navegar · aproxime-se da margem para desembarcar.':'No porto, aproxime-se da água e toque em Embarcar.';
   $('equipment-toggle').disabled=!equipmentManifest||changingLoadout||changingCharacter||hero.hp<=0;
 
 }
 
 function showLoadingError(error){console.error(error);$('loadingmessage').textContent=`Erro: ${error?.message||error}`;$('loadinghint').textContent='Abra via http://localhost:8000 e verifique sua conexão com a internet.';$('retry').hidden=false;}
 async function fetchMap(){
-  const response=await fetch('assets/argent/region.gmap.gz');
-  if(!response.ok)throw new Error(`Não foi possível carregar o terreno (${response.status})`);
-  if(!('DecompressionStream' in window))throw new Error('Este navegador não oferece DecompressionStream(gzip). Atualize o Firefox/Chrome.');
-  const downloaded=await response.arrayBuffer();
-  const isGzip=new Uint8Array(downloaded,0,2);
-  const buffer=isGzip[0]===0x1f&&isGzip[1]===0x8b
-      ? await new Response(new Blob([downloaded]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
-      : downloaded;
-  const dv=new DataView(buffer);
-  if(String.fromCharCode(...new Uint8Array(buffer,0,4))!=='GNR1')throw new Error('Arquivo .gmap inválido');
-  const ox=dv.getUint32(4,true),oz=dv.getUint32(8,true),w=dv.getUint32(12,true),h=dv.getUint32(16,true);
-  if(buffer.byteLength!==20+w*h*STRIDE||w>4096||h>4096)throw new Error('Formato ou tamanho de mapa incorreto');
-  return {dv,ox,oz,w,h};
+  const streamed=await createStreamedWorld({maxSectors:BUDGET.sectors,onLoad:()=>{forceChunks=true;}});
+  let land=null,sea=null;
+  try{land=JSON.parse(getPref('topweb_garner_position','null'));sea=JSON.parse(getPref('topweb_sea_travel_v1','null'));}catch{}
+  const valid=(x,z)=>Number.isFinite(x)&&Number.isFinite(z)&&x>=0&&z>=0&&x<streamed.w&&z<streamed.h;
+  const focus=editorSpawn||(Array.isArray(land)&&valid(land[0],land[1])?{x:land[0],z:land[1]}:ORIGIN);
+  await streamed.focus(focus.x,focus.z,(RADIUS+1)*CHUNK+4);
+  // Só o casco precisa estar disponível para validar a viagem salva.
+  // A vizinhança do mar será carregada após retomar, sem duplicar dois bairros.
+  if(!editorSpawn&&sea?.sailing&&valid(sea.x,sea.z))await streamed.ensureAround(sea.x,sea.z,boatRadius()+3);
+  return streamed;
 }
 // Volumes do editor em sceneobjinfo (tipo ≠ 0). O cliente histórico não desenha
 // esses cubos: yyyy001 senta, yyyy002 encosta, vermelho bloqueia, azul é piso.
@@ -871,7 +1062,7 @@ function footSurface(x,z,hint){
   for(const list of nearby(walkPlaceCells,x,z,2))for(const place of list){
     const dx=x-place.x, dz=z-place.z;
     if(dx*dx+dz*dz>(place.radius+0.6)*(place.radius+0.6))continue;
-    const walk=walkByFile.get(place.file);
+    const walk=walkByFile.get(place.file)||ensureWalk(place.file);
     if(!walk)continue;
     const [lx,lz]=localOf(place.basis,dx,dz);
     const bucket=walk.cells.get(`${Math.floor(lx/2)}/${Math.floor(lz/2)}`);
@@ -957,7 +1148,7 @@ function standUp(){
   };
   const exit=findSafeExit(origin,canStand,9);
   if(!exit){
-    toast('Não encontrei espaço seguro para levantar. Use o minimapa para sair.');
+    toast('Não encontrei espaço seguro para levantar. Use “Voltar a Argent City” no menu para sair.');
     return false;
   }
   seated=null;attackPlaying=false;pendingPose=null;moverTarget=null;waypoint.hide();
@@ -982,10 +1173,10 @@ function indexScenePlaces(){
     const basis=yawBasis(yaw);
     const base=sampleHeight(rec[0],rec[1])+(rec[4]||0);
     if(role==='sit'||role==='lean'){
-      const mark={x:rec[0],z:rec[1],yaw,basis,role,base,minX:-0.55,maxX:0.55,minZ:-0.55,maxZ:0.55,file:key};
+      const mark={x:rec[0],z:rec[1],yaw,basis,role,base,rec,minX:-0.55,maxX:0.55,minZ:-0.55,maxZ:0.55,file:key};
       poseMarks.push(mark);pushCell(poseCells,mark.x,mark.z,mark);
     }else if(role==='solid'||role==='floor'){
-      const slab={x:rec[0],z:rec[1],yaw,basis,base,solid:role==='solid',top:0,minX:-0.5,maxX:0.5,minZ:-0.5,maxZ:0.5,file:key};
+      const slab={x:rec[0],z:rec[1],yaw,basis,base,rec,solid:role==='solid',top:0,minX:-0.5,maxX:0.5,minZ:-0.5,maxZ:0.5,file:key};
       (role==='solid'?solidSlabs:floorSlabs).push(slab);
       pushCell(slabCells,slab.x,slab.z,slab);
     }else if(role==='hide'){
@@ -1047,8 +1238,21 @@ function buildWalk(file,meshes){
       put([a[0],a[1],a[2],b[0],b[1],b[2],c[0],c[1],c[2]]);
     }
   }
+  if(walkByFile.size>=32)walkByFile.delete(walkByFile.keys().next().value);
   walkByFile.set(file,{cells,radius:maxR});
   for(const place of walkPlaces)if(place.file===file)place.radius=maxR;
+}
+function ensureWalk(file){
+  const group=modelGroups.get(file);if(!group)return null;
+  buildWalk(file,group.meshes);return walkByFile.get(file);
+}
+function resizeInstances(group,capacity){
+  if(capacity===group.cap)return;
+  for(const mesh of group.meshes){
+    mesh.dispose(); // Libera só o buffer antigo, preservando geometria e materiais compartilhados.
+    mesh.instanceMatrix=new THREE.InstancedBufferAttribute(new Float32Array(capacity*16),16).setUsage(THREE.DynamicDrawUsage);
+  }
+  group.cap=capacity;
 }
 // Um único GLB com malhas LMO distintas. Os objetos de Garner mantêm suas
 // 50 mil posições no JSON: InstancedMesh desenha só os próximos ao Lance.
@@ -1079,13 +1283,15 @@ function createSceneLibrary(gltf){
       continue;
     }
     if(!records.length)continue;
-    const meshes=[];
+    const meshes=[],box=new THREE.Box3(),capacity=Math.min(16,records.length);
     prototype.traverse(obj=>{
       if(!obj.isMesh||obj.isSkinnedMesh)return;
-      const instance=new THREE.InstancedMesh(obj.geometry,obj.material,records.length);
+      if(!obj.geometry.boundingBox)obj.geometry.computeBoundingBox();
+      box.union(obj.geometry.boundingBox.clone().applyMatrix4(obj.matrixWorld));
+      const instance=new THREE.InstancedMesh(obj.geometry,obj.material,capacity);
       instance.name=name+' · '+obj.name;
-      instance.frustumCulled=false;
-      instance.count=0;
+      instance.frustumCulled=true;
+      instance.count=0;instance.visible=false;
       instance.userData.localMatrix=obj.matrixWorld.clone();
       instance.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       sceneObjs3D.add(instance);
@@ -1093,9 +1299,14 @@ function createSceneLibrary(gltf){
       modelInstances.push(instance);
     });
     if(meshes.length){
-      modelGroups.set(name,{meshes,cap:records.length});
-      buildWalk(name,meshes);
+      const radius=Math.max(1,Math.hypot(Math.max(Math.abs(box.min.x),Math.abs(box.max.x)),Math.max(Math.abs(box.min.z),Math.abs(box.max.z))));
+      modelGroups.set(name,{meshes,cap:capacity,total:records.length,radius});
     }
+  }
+  for(const item of [...poseMarks,...floorSlabs,...solidSlabs,...walkPlaces]){
+    const offset=item.rec?.[4]||0;
+    Object.defineProperty(item,'base',{configurable:true,get(){return sampleHeight(item.x,item.z)+offset;}});
+    if('radius' in item)item.radius=modelGroups.get(item.file)?.radius||6;
   }
   sceneStats.loaded=modelGroups.size;
   sceneStats.missing=positions.size-modelGroups.size;
@@ -1106,7 +1317,7 @@ function updateSceneInstances(force=false){
   if(!sceneObjs3D)return;
   if(!force && playerPos.distanceToSquared(lastScenePosition)<16*16)return;
   lastScenePosition.copy(playerPos);
-  for(const group of modelGroups.values())for(const mesh of group.meshes)mesh.count=0;
+  for(const group of modelGroups.values())for(const mesh of group.meshes){mesh.count=0;mesh.visible=false;}
   const radius2=sceneVisibilityRadius*sceneVisibilityRadius;
   const nearest=Math.ceil(sceneVisibilityRadius/64);
   const sx=Math.floor(playerPos.x/64),sz=Math.floor(playerPos.z/64);
@@ -1125,6 +1336,8 @@ function updateSceneInstances(force=false){
   const base=new THREE.Matrix4(),local=new THREE.Matrix4();
   for(const [file,recs] of active){
     const group=modelGroups.get(file);
+    const capacity=Math.min(group.total,instanceCapacity(recs.length,group.cap));
+    resizeInstances(group,capacity);
     for(let i=0;i<recs.length;i++){
       const rec=recs[i];
       const yaw=objectYaw(rec);
@@ -1137,17 +1350,18 @@ function updateSceneInstances(force=false){
         mesh.setMatrixAt(i,local);
       }
     }
-    for(const mesh of group.meshes){mesh.count=recs.length;mesh.instanceMatrix.needsUpdate=true;}
+    for(const mesh of group.meshes){mesh.count=recs.length;mesh.visible=true;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
     amount+=recs.length;
   }
   sceneStats.active=amount;
+  for(const [file,group] of modelGroups)if(!active.has(file))resizeInstances(group,Math.min(16,group.total));
   $('scenevisible').textContent=amount.toLocaleString('pt-BR');
 }
 
 // Efeitos de cena (.par/.eff). O yaw do tipo 1 já está em radianos.
 // RectPlane deitado: setGroundMatrix. Rect em pé (feixe): setRectMatrix.
 // O deslocamento do emissor é rotation.y = -yaw, via offsetByEffectYaw.
-const FX_CAP=MOBILE_UI?450:1200;
+const FX_CAP=BUDGET.particles;
 let effectCatalog=null, effectGroup=null, effectBatches=[], effectCells=new Map();
 let effectStats={active:0}, lastEffectPos=new THREE.Vector3(Infinity,Infinity,Infinity);
 const _fxObj=new THREE.Object3D(), _fxM=new THREE.Matrix4(), _fxV=new THREE.Vector3();
@@ -1412,7 +1626,7 @@ async function createEffects(){
           a:new Float32Array(FX_CAP*3), phase:new Float32Array(FX_CAP)
         };
       }
-      mesh.count=0;
+      mesh.count=0;mesh.visible=false;
       mesh.frustumCulled=false;
       mesh.renderOrder=3;
       mesh.userData.part=part;
@@ -1430,9 +1644,10 @@ function updateEffectInstances(force=false){
   if(!effectGroup)return;
   if(!force && playerPos.distanceToSquared(lastEffectPos)<16*16)return;
   lastEffectPos.copy(playerPos);
-  for(const mesh of effectBatches)mesh.count=0;
-  const radius2=sceneVisibilityRadius*sceneVisibilityRadius;
-  const reach=Math.ceil(sceneVisibilityRadius/64);
+  for(const mesh of effectBatches){mesh.count=0;mesh.visible=false;}
+  const effectRadius=Math.min(sceneVisibilityRadius,BUDGET.effects);
+  const radius2=effectRadius*effectRadius;
+  const reach=Math.ceil(effectRadius/64);
   const sx=Math.floor(playerPos.x/64), sz=Math.floor(playerPos.z/64);
   const near=[];
   for(let dz=-reach;dz<=reach;dz++)for(let dx=-reach;dx<=reach;dx++){
@@ -1455,7 +1670,7 @@ function updateEffectInstances(force=false){
       const part=mesh.userData.part;
       const phase=mesh.geometry.getAttribute('aPhase');
       const mot=mesh.userData.motion;
-      const n=burstCount(part);
+      const n=Math.min(burstCount(part),MOBILE_UI?8:24);
       const seed=(Math.floor(rec[0]*10)*1000+Math.floor(rec[1]*10))|0;
       for(let s=0;s<n && mesh.count<FX_CAP;s++){
         const motion=particleMotion(part,s,seed);
@@ -1493,7 +1708,7 @@ function updateEffectInstances(force=false){
     }
   }
   let amount=0;
-  for(const mesh of effectBatches)amount+=mesh.count;
+  for(const mesh of effectBatches){mesh.visible=mesh.count>0;amount+=mesh.count;}
   effectStats.active=amount;
   const label=$('fxcount');
   if(label)label.textContent=amount.toLocaleString('pt-BR');
@@ -1524,6 +1739,7 @@ function applyEffectMotion(mesh){
   mesh.instanceMatrix.needsUpdate=true;
 }
 function tickEffects(dt){
+  if(!effectGroup?.visible)return;
   for(const mesh of effectBatches){
     if(!effectHold)mesh.material.uniforms.uTime.value+=dt;
     applyEffectMotion(mesh);
@@ -1553,6 +1769,15 @@ function selfTestEffects(){
   return out;
 }
 window.__selfTestEffects=selfTestEffects;
+function renderResources(){
+  let terrainBytes=0;
+  for(const chunk of chunkMap.values())for(const mesh of [chunk.mesh,chunk.water]){
+    if(!mesh)continue;
+    for(const attr of Object.values(mesh.geometry.attributes))terrainBytes+=attr.array.byteLength;
+    terrainBytes+=mesh.geometry.index?.array.byteLength||0;
+  }
+  return {terrainBytes,chunks:chunkMap.size,instanceBytes:modelInstances.reduce((n,m)=>n+m.instanceMatrix.array.byteLength,0),walkModels:walkByFile.size,pixelRatio:renderPixelRatio};
+}
 window.__fx={
   stats(){
     const ids={};
@@ -1584,6 +1809,10 @@ window.__fx={
     const gl=renderer.getContext();
     return {
       player:[playerPos.x,playerPos.y,playerPos.z],
+      world:{width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
+      cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
+      cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
+      resources:renderResources(),
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -1620,13 +1849,13 @@ async function boot(){
       landMat.map=terrainAtlas;landMat.needsUpdate=true;
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
-    try{objects=await (await fetch('assets/argent/objects.json?v=1')).json()}catch{objects=[]}
+    try{objects=await (await fetch(world.manifest.objects)).json()}catch{objects=[]}
     indexEffects();
     try{objectCatalog=await (await fetch('assets/objects_catalog.json')).json()}catch{objectCatalog={}}
-    generateMinimap();
+    await generateMinimap();
     let saved=null;
     try{saved=JSON.parse(localStorage.getItem('topweb_garner_position')||'null')}catch{}
-    if(Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
+    if(!editorSpawn&&Array.isArray(saved)&&saved.length===2&&saved.every(Number.isFinite)&&
        saved[0]>=world.ox&&saved[0]<world.ox+world.w&&saved[1]>=world.oz&&saved[1]<world.oz+world.h){
       ORIGIN.x=saved[0];ORIGIN.z=saved[1];
     }
@@ -1648,7 +1877,7 @@ async function boot(){
     updateEquipmentUi();
     progress(78,'Carregando biblioteca compartilhada de casas, árvores e objetos...');
     try {
-      const sceneGltf=await new GLTFLoader().loadAsync('assets/argent/modelos_cenario.glb');
+      const sceneGltf=await new GLTFLoader().loadAsync(world.manifest.scenery);
       createSceneLibrary(sceneGltf);
       updateSceneInstances(true);
     } catch (err) {
@@ -1664,6 +1893,8 @@ async function boot(){
       if(npcManager.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
+      // O treino de Argent também deve existir ao iniciar em outra região.
+      await world.ensureAround(2218.5,2776.5,20);
       monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,findSpawn:(x,z)=>{
         for(let radius=0;radius<=8;radius+=1)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
           const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
@@ -1676,6 +1907,14 @@ async function boot(){
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');
     try{await createEffects();}
     catch(err){console.error('Efeitos de cena:',err);toast('Efeitos de cena indisponíveis. Rode criar_efeitos.py.');}
+    const boatsResponse=await fetch('assets/boats/manifest.json?v=2');boatCatalog=await boatsResponse.json();
+    const savedSeaInput=editorSpawn?(launchParams.get('boat')==='1'?JSON.stringify({version:1,sailing:true,...editorSpawn}):'null'):getPref('topweb_sea_travel_v1','null');
+    const seaSaved=restoreSeaPosition(savedSeaInput,canSail);
+    seaTravelReady=true;
+    if(seaSaved){
+      try{await loadBoat();setSailing(true,seaSaved);}
+      catch(error){console.warn('Não foi possível restaurar o barco:',error);toast('Barco indisponível. Você voltou a terra.');}
+    }
     progress(100,'Pronto! Explore o mapa.');
     $('loading').remove();
     if(sceneObjs3D)toast('Biblioteca original 3D carregada. Botão direito gira a câmera.');
@@ -1696,7 +1935,7 @@ async function boot(){
 }
 let hudTime=0;
 function update(dt){
-  if(mixer&&!effectHold)mixer.update(dt);
+  if(mixer&&!effectHold&&!sailing)mixer.update(dt);
   if(!effectHold)seaMat.uniforms.uTime.value+=dt;
   if(keys.has('ArrowLeft')||keys.has('KeyQ')){if(MOBILE_UI)mobileOrbitYaw-=dt*1.1;else CAM.yaw-=dt*1.6;manualCamera();}
   if(keys.has('ArrowRight')||keys.has('KeyE')){if(MOBILE_UI)mobileOrbitYaw+=dt*1.1;else CAM.yaw+=dt*1.6;manualCamera();}
@@ -1752,12 +1991,12 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter);
-  combat?.update(dt,playerPos,{paused:combatPaused,moving:manualMove,busy:attackPlaying});
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen());
+  combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
   let chasing=false;
   const target=combat?.target;
   const approach=combat?.approach;
-  if(approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
+  if(!sailing&&approach&&!skillAnimationLocked&&!attackPlaying&&!manualMove&&Math.hypot(approach.target.x-playerPos.x,approach.target.z-playerPos.z)>approach.range*.94){
     dx=approach.target.x-playerPos.x;dz=approach.target.z-playerPos.z;chasing=true;
   }
   if(hero.hp<=0||changingCharacter||combatPaused){dx=0;dz=0;}
@@ -1771,8 +2010,8 @@ function update(dt){
   if(!seated && wish>.01){
     dx/=wish;dz/=wish;
     const running=keys.has('ShiftLeft')||keys.has('ShiftRight')||touchRunning;
-    const speed=calculateMovementSpeed({
-      running,
+    const speed=(sailing?boatProfile.speed/WALK_SPEED:1)*calculateMovementSpeed({
+      running:running&&!sailing,
       digital:!!(keyFw||keySide),
       destination:!!moverTarget||chasing,
       analogX:touchMove.sideways,
@@ -1786,6 +2025,7 @@ function update(dt){
     for(let i=0;i<sub;i++){
       const h0=playerPos.y;
       const step=(nx,nz)=>{
+        if(sailing)return canSail(nx,nz);
         if(!occupied(nx,nz))return false;
         const h1=footSurface(nx,nz,h0);
         if(!allowBlocked && h1-h0>STEP_UP)return false;
@@ -1798,7 +2038,10 @@ function update(dt){
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
     if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
-    faceTravel(dx,dz,dt);
+    if(sailing&&boat){
+      const target=Math.atan2(-dx,-dz);
+      boat.rotation.y=followAngle(boat.rotation.y,target,dt,8);
+    }else faceTravel(dx,dz,dt);
     cameraFollowTarget=Math.atan2(dx,dz);
     // Modo mobile "Seguir direção": a câmera gira atrás do rumo REAL percorrido.
     // Arrastar a câmera suspende o giro automático temporariamente.
@@ -1814,7 +2057,8 @@ function update(dt){
        (fw>.15 || (moverTarget&&!(keyFw||keySide))) && !seated){
       CAM.yaw=followAngle(CAM.yaw,Math.atan2(dx,dz),dt,2.0);
     }
-    if(!attackPlaying){
+    if(sailing)actuallyMoving=moved;
+    if(!sailing&&!attackPlaying){
       if(moved){
         actuallyMoving=true;
         playClip('Correr');
@@ -1824,7 +2068,7 @@ function update(dt){
   }else if(!seated && !attackPlaying&&isRunningPose())playClip('Parado');
   // Atualiza as poses mesmo estando parado, ao cruzar o limite da cidade
   // ou quando os 3,5 s de guarda temporária terminam.
-  if(!seated&&!attackPlaying&&!skillAnimationLocked){
+  if(!sailing&&!seated&&!attackPlaying&&!skillAnimationLocked){
     const bank=currentWeaponPoseBank();
     const normalStates=['idle','guard','run','armedRun']
       .map(state=>selectPoseName(state,activePoseProfile,animations,bank));
@@ -1839,7 +2083,17 @@ function update(dt){
      performance.now()>cameraManualUntil){
     CAM.yaw=followAngle(CAM.yaw,cameraFollowTarget,dt,2.0);
   }
-  playerPos.y=THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
+  playerPos.y=sailing?boatProfile.seaLevel:THREE.MathUtils.lerp(playerPos.y,footSurface(playerPos.x,playerPos.z,playerPos.y),Math.min(1,dt*13));
+  if(boat&&sailing){
+    boat.position.copy(playerPos);
+    const time=seaMat.uniforms.uTime.value;
+    boat.position.y+=waveHeight(playerPos.x,playerPos.z,time,marineDesign.water.waves)*marineDesign.boat.bob;
+    boat.rotation.x=Math.sin(time*1.15)*.014*marineDesign.boat.bob;
+    boat.rotation.z=Math.sin(time*.9+.8)*.025*marineDesign.boat.bob;
+    boatDecoration?.update(time);
+  }
+  boatEffects.update(dt,playerPos,boat?.rotation.y||0,sailing,marineDesign.boat,boatProfile?.length||4.8);
+  if(avatar)avatar.visible=!sailing;
   // Executar a cada frame, DEPOIS de mover o jogador e ANTES de posicionar a câmera.
   // O foco mobile segue as coordenadas reais do avatar, sem alterar a órbita por toque.
   if(MOBILE_UI)updateFollowTarget(mobileCameraFocus,playerPos,dt,{response:6.5,snapDistance:13});
@@ -1852,6 +2106,7 @@ function update(dt){
     weaponPoseState==='idle'||weaponPoseState==='run',weaponPoseState);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   placeCamera();
+  updateNavigationIndicators();
   if(forceChunks||performance.now()-nextDraw>350){updateChunks();forceChunks=false;nextDraw=performance.now()}
   if(sceneObjs3D && (playerPos.distanceToSquared(lastScenePosition)>20*20 || performance.now()-lastObjUpdate>1100)){
     updateSceneInstances(false);
@@ -1861,9 +2116,9 @@ function update(dt){
   }
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
-  if(avatar)updateWeaponMaterialGlow(avatar,performance.now());
+  if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
   waypoint.update(dt, performance.now()/1000);
-  if(fountain)fountain.update(dt);
+  if(fountain)fountain.update(dt,playerPos);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
   monsterManager?.update(dt,playerPos,combat?.target);
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
@@ -1873,24 +2128,26 @@ function update(dt){
 let qualitySampleTime=0, qualityFrameCount=0, qualityFrameMs=0, lastFrameTime=0;
 function adaptMobileResolution(time){
   if(!MOBILE_UI||testing)return;
-  if(lastFrameTime){qualityFrameMs+=Math.min(100,time-lastFrameTime);qualityFrameCount++;}
+  if(lastFrameTime){qualityFrameMs+=time-lastFrameTime;qualityFrameCount++;}
   lastFrameTime=time;
   if(!qualitySampleTime)qualitySampleTime=time;
   if(time-qualitySampleTime<4000)return;
-  if(qualityFrameCount>40){
+  if(qualityFrameCount>=4){
     const avg=qualityFrameMs/qualityFrameCount;
-    const next=avg>26?Math.max(0.65,renderPixelRatio-0.1):
-      avg<18?Math.min(maxPixelRatio,renderPixelRatio+0.05):renderPixelRatio;
+    const next=resolutionStep(renderPixelRatio,avg,maxPixelRatio);
     if(Math.abs(next-renderPixelRatio)>0.02){renderPixelRatio=next;renderer.setPixelRatio(renderPixelRatio);resize();}
   }
   qualitySampleTime=time;qualityFrameCount=0;qualityFrameMs=0;
 }
 function animate(time=performance.now()){
   requestAnimationFrame(animate);
+  const workStart=performance.now();
   const dt=Math.min(.045,clock.getDelta());
   if(document.hidden||(MOBILE_UI&&innerHeight>innerWidth)){stopCombat();lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
   if(!testing)update(dt);
+  performanceMonitor.beginFrame();
   renderer.render(scene,camera);
+  performanceMonitor.endFrame(time,performance.now()-workStart);
   adaptMobileResolution(time);
 }
 window.__selfTestControls=async function(){
@@ -1932,7 +2189,7 @@ window.__selfTestControls=async function(){
     const top=footSurface(step.x,step.z,ground+3);
     assert(top>ground+0.15,`degrau de 6 m eleva o pé (${(top-ground).toFixed(2)} m)`);
   }
-  assert(walkByFile.size>20,'malhas de piso das escadas e das casas');
+  assert(modelGroups.size>20&&walkByFile.size<=32,'biblioteca de pisos com cache local limitado');
   const nrm=new Float32Array(3);
   writeNormal(nrm,0,Math.floor(playerPos.x),Math.floor(playerPos.z));
   assert(nrm[1]>0.2,'normal do terreno aponta para cima');
@@ -1995,6 +2252,7 @@ rpgHud=initRpgHud({
     if(!seated){attackPlaying=false;playClip('Parado');}
   },
   onPlayClip:clip=>{
+    if(sailing||boardingBoat){toast('Desembarque antes de usar skills.');return false;}
     if(skillAnimationLocked){toast('Aguarde a skill terminar.');return false;}
     stopCombat();
     if(hero.hp<=0||changingCharacter)return false;
@@ -2006,6 +2264,7 @@ rpgHud=initRpgHud({
     return played;
   },
   onPlaySkill:skill=>{
+    if(sailing||boardingBoat){toast('Desembarque antes de usar skills.');return false;}
     if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
     if(!combat||hero.hp<=0||changingCharacter||changingLoadout||seated)return false;
     if(!resolveSkillClip(skill,hero.character,animations)){toast('Animação indisponível para este personagem.');return false;}
@@ -2051,11 +2310,27 @@ $('hero-class').addEventListener('change',e=>{const value=e.target.value;void ch
   selectClass(hero,value);
 });});
 $('equipment-toggle').addEventListener('click',()=>void changeLoadout(()=>{hero.equipped=!hero.equipped;}));
-$('mobile-target').addEventListener('click',()=>{if(!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
+$('mobile-target').addEventListener('click',()=>{if(!sailing&&!boardingBoat&&!rpgHud?.isOpen())combat?.cycleTarget(playerPos);});
 $('mobile-auto').addEventListener('click',selectMobileAutoMode);
+$('boat-camera-mode').value=boatViewMode;
+$('boat-view-toggle').textContent=BOAT_CAMERA_LABELS[boatViewMode];
+$('boat-camera-mode').addEventListener('change',e=>setBoatView(e.target.value));
+$('boat-view-toggle').addEventListener('click',()=>setBoatView(BOAT_CAMERA_MODES[(BOAT_CAMERA_MODES.indexOf(boatViewMode)+1)%BOAT_CAMERA_MODES.length]));
+$('boat-look-ahead').addEventListener('click',lookAheadFromBoat);
+$('sea-travel').addEventListener('click',()=>{
+  document.body.classList.remove('mobile-settings-open');
+  $('mobile-settings')?.setAttribute('aria-expanded','false');void toggleSeaTravel();
+});
+$('go-harbor').addEventListener('click',()=>{
+  if(!world||hero.hp<=0||boardingBoat||changingCharacter||changingLoadout)return;
+  if(teleport(ARGENT_HARBOR.x,ARGENT_HARBOR.z)){
+    document.body.classList.remove('mobile-settings-open');$('mobile-settings')?.setAttribute('aria-expanded','false');
+    toast('Porto de Argent · toque em Embarcar para navegar.');
+  }
+});
 $('combat-training').addEventListener('click',()=>{if(world&&hero.hp>0)teleport(2222.0,2775.5);});
 window.addEventListener('blur',()=>{stopCombat();saveHero();});
-window.addEventListener('pagehide',saveHero);
+window.addEventListener('pagehide',()=>{saveHero();if(world)saveSeaTravel();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCombat();});
 
 $('colormode').addEventListener('change',e=>{colorMode=e.target.value;landMat.map=colorMode==='textured'?terrainAtlas:null;landMat.needsUpdate=true;clearChunks();updateChunks();generateMinimap();drawMinimap();});
@@ -2196,11 +2471,14 @@ function groundAt(clientX,clientY){
   if(!world)return null;
   _aim.set(clientX/innerWidth*2-1,-clientY/innerHeight*2+1);
   _caster.setFromCamera(_aim,camera);
-  const hits=_caster.intersectObjects([...chunkMap.values()].map(c=>c.mesh),false);
+  const surfaces=[...chunkMap.values()].map(c=>c.mesh);
+  if(sailing)for(const c of chunkMap.values())if(c.water)surfaces.push(c.water);
+  const hits=_caster.intersectObjects(surfaces,false);
   return hits.length?hits[0].point:null;
 }
 function aimMode(point){
   if(!point)return 'move';
+  if(sailing)return canSail(point.x,point.z)?'move':'block';
   const mark=poseHere(point.x,point.z);
   if(mark?.role==='sit')return 'sit';
   if(mark?.role==='lean')return 'lean';
@@ -2211,16 +2489,16 @@ function orderMove(x,z,pose){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   stopCombat();
   if(hero.hp<=0||changingCharacter)return false;
-  const free=walkable(x,z)?[x,z]:findFree(x,z);
+  const free=sailing?(canSail(x,z)?[x,z]:null):walkable(x,z)?[x,z]:findFree(x,z);
   if(!free){toast('Destino bloqueado. Clique em área navegável.');return false;}
   moverTarget=new THREE.Vector3(free[0],sampleHeight(free[0],free[1]),free[1]);
-  pendingPose=pose||null;
-  waypoint.show(free[0],free[1],sampleHeight(free[0],free[1]));
+  pendingPose=sailing?null:pose||null;
+  waypoint.show(free[0],free[1],sailing?boatProfile.seaLevel:sampleHeight(free[0],free[1]));
   return true;
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen())return;
+  if(typing||rpgHud?.isOpen()||mapIsOpen())return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
@@ -2228,6 +2506,7 @@ window.addEventListener('keydown',e=>{
   }
   if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','Space','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
   if(e.repeat&&(e.code==='Space'||e.code==='Insert'))return;
+  if(e.code==='KeyV'&&sailing){e.preventDefault();if(!e.repeat)$('boat-view-toggle').click();return;}
   if(e.code==='Insert'){e.preventDefault();tryPose();return;}
   if(e.code==='Space')primaryAction();else keys.add(e.code);
 });
@@ -2251,7 +2530,7 @@ mobileQuery.addEventListener('change',()=>{
   MOBILE_UI=mobileQuery.matches;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;document.body.classList.toggle('mobile-ui',MOBILE_UI);
   mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
   mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
-  maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
+  maxPixelRatio=Math.min(window.devicePixelRatio||1,renderBudget(MOBILE_UI).pixelRatio);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
   document.dispatchEvent(new Event('topweb:menu-open'));
@@ -2264,11 +2543,45 @@ for(const b of document.querySelectorAll('[data-key]')){
   b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(code)});
   const clear=()=>keys.delete(code);b.addEventListener('pointerup',clear);b.addEventListener('pointercancel',clear);
 }
-$('minimap').addEventListener('click',e=>{
-  if(!world)return;
+$('minimap-open').addEventListener('click',openWorldMap);
+$('map-expand').addEventListener('click',openWorldMap);
+$('world-map-close').addEventListener('click',()=>$('world-map-dialog').close());
+$('world-map-dialog').addEventListener('close',()=>{
+  document.body.classList.remove('map-open');keys.clear();touchMove.forward=0;touchMove.sideways=0;
+});
+$('world-map-dialog').addEventListener('click',e=>{
+  if(e.target!==e.currentTarget)return;
   const rect=e.currentTarget.getBoundingClientRect();
-  const nx=(e.clientX-rect.left)/rect.width,nz=(e.clientY-rect.top)/rect.height;
-  if(teleport(world.ox+nx*world.w,world.oz+nz*world.h))toast('Teletransporte no minimapa.');
+  if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();
+});
+let mapPan=null,mapPanned=false;
+$('world-map').addEventListener('pointerdown',e=>{const view=fullMapView();mapPanned=false;mapPan={x:e.clientX,y:e.clientY,view};e.currentTarget.setPointerCapture(e.pointerId);});
+$('world-map').addEventListener('pointermove',e=>{
+  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
+  mapPanned=true;const r=e.currentTarget.getBoundingClientRect(),v=mapPan.view;
+  mapOverviewCenter={x:v.x+v.w/2-(e.clientX-mapPan.x)/r.width*v.w,z:v.z+v.h/2-(e.clientY-mapPan.y)/r.height*v.h};drawMinimap();
+});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])$('world-map').addEventListener(event,()=>{mapPan=null;});
+$('world-map').addEventListener('click',e=>{
+  if(!world||mapPanned)return;const rect=e.currentTarget.getBoundingClientRect();
+  selectMapDestination(unprojectMap((e.clientX-rect.left)/rect.width*768,(e.clientY-rect.top)/rect.height*768,fullMapView(),768));
+});
+$('map-harbor').addEventListener('click',async()=>{
+  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
+  const point=sailing?nearestPosition(ARGENT_HARBOR_WATER,canSail,boardingReach()):ARGENT_HARBOR;
+  if(!point){toast('Carregue a região do porto para marcar uma chegada segura.');return;}
+  mapOverviewCenter=point;mapOverviewSpan=256;await selectMapDestination(point);
+});
+$('map-zoom-in').addEventListener('click',()=>{mapOverviewCenter=mapSelection||playerPos.clone();mapOverviewSpan=Math.max(96,mapOverviewSpan/2);drawMinimap();});
+$('map-zoom-out').addEventListener('click',()=>{mapOverviewSpan=Math.min(world.w,mapOverviewSpan*2);drawMinimap();});
+$('map-world').addEventListener('click',()=>{mapOverviewSpan=world.w;mapOverviewCenter=null;drawMinimap();});
+$('map-travel').addEventListener('click',()=>{
+  if(!mapSelection)return;
+  if(orderMove(mapSelection.x,mapSelection.z,null)){$('world-map-dialog').close();toast(sailing?'Rumo marcado no mar. A costa e bloqueios continuam valendo.':'Destino marcado. Use o joystick se o caminho estiver bloqueado.');}
+});
+$('navigation-hint').addEventListener('click',()=>{
+  if(navigationContext?.destination)void toggleSeaTravel();
+  else{openWorldMap();if(mapIsOpen())$('map-harbor').click();}
 });
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();CAM.dist+=Math.sign(e.deltaY)*1.4;clampCam();},{passive:false});
@@ -2309,7 +2622,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   _aim.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);
   _caster.setFromCamera(_aim,camera);
   const monster=monsterManager?.pick(_caster);
-  if(monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
+  if(!sailing&&monster&&combat?.selectTarget(monster,playerPos)){moverTarget=null;pendingPose=null;waypoint.hide();return;}
   if(showMarkers){
     const hits=_caster.intersectObjects(objectMeshes,false);
     if(hits.length){const hit=hits[0],rec=hit.object.userData.records?.[hit.instanceId];
@@ -2318,6 +2631,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   }
   const pt=groundAt(e.clientX,e.clientY);
   if(!pt)return;
+  if(sailing){orderMove(pt.x,pt.z,null);return;}
   const mark=poseHere(pt.x,pt.z);
   if(mark&&poseHere(playerPos.x,playerPos.z)===mark){
     moverTarget=null;pendingPose=null;waypoint.hide();if(seated)standUp();else sitDown(mark);return;
@@ -2329,8 +2643,16 @@ renderer.domElement.addEventListener('pointerup',e=>{
 applyCursor(renderer.domElement,'move');
 setInterval(()=>{
   if(world&&playerPos&&Number.isFinite(playerPos.x))try{
-    localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
+    if(!seaTravelReady)return;
+    saveSeaTravel();
+    if(!sailing)localStorage.setItem('topweb_garner_position',JSON.stringify([+playerPos.x.toFixed(2),+playerPos.z.toFixed(2)]));
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}
 },5000);
+const defaultMonitor=developmentMonitorDefault(location.hostname,location.search);
+const performanceMonitor=initPerformanceMonitor({renderer,
+  enabled:launchParams.has('debug')?defaultMonitor:getPref('topweb_dev_monitor',defaultMonitor?'1':'0')==='1',
+  onToggle:enabled=>setPref('topweb_dev_monitor',enabled?'1':'0'),
+  getResources:()=>({terrain:world?.stats(),objects:sceneStats.active,effects:effectStats.active,wake:boatEffects.stats().particles,resources:renderResources()})
+});
 boot();

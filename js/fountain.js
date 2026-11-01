@@ -37,7 +37,9 @@ export async function createArgentFountain(THREE, scene, groundY) {
 
   const base = groundY + 0.45;
   return {
-    update(dt) {
+    update(dt,player) {
+      group.visible=!player||Math.hypot(player.x-TOWER.x,player.z-TOWER.z)<65;
+      if(!group.visible)return;
       for (const drop of drops) {
         drop.age += dt;
         if (drop.age >= drop.life) drop.age -= drop.life;

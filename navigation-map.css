@@ -1,0 +1,47 @@
+#minimap-open{display:block;width:100%;padding:0;border:0;background:transparent;cursor:pointer}
+#minimap-open:focus-visible,#map-expand:focus-visible{outline:3px solid #89f5ec;outline-offset:3px}
+#map-expand{display:block;margin:7px auto 0;padding:5px 10px;font-size:11px;font-weight:700;background:#0b3047;border-color:#dfbf7d;color:#ffe6a5}
+body.mobile-ui #minimap-open{height:100%;border-radius:50%}
+body.mobile-ui .minimapbox::after{content:none}
+body.mobile-ui #map-expand{position:absolute;right:0;bottom:-25px;margin:0;min-height:28px;padding:4px 10px;border-radius:12px;z-index:2}
+.map-north{position:absolute;top:7px;left:50%;transform:translateX(-50%);font:bold 10px sans-serif;color:#fff5cf;text-shadow:0 1px 4px #000;pointer-events:none}
+body:not(.mobile-ui) .map-north{top:43px}
+#navigation-hint[hidden]{display:none}
+#navigation-hint{position:fixed;z-index:39;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 340px);min-height:44px;padding:9px 15px;border:1px solid #e4c37e;border-radius:13px;background:#082b3eeb;box-shadow:0 4px 20px #00182766;text-align:left;color:#fff1c9}
+#navigation-hint .navigation-arrow{font-size:23px;display:block;color:#ffdc87;transform:rotate(var(--bearing,0deg))}
+#navigation-hint strong{display:block;font-size:12px}
+#navigation-hint small{display:block;font-size:10px;color:#bcddd9;margin-top:2px}
+#navigation-hint.transfer-ready{border-color:#70f4ca}
+#navigation-hint.transfer-ready .navigation-arrow{color:#70f4ca}
+body.mobile-settings-open #navigation-hint,body.map-open #navigation-hint{display:none}
+#world-map-dialog{--map-dialog-height:min(720px,calc(100dvh - 24px));width:min(920px,calc(100vw - 24px));height:var(--map-dialog-height);max-width:none;max-height:none;padding:16px;border:1px solid #dab874;border-radius:20px;background:#082234;color:#edf5ed;box-shadow:0 20px 100px #0009;overflow:hidden}
+#world-map-dialog::backdrop{background:#00121dc9;backdrop-filter:blur(5px)}
+#world-map-dialog[open]{display:grid;grid-template-rows:auto minmax(0,1fr);gap:14px}
+.world-map-header{display:flex;justify-content:space-between;gap:20px;align-items:center}
+.world-map-header h2{font-size:20px;margin:0;color:#ffe1a3}
+.world-map-header p{font-size:11px;color:#a8c9ce;margin:4px 0 0}
+#world-map-close{min-width:44px;min-height:44px;font-size:24px;padding:0}
+.world-map-layout{display:grid;grid-template-columns:minmax(0,1fr) 215px;gap:16px;min-height:0}
+.world-map-surface{width:min(100%,calc(var(--map-dialog-height) - 104px));aspect-ratio:1;align-self:center;justify-self:center;position:relative;min-width:0}
+#world-map{width:100%;height:100%;display:block;border:1px solid #48869b;border-radius:12px;cursor:crosshair;background:#105487;touch-action:manipulation}
+.world-map-details{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto;font-size:12px}
+.world-map-legend{display:grid;gap:7px;margin:0;padding:0;list-style:none;color:#b7d3d7}
+.world-map-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.world-map-legend .player{background:#fff8cf}.world-map-legend .harbor{background:#ffd37d}.world-map-legend .landing{background:#6dffcf}.world-map-legend .target{background:#ffb94f}
+#map-location{font-size:12px;color:#fff1c4;margin:0}
+#map-selection-info{font-size:11px;line-height:1.5;color:#b9d4d8;margin:0}
+#map-travel{background:#175863;border-color:#73dbcd;font-weight:700}
+.world-map-details button{min-height:40px;font-size:12px}
+.map-region-note{font-size:10px;color:#91b6c3;line-height:1.4;margin:0}
+@media(max-width:600px) and (orientation:portrait){
+ #navigation-hint{max-width:calc(100vw - 28px);bottom:160px}
+ #world-map-dialog{padding:12px}
+ .world-map-layout{grid-template-columns:1fr;overflow:auto}
+ .world-map-surface{width:min(100%,calc(100dvh - 300px))}
+ .world-map-details{overflow:visible;gap:9px}
+ .world-map-legend{grid-template-columns:1fr 1fr;font-size:10px}
+}
+@media(min-width:1000px){#navigation-hint{bottom:90px}}
+
+.map-zoom-tools{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;gap:4px}.map-zoom-tools button{padding:5px 3px;font-size:11px}
+.marine-editor-link{display:block;text-decoration:none;color:#ffe1a3;border:1px solid #d4ad69;border-radius:9px;padding:10px;font-size:12px;text-align:center;background:#163f50}

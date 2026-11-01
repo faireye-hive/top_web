@@ -1,5 +1,27 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Garner completo e Marina Studio:** o jogo usa agora o mapa original de
+4096 × 4096, carregado por setores. O barco padrão voltou ao **Guppy pequeno**,
+com aproximadamente 4,8 m, sem mastros adicionais, com balanço e rastro de
+espuma. **Menu → Editor de mapa e
+barco** abre as prévias para ajustar a embarcação, o mar e o terreno, com
+salvamento local e exportação. [Guia dos editores](docs/MARINA_STUDIO.md).
+
+**Navegação marítima mobile:** vá ao porto de Argent e toque em **Embarcar**.
+O minimapa mostra os arredores; **⛶ Mapa** abre Garner com zoom e destinos.
+[Controles e limites](docs/NAVEGACAO_MARITIMA.md).
+
+**Câmera e desempenho:** embarcado, alterne **Atrás 3D → Proa 3D → Vista
+alta**; **↑** volta a olhar para a frente. O painel **DEV** mostra FPS,
+tempos de quadro, memória disponível e carga de renderização. Ative pelo
+Menu ou por `?debug=1`; ele já inicia ligado em localhost.
+
+**Menos memória no celular:** terreno próximo com um quarto da área anterior,
+atributos compactos, buffers de objetos dimensionados pela vizinhança e
+cache local de pisos. Objetos fora da visão são descartados do desenho;
+efeitos distantes e animações do personagem durante a navegação deixam de
+ser atualizados. A resolução se ajusta mesmo quando o FPS está muito baixo.
+
 **Novo editor:** [tests/pose-editor.html](tests/pose-editor.html). Reproduz
 animações GLB de cidade, guarda, corrida, corrida armada e ataque; permite
 ajustar os ossos e as posições das armas quando guardadas nas costas

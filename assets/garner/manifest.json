@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "Garner original",
+  "origin": [
+    0,
+    0
+  ],
+  "size": [
+    4096,
+    4096
+  ],
+  "sectorSize": 256,
+  "terrain": "assets/garner/terrain/{x}-{z}.gmap.gz",
+  "overview": "assets/garner/overview.png",
+  "objects": "assets/objects.json",
+  "scenery": "assets/modelos_cenario.glb",
+  "compressedTerrainBytes": 5462289
+}

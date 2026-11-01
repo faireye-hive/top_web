@@ -1,0 +1,25 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="../"><title>TOP Web · Marina Studio</title><link rel="icon" href="pwa/top-icon.svg" type="image/svg+xml"><link rel="stylesheet" href="tests/marine-editor.css?v=1"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script></head><body>
+<header><a class="brand" href="index.html">⚓ <span>Marina <em>Studio</em><small>Garner · terreno, embarcações e mar</small></span></a><nav><button id="save" class="primary">Salvar no jogo</button><button id="export">↓ Exportar</button><button id="import">↑ Importar</button><input type="file" id="file" accept="application/json,.json" hidden><a href="index.html">Voltar ao jogo</a></nav></header>
+<div class="tabs" role="tablist"><button id="tab-boat" role="tab" aria-selected="true">⛵ Editor de barco</button><button id="tab-map" role="tab" aria-selected="false">◈ Editor de mapa</button></div>
+<main id="boat-panel"><section class="preview"><canvas id="boat-preview" aria-label="Prévia 3D do barco e dos efeitos na água"></canvas><div class="preview-caption"><strong id="boat-summary">Carregando embarcação…</strong><span>Arraste para girar · pinça ou roda para aproximar</span></div></section><aside>
+<h1>Seu barco</h1><p>Guppy pequeno por padrão, com rastro na água. Ajuste e veja o resultado aqui.</p>
+<label>Casco original<select id="boat-hull"><option value="phantom-galley">Phantom Galley · veleiro</option><option value="guppy">Guppy · casco largo</option></select></label>
+<label>Tamanho <output id="boat-scale-value"></output><input id="boat-scale" type="range" min="0.75" max="5" step="0.05"></label>
+<label>Velocidade (m/s)<input id="boat-speed" type="number" min="1" max="12" step="0.1"></label>
+<div class="colors"><label>Cor do casco<input id="boat-color" type="color"></label><label>Cor das velas<input id="sail-color" type="color"></label></div>
+<label class="check"><input id="boat-sails" type="checkbox"> Mastros e velas</label>
+<label>Espuma do rastro<input id="boat-wake" type="range" min="0" max="2" step="0.05"></label>
+<label>Balanço da embarcação<input id="boat-bob" type="range" min="0" max="1.5" step="0.05"></label>
+<h2>Aparência do mar</h2><label>Ondulação<input id="water-waves" type="range" min="0" max="1.5" step="0.05"></label><label>Reflexos do sol<input id="water-sparkle" type="range" min="0" max="1.5" step="0.05"></label>
+<button id="boat-reset">Restaurar barco pequeno</button><p class="note">Salvar aplica no próximo carregamento do jogo, neste navegador. O tamanho do casco também aumenta o espaço necessário para navegar e atracar.</p>
+</aside></main>
+<main id="map-panel" hidden><section class="map-preview"><canvas id="terrain-preview" width="768" height="768" aria-label="Editor de terreno de Garner"></canvas><div class="map-toolbar"><button id="map-less" aria-label="Afastar terreno">−</button><button id="map-all">Garner inteiro</button><button id="map-port">Porto de Argent</button><button id="map-more" aria-label="Aproximar terreno">+</button></div></section><aside>
+<h1>Terreno de Garner</h1><p>Edite uma cópia local do mapa original. Aproxime para pintar e arraste com “Mover mapa” para explorar.</p>
+<label>Ferramenta<select id="map-tool"><option value="pan">Mover mapa</option><option value="water">Pintar água</option><option value="land">Pintar terra</option><option value="height">Ajustar elevação</option><option value="block">Bloquear passagem</option><option value="unblock">Liberar passagem</option><option value="restore">Restaurar terreno original</option></select></label>
+<label>Raio do pincel (m)<input id="brush-radius" type="number" min="0" max="20" step="1" value="2"></label><label>Elevação (m)<input id="brush-height" type="number" min="-12.8" max="12.7" step="0.1" value="1"></label>
+<div class="row"><button id="undo" disabled>↶ Desfazer</button><button id="redo" disabled>↷ Refazer</button></div>
+<p id="tile-info" class="tile-info">Carregando mapa original…</p><p id="edit-count"></p>
+<button id="test-location" class="primary">Salvar e testar no centro da vista</button>
+<button id="map-clear">Restaurar todas as edições do terreno</button><p class="note">Este editor altera água, terra, elevação e passagem. Casas e objetos originais continuam no cenário. Exporte o projeto para guardar uma cópia ou compartilhar.</p>
+</aside></main>
+<footer id="status" role="status">Carregando Marina Studio…</footer><script type="module" src="tests/marine-editor.mjs?v=2"></script></body></html>
