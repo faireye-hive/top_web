@@ -226,8 +226,15 @@ async function loadCharacter(){
      });
    }
    selectSlot();fitCamera();changeAnimation();applyPlacement();toggleBody();
+   const layers=groups.flatMap(weaponPrimitives);
+   const overlays=layers.filter(isWeaponAdditiveLayer);
+   info.textContent='✓ Modelo carregado: '+groups.length+' armas / '+
+     layers.length+' submalhas. '+overlays.length+
+     ' camada(s) de efeito aditivo detectada(s) (1.BMP). '+
+     'Ocultas por padrão; selecione Parte 2 para ativar e testar.';
    status('✓ '+actor.value+' / '+job.value+' · '+groups.length+
-     ' arma(s) · '+groups.reduce((n,g)=>n+weaponPrimitives(g).length,0)+' materiais editáveis');
+     ' arma(s) · '+layers.length+' materiais · '+overlays.length+
+     ' camadas aditivas');
  }catch(err){
    console.error(err);status('Falha ao abrir modelo: '+err.message);
  }
