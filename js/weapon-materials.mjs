@@ -21,6 +21,8 @@ export function normalizeWeaponMaterial(raw={}){
    pulse:finite(raw.pulse,0,0,1),
    pulseSpeed:finite(raw.pulseSpeed,2,.2,10),
    flipV:raw.flipV===true,
+   overlayVisible:raw.overlayVisible===true,
+   overlayOpacity:finite(raw.overlayOpacity,.3,0,1),
    ...(textureData?{textureData}:{})
  };
 }
@@ -77,6 +79,17 @@ export function weaponPrimitives(node){
  const result=[];
  node.traverse?.(child=>{if(child!==node&&(child.isMesh||child.isSkinnedMesh))result.push(child)});
  return result;
+}
+// LGO material type 1 is an additive pass in the original OpenGL client
+// (SRC_ALPHA, ONE). The old GLB converter exported it as opaque PBR instead.
+// Legacy Lance/Phyllis models do not yet have extras on that material.
+export function isWeaponAdditiveLayer(mesh){
+ const material=mesh?.userData?.topWeaponBaseMaterial||mesh?.material;
+ if(!material)return false;
+ const extras=material.userData||{};
+ if(extras.topOriginalBlend===1||extras.topBlend===1||extras.topLayer==='additive-overlay')
+   return true;
+ return /^01010021(?:\.lgo)?\s*·\s*1\.bmp$/i.test(String(material.name||''));
 }
 function ensureEditableMaterial(mesh){
  if(!mesh.userData.topWeaponBaseMaterial){
@@ -155,6 +168,21 @@ export function applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader=ne
  }
  m.needsUpdate=true;
 }
+export function applyWeaponAdditiveLayer(THREE,mesh,settings=null){
+ if(!isWeaponAdditiveLayer(mesh))return false;
+ const mat=ensureEditableMaterial(mesh);
+ const state=normalizeWeaponMaterial(settings||{});
+ // This is a separate additive overlay, NEVER the base sword texture.
+ // Hidden until explicitly enabled; the historical refinement trigger
+ // is not yet available and showing its opaque original obscures the blade.
+ mat.transparent=true;
+ mat.depthWrite=false;
+ mat.blending=THREE.AdditiveBlending;
+ mat.opacity=state.overlayOpacity;
+ mat.needsUpdate=true;
+ mesh.visible=state.overlayVisible;
+ return true;
+}
 export function applyWeaponAppearance(THREE,avatar,actor,job,store,textureLoader){
  const groups=weaponMeshNodes(avatar);
  let count=0;
@@ -163,6 +191,7 @@ export function applyWeaponAppearance(THREE,avatar,actor,job,store,textureLoader
    for(const [index,mesh] of weaponPrimitives(node).entries()){
      const settings=weaponMaterialSettings(store,actor,job,slot,index);
      if(settings){applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader);count++}
+     applyWeaponAdditiveLayer(THREE,mesh,settings);
    }
  }
  return count;
