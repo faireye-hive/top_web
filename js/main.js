@@ -32,7 +32,8 @@ import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlo
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
 import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
 
-import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint,mapViewRect,zoomMapAt,guidanceDirection} from './navigation-map.mjs?v=2';
+import {createDestinationGuide} from './destination-guide.mjs?v=1';
 import {boatCameraMode,boatCameraPose,BOAT_CAMERA_MODES,BOAT_CAMERA_LABELS} from './boat-camera.mjs?v=1';
 import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=2';
 import {renderBudget,instanceCapacity,resolutionStep} from './render-budget.mjs?v=1';
@@ -173,7 +174,8 @@ const saveHero=()=>isArenaMap?setArenaSession(ARENA_HERO_KEY,serializeHero(hero)
 const marineDesign=readMarineDesign();
 const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
 let boatCatalog=null,boatDecoration=null;
-let navigationContext=null,mapSelection=null,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationContext=null,mapSelection=null,mapSelectionValid=false,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationGoal=null,navigationAuto=false;
 let navigationHeights={harbor:0,destination:0};
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
@@ -203,6 +205,7 @@ const ambient=new THREE.DirectionalLight(0x9ad4e2,.3); ambient.position.set(40,3
 const brightness=attachBrightness({renderer, hemi, sun, fill:ambient, scene});
 const waypoint=createWaypoint(THREE, scene);
 const navigationMarkers=createNavigationMarkers(THREE,scene);
+const destinationGuide=createDestinationGuide(THREE,scene);
 const boatEffects=createBoatEffects(THREE,scene);
 let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
@@ -400,7 +403,27 @@ async function generateMinimap(){
     const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('Mapa geral indisponível'));img.src=world.manifest.overview;
   });
 }
-function fullMapView(){return mapView(world,mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2},mapOverviewSpan);}
+function fullMapAspect(){
+  const canvas=$('world-map'),r=canvas.getBoundingClientRect();
+  return r.width>0&&r.height>0?r.width/r.height:1;
+}
+function fullMapView(){
+  const center=mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2};
+  return mapViewRect(world,center,mapOverviewSpan,fullMapAspect());
+}
+function assignMapView(view){
+  mapOverviewCenter={x:view.x+view.w/2,z:view.z+view.h/2};
+  mapOverviewSpan=view.h;drawMinimap();
+}
+function resizeExpandedMap(){
+  const canvas=$('world-map'),rect=canvas.getBoundingClientRect();
+  if(rect.width<1||rect.height<1)return;
+  // High enough for legible map labels; capped for mobile GPU/CPU.
+  const density=Math.min(1.7,window.devicePixelRatio||1);
+  const w=Math.max(1,Math.round(rect.width*density));
+  const h=Math.max(1,Math.round(rect.height*density));
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+}
 const localMapCanvas=document.createElement('canvas');localMapCanvas.width=localMapCanvas.height=96;
 function mapDot(ctx,point,color,label,full){
   const r=full?13:10;
@@ -415,10 +438,20 @@ function mapDot(ctx,point,color,label,full){
   }
 }
 function drawNavigationMap(canvas,view,full=false){
-  const ctx=canvas.getContext('2d'),size=canvas.width;
-  ctx.clearRect(0,0,size,size);ctx.imageSmoothingEnabled=false;
+  const ctx=canvas.getContext('2d'),size=canvas.width,mapHeight=canvas.height;
+  const sizeXY={width:size,height:mapHeight};
+  ctx.clearRect(0,0,size,mapHeight);ctx.imageSmoothingEnabled=false;
   const ratioX=minimapBackground.width/world.w,ratioZ=minimapBackground.height/world.h;
-  ctx.drawImage(minimapBackground,(view.x-world.ox)*ratioX,(view.z-world.oz)*ratioZ,view.w*ratioX,view.h*ratioZ,0,0,size,size);
+  // Square Garner overview stays geometrically accurate inside a landscape
+  // viewport; uncovered sides are ocean, never distorted land pixels.
+  ctx.fillStyle='#0c3149';ctx.fillRect(0,0,size,mapHeight);
+  const bx=Math.max(world.ox,view.x),bz=Math.max(world.oz,view.z);
+  const ex=Math.min(world.ox+world.w,view.x+view.w);
+  const ez=Math.min(world.oz+world.h,view.z+view.h);
+  if(ex>bx&&ez>bz)ctx.drawImage(minimapBackground,
+    (bx-world.ox)*ratioX,(bz-world.oz)*ratioZ,(ex-bx)*ratioX,(ez-bz)*ratioZ,
+    (bx-view.x)/view.w*size,(bz-view.z)/view.h*mapHeight,
+    (ex-bx)/view.w*size,(ez-bz)/view.h*mapHeight);
   if(!full){
     const local=localMapCanvas.getContext('2d'),image=local.createImageData(96,96);
     for(let z=0;z<96;z++)for(let x=0;x<96;x++){
@@ -429,15 +462,15 @@ function drawNavigationMap(canvas,view,full=false){
   }else for(const patch of isArenaMap?[]:mapEdits){
     if(patch.x<view.x||patch.z<view.z||patch.x>view.x+view.w||patch.z>view.z+view.h)continue;
     const color=mapTileColor({...getTile(patch.x,patch.z),...patch.tile});ctx.fillStyle=`rgb(${color.join(',')})`;
-    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*size,Math.max(1,size/view.w),Math.max(1,size/view.h));
+    ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*mapHeight,Math.max(1,size/view.w),Math.max(1,mapHeight/view.h));
   }
   ctx.imageSmoothingEnabled=true;
   if(full){
     ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
-    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,size);ctx.moveTo(0,n*size/8);ctx.lineTo(size,n*size/8);ctx.stroke();}
+    for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,mapHeight);ctx.moveTo(0,n*mapHeight/8);ctx.lineTo(size,n*mapHeight/8);ctx.stroke();}
   }
-  const project=p=>projectMap(p,view,size),player=project(playerPos);
-  const destination=mapSelection&&full?mapSelection:moverTarget;
+  const project=p=>projectMap(p,view,sizeXY),player=project(playerPos);
+  const destination=full?(mapSelection||navigationGoal):(navigationGoal||moverTarget);
   if(destination){
     const p=project(destination);
     ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(p.x,p.y);
@@ -467,37 +500,54 @@ function drawNavigationMap(canvas,view,full=false){
     ctx.fillStyle='#fff4cb';ctx.font='bold 24px sans-serif';ctx.textAlign='right';ctx.fillText('N ↑',size-18,32);
     const local=mapView(world,playerPos),p=project({x:local.x,z:local.z});
     ctx.strokeStyle='#fff8cf88';ctx.lineWidth=2;ctx.setLineDash([7,6]);
-    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*size);ctx.setLineDash([]);
+    ctx.strokeRect(p.x,p.y,local.w/view.w*size,local.h/view.h*mapHeight);ctx.setLineDash([]);
   }
 }
 function drawMinimap(){
   if(!minimapBackground)return;
   drawNavigationMap($('minimap'),mapView(world,playerPos));
   if(mapIsOpen()){
+    resizeExpandedMap();
     drawNavigationMap($('world-map'),fullMapView(),true);
     $('map-location').textContent=`Você: ${playerPos.x.toFixed(0)}, ${playerPos.z.toFixed(0)} · ${sailing?'no mar':'em terra'}`;
   }
 }
 async function selectMapDestination(point){
-  mapSelection=point;const revision=++mapSelectionRevision;
-  $('map-travel').disabled=true;$('map-selection-info').textContent='Carregando o terreno do destino…';
+  if(point.x<world.ox||point.z<world.oz||
+    point.x>=world.ox+world.w||point.z>=world.oz+world.h){
+    mapSelection=null;mapSelectionValid=false;mapSelectionRevision++;
+    $('map-travel').disabled=true;$('map-manual').disabled=true;
+    $('map-selection-info').textContent='Fora de Garner. Selecione um ponto dentro do mapa.';
+    drawMinimap();return;
+  }
+  mapSelection=point;mapSelectionValid=false;const revision=++mapSelectionRevision;
+  $('map-travel').disabled=true;$('map-manual').disabled=true;
+  $('map-clear').disabled=false;
+  $('map-selection-info').textContent='Carregando o terreno do destino…';drawMinimap();
   try{await world.ensureAround(point.x,point.z,boatRadius()+3);}
-  catch{$('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
+  catch{if(revision===mapSelectionRevision)
+    $('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
   if(revision!==mapSelectionRevision)return;
-  const allowed=sailing?canSail(point.x,point.z):walkable(point.x,point.z);
-  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Destino marcado. Confirme para seguir.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
-  $('map-travel').disabled=!allowed;
-  $('map-travel').textContent=sailing?'Navegar até aqui':'Caminhar até aqui';drawMinimap();
+  const allowed=sailing?canSail(point.x,point.z):occupied(point.x,point.z);
+  mapSelectionValid=allowed;
+  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Escolha guia manual ou caminhada automática.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
+  $('map-travel').disabled=!allowed;$('map-manual').disabled=!allowed;
+  drawMinimap();
 }
 function openWorldMap(){
   if(!world||!seaTravelReady||mapIsOpen())return;
   if(skillAnimationLocked){toast('Aguarde a skill terminar para abrir o mapa.');return;}
   stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
   document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
-  mapSelection=null;$('map-travel').disabled=true;$('map-travel').textContent='Selecione um destino';
-  $('map-selection-info').textContent='Selecione um ponto para traçar seu rumo.';
-  mapOverviewSpan=world.w;mapOverviewCenter=null;
+  mapSelection=navigationGoal?{x:navigationGoal.x,z:navigationGoal.z}:null;
+  mapSelectionValid=false;mapSelectionRevision++;
+  $('map-travel').disabled=true;$('map-manual').disabled=true;
+  $('map-clear').disabled=!navigationGoal;
+  $('map-selection-info').textContent=mapSelection?'Destino anterior. Validando o terreno…':'Toque em um ponto para escolher o destino.';
+  mapOverviewSpan=Math.min(world.h,1000);
+  mapOverviewCenter=navigationGoal||{x:playerPos.x,z:playerPos.z};
   document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
+  if(mapSelection)void selectMapDestination(mapSelection);
 }
 function updateNavigationIndicators(){
   if(isArenaMap){$('navigation-hint').hidden=true;return;}
@@ -623,6 +673,7 @@ function teleport(x,z){
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
+  navigationGoal=null;navigationAuto=false;
   placeCamera();
   updateChunks();updateSceneInstances(true);updateEffectInstances(true);updateObjectMarkers();updateHUD();drawMinimap();
   return true;
@@ -2275,6 +2326,19 @@ function update(dt){
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
   if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
+  if(navigationGoal){
+    const direction=guidanceDirection(playerPos,navigationGoal);
+    if(!direction||direction.distance<.8){
+      navigationGoal=null;navigationAuto=false;
+      if(moverTarget){moverTarget=null;waypoint.hide();}
+    }else if(navigationAuto&&!moverTarget){
+      // A caminhada direta chegou a um bloqueio; a indicação manual
+      // permanece disponível, sem fingir um caminho através de paredes.
+      navigationAuto=false;
+    }
+  }
+  destinationGuide.update(playerPos,navigationGoal,
+    (x,z)=>sailing?boatProfile.seaLevel:sampleHeight(x,z),performance.now()/1000);
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
   if(npcManager){
@@ -2686,6 +2750,9 @@ function orderMove(x,z,pose){
   if(hero.hp<=0||changingCharacter)return false;
   const free=sailing?(canSail(x,z)?[x,z]:null):walkable(x,z)?[x,z]:findFree(x,z);
   if(!free){toast('Destino bloqueado. Clique em área navegável.');return false;}
+  // Direct click orders replace the previous map destination. A map-auto
+  // order installs its own goal immediately after this function returns.
+  navigationGoal=null;navigationAuto=false;
   moverTarget=new THREE.Vector3(free[0],sampleHeight(free[0],free[1]),free[1]);
   pendingPose=sailing?null:pose||null;
   waypoint.show(free[0],free[1],sailing?boatProfile.seaLevel:sampleHeight(free[0],free[1]));
@@ -2742,6 +2809,9 @@ $('minimap-open').addEventListener('click',openWorldMap);
 $('map-expand').addEventListener('click',openWorldMap);
 $('world-map-close').addEventListener('click',()=>$('world-map-dialog').close());
 $('world-map-dialog').addEventListener('close',()=>{
+  // Ignore asynchronous validation if the dialog was closed mid-fetch.
+  mapSelectionRevision++;
+  mapPointers.clear();mapPan=null;pinch=null;
   document.body.classList.remove('map-open');keys.clear();touchMove.forward=0;touchMove.sideways=0;
 });
 $('world-map-dialog').addEventListener('click',e=>{
@@ -2749,31 +2819,122 @@ $('world-map-dialog').addEventListener('click',e=>{
   const rect=e.currentTarget.getBoundingClientRect();
   if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();
 });
-let mapPan=null,mapPanned=false;
-$('world-map').addEventListener('pointerdown',e=>{const view=fullMapView();mapPanned=false;mapPan={x:e.clientX,y:e.clientY,view};e.currentTarget.setPointerCapture(e.pointerId);});
-$('world-map').addEventListener('pointermove',e=>{
-  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
-  mapPanned=true;const r=e.currentTarget.getBoundingClientRect(),v=mapPan.view;
-  mapOverviewCenter={x:v.x+v.w/2-(e.clientX-mapPan.x)/r.width*v.w,z:v.z+v.h/2-(e.clientY-mapPan.y)/r.height*v.h};drawMinimap();
+let mapPan=null,mapPanned=false,pinch=null;
+const mapPointers=new Map();
+const expandedMap=$('world-map');
+const aspect=()=>fullMapAspect();
+const mapPointAt=(x,y,view=fullMapView())=>{
+  const r=expandedMap.getBoundingClientRect();
+  const px=Math.max(0,Math.min(r.width,x-r.left)),py=Math.max(0,Math.min(r.height,y-r.top));
+  return unprojectMap(px,py,view,{width:r.width,height:r.height});
+};
+const mapZoomAt=(x,y,factor,original=fullMapView())=>
+  assignMapView(zoomMapAt(world,original,mapPointAt(x,y,original),factor,aspect()));
+expandedMap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  mapZoomAt(e.clientX,e.clientY,e.deltaY>0?1.28:.78);
+},{passive:false});
+expandedMap.addEventListener('dblclick',e=>{
+  e.preventDefault();mapPanned=true;mapZoomAt(e.clientX,e.clientY,.5);
 });
-for(const event of ['pointerup','pointercancel','lostpointercapture'])$('world-map').addEventListener(event,()=>{mapPan=null;});
-$('world-map').addEventListener('click',e=>{
-  if(!world||mapPanned)return;const rect=e.currentTarget.getBoundingClientRect();
-  selectMapDestination(unprojectMap((e.clientX-rect.left)/rect.width*768,(e.clientY-rect.top)/rect.height*768,fullMapView(),768));
+expandedMap.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  mapPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  expandedMap.setPointerCapture(e.pointerId);
+  if(mapPointers.size===2){
+    const [a,b]=[...mapPointers.values()];
+    pinch={distance:Math.hypot(a.x-b.x,a.y-b.y),view:fullMapView(),
+      x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    mapPan=null;mapPanned=true;
+  }else if(mapPointers.size===1){
+    mapPanned=false;
+    mapPan={x:e.clientX,y:e.clientY,view:fullMapView()};
+  }
+});
+expandedMap.addEventListener('pointermove',e=>{
+  if(!mapPointers.has(e.pointerId))return;
+  mapPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(mapPointers.size===2&&pinch){
+    const [a,b]=[...mapPointers.values()];
+    const distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinch.distance>4){
+      mapPanned=true;
+      mapZoomAt(pinch.x,pinch.y,pinch.distance/Math.max(distance,1),pinch.view);
+    }
+    return;
+  }
+  if(!mapPan||Math.hypot(e.clientX-mapPan.x,e.clientY-mapPan.y)<6)return;
+  mapPanned=true;
+  const rect=expandedMap.getBoundingClientRect(),v=mapPan.view;
+  assignMapView(mapViewRect(world,{
+    x:v.x+v.w/2-(e.clientX-mapPan.x)/rect.width*v.w,
+    z:v.z+v.h/2-(e.clientY-mapPan.y)/rect.height*v.h
+  },v.h,aspect()));
+});
+function releaseMapPointer(e){
+  mapPointers.delete(e.pointerId);
+  if(mapPointers.size<2)pinch=null;
+  mapPan=null;
+}
+for(const event of ['pointerup','pointercancel','lostpointercapture'])
+  expandedMap.addEventListener(event,releaseMapPointer);
+expandedMap.addEventListener('click',e=>{
+  if(!world||mapPanned)return;
+  void selectMapDestination(mapPointAt(e.clientX,e.clientY));
 });
 $('map-harbor').addEventListener('click',async()=>{
-  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
+  try{await world.ensureAround(ARGENT_HARBOR.x,ARGENT_HARBOR.z,32);}
+  catch{toast('Não foi possível carregar o porto. Tente novamente.');return;}
   const point=sailing?nearestPosition(ARGENT_HARBOR_WATER,canSail,boardingReach()):ARGENT_HARBOR;
   if(!point){toast('Carregue a região do porto para marcar uma chegada segura.');return;}
-  mapOverviewCenter=point;mapOverviewSpan=256;await selectMapDestination(point);
+  mapOverviewCenter=point;mapOverviewSpan=256;
+  await selectMapDestination(point);
 });
-$('map-zoom-in').addEventListener('click',()=>{mapOverviewCenter=mapSelection||playerPos.clone();mapOverviewSpan=Math.max(96,mapOverviewSpan/2);drawMinimap();});
-$('map-zoom-out').addEventListener('click',()=>{mapOverviewSpan=Math.min(world.w,mapOverviewSpan*2);drawMinimap();});
-$('map-world').addEventListener('click',()=>{mapOverviewSpan=world.w;mapOverviewCenter=null;drawMinimap();});
+function zoomMapButton(factor){
+  const rect=expandedMap.getBoundingClientRect(),view=fullMapView();
+  // After tapping a location, +/- enlarges THAT location, not the avatar.
+  const chosen=mapSelection||{x:view.x+view.w/2,z:view.z+view.h/2};
+  const inside=chosen.x>=view.x&&chosen.x<=view.x+view.w&&
+    chosen.z>=view.z&&chosen.z<=view.z+view.h;
+  const location=inside?chosen:{x:view.x+view.w/2,z:view.z+view.h/2};
+  const point=projectMap(location,view,{width:rect.width,height:rect.height});
+  mapZoomAt(rect.left+point.x,rect.top+point.y,factor,view);
+}
+$('map-zoom-in').addEventListener('click',()=>zoomMapButton(.5));
+$('map-zoom-out').addEventListener('click',()=>zoomMapButton(2));
+$('map-world').addEventListener('click',()=>{
+  mapOverviewSpan=Math.max(world.h,world.w/fullMapAspect());
+  mapOverviewCenter=null;drawMinimap();
+});
+$('map-manual').addEventListener('click',()=>{
+  if(!mapSelection||!mapSelectionValid)return;
+  stopCombat();
+  moverTarget=null;pendingPose=null;waypoint.hide();
+  navigationGoal={x:mapSelection.x,z:mapSelection.z};
+  navigationAuto=false;
+  $('world-map-dialog').close();
+  toast('Destino marcado: siga a seta dourada no chão. Você controla o movimento.');
+});
 $('map-travel').addEventListener('click',()=>{
-  if(!mapSelection)return;
-  if(orderMove(mapSelection.x,mapSelection.z,null)){$('world-map-dialog').close();toast(sailing?'Rumo marcado no mar. A costa e bloqueios continuam valendo.':'Destino marcado. Use o joystick se o caminho estiver bloqueado.');}
+  if(!mapSelection||!mapSelectionValid)return;
+  // Keep an independent guide even when direct travel meets a wall.
+  if(orderMove(mapSelection.x,mapSelection.z,null)){
+    navigationGoal={x:mapSelection.x,z:mapSelection.z};
+    navigationAuto=true;
+    $('world-map-dialog').close();
+    toast(sailing?'Navegação automática iniciada.':'Caminhada automática iniciada. Mover manualmente interrompe.');
+  }
 });
+$('map-clear').addEventListener('click',()=>{
+  const wasAuto=navigationAuto;
+  navigationGoal=null;navigationAuto=false;mapSelection=null;mapSelectionValid=false;
+  mapSelectionRevision++;
+  if(wasAuto){moverTarget=null;pendingPose=null;waypoint.hide();}
+  $('map-manual').disabled=true;$('map-travel').disabled=true;$('map-clear').disabled=true;
+  $('map-selection-info').textContent='Destino removido. Toque para marcar outro.';
+  drawMinimap();
+});
+
 $('navigation-hint').addEventListener('click',()=>{
   if(navigationContext?.destination)void toggleSeaTravel();
   else{openWorldMap();if(mapIsOpen())$('map-harbor').click();}

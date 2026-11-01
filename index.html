@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="./arena.css?v=1">
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <link rel="stylesheet" href="./mobile-landscape.css?v=5">
-<link rel="stylesheet" href="./navigation-map.css?v=1">
+<link rel="stylesheet" href="./navigation-map.css?v=2">
 <link rel="stylesheet" href="./development-ui.css?v=1">
 <link rel="stylesheet" href="./desktop-hud.css?v=1">
 <link rel="stylesheet" href="./mobile-compact.css?v=4">
@@ -208,16 +208,17 @@ font:600 12px system-ui,sans-serif}
 </div>
 <button type="button" id="navigation-hint" hidden><span class="navigation-arrow" aria-hidden="true">↑</span><span><strong id="navigation-title"></strong><small id="navigation-detail"></small></span></button>
 <dialog id="world-map-dialog" aria-labelledby="world-map-title" aria-describedby="world-map-help">
- <header class="world-map-header"><div><h2 id="world-map-title">Mapa de Garner</h2><p id="world-map-help">Toque para marcar um destino · Norte para cima</p></div><button type="button" id="world-map-close" aria-label="Fechar mapa">×</button></header>
+ <header class="world-map-header"><div><h2 id="world-map-title">Mapa de Garner</h2><p id="world-map-help">Toque para marcar · arraste para mover · pinça/roda para zoom</p></div><button type="button" id="world-map-close" aria-label="Fechar mapa">×</button></header>
  <div class="world-map-layout">
-  <div class="world-map-surface"><canvas id="world-map" width="768" height="768" aria-label="Mapa original de Garner, com porto e posição atual"></canvas></div>
+  <div class="world-map-surface"><canvas id="world-map" width="960" height="620" aria-label="Mapa ampliável de Garner: toque para marcar, arraste para mover e use pinça ou roda para ampliar"></canvas><span class="map-gesture-tip" aria-hidden="true">Arraste • Zoom +/− ou pinça</span></div>
   <aside class="world-map-details">
    <p id="map-location"></p>
    <ul class="world-map-legend"><li><i class="player"></i>Você</li><li><i class="harbor"></i>Porto · embarque e desembarque</li><li><i class="landing"></i>Transferência disponível</li><li><i class="target"></i>Destino marcado</li></ul>
    <div class="map-zoom-tools"><button type="button" id="map-zoom-out" aria-label="Afastar mapa">−</button><button type="button" id="map-world">Garner inteiro</button><button type="button" id="map-zoom-in" aria-label="Aproximar mapa">+</button></div>
    <button type="button" id="map-harbor">⚓ Marcar porto de Argent</button>
    <p id="map-selection-info" role="status">Selecione um ponto para traçar seu rumo.</p>
-   <button type="button" id="map-travel" disabled>Selecione um destino</button>
+   <div class="map-action-buttons"><button type="button" id="map-manual" disabled>↗ Guia manual</button><button type="button" id="map-travel" disabled>▶ Ir sozinho</button></div>
+    <button type="button" id="map-clear" disabled>× Limpar destino</button>
    <p class="map-region-note">Garner original · 4096 × 4096 m. Explore o continente e suas ilhas. O movimento respeita a costa e os bloqueios.</p>
   </aside>
  </div>
@@ -371,7 +372,7 @@ font:600 12px system-ui,sans-serif}
  <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
  <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
 </dialog>
-<script type="module" src="./js/main.js?v=68"></script>
+<script type="module" src="./js/main.js?v=69"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>
