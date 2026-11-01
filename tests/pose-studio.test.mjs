@@ -338,7 +338,10 @@ test('GLB reconstruído usa diretamente o nó animado TOP Dummy 22, sem duplicar
 test('jogo/editor usam o mesmo módulo e editor permite exportação para arquivo versionado',()=>{
  const game=file('js/main.js'),page=file('tests/pose-editor.html'),editor=file('tests/pose-editor.mjs');
  assert.match(game,/new WeaponHolster\(THREE,avatar,hero\.job,activePoseProfile,id\)/);
- assert.match(game,/weaponHolster\?\.setStowed\(!combat\?\.auto/);
+ assert.ok(game.includes('weaponHolster?.setStowed('));
+ assert.ok(game.includes('currentCityPose(actuallyMoving'));
+ assert.ok(game.includes('extendCityCombatPose()'));
+ assert.ok(game.includes('resolveCityCombatPose('));
  assert.match(game,/poseResolvedName\(match\)/);
  assert.match(game,/function isRunningPose\(\)/);
  assert.match(game,/\['run','armedRun'\]\.some\(state=>selectPoseName/);
@@ -356,6 +359,6 @@ test('jogo/editor usam o mesmo módulo e editor permite exportação para arquiv
  assert.match(page,/id="weapon-diagnostics"/);
  assert.ok(editor.includes('setWeaponMode(part.key'));
  assert.ok(editor.includes('holster.setStowed(stowed,selectedState)'));
- assert.ok(game.includes('weaponHolster?.setStowed(!combat?.auto&&!weaponAttackState,weaponPoseState)'));
+ assert.ok(game.includes("weaponPoseState==='idle'||weaponPoseState==='run',weaponPoseState"));
  assert.match(file('index.html'),/tests\/pose-editor\.html/);
 });
