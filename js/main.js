@@ -32,7 +32,8 @@ import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlo
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
 import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSeaPosition,ARGENT_HARBOR,ARGENT_HARBOR_WATER} from './sea-navigation.mjs?v=1';
 
-import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
+import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint,mapViewRect,zoomMapAt,guidanceDirection} from './navigation-map.mjs?v=2';
+import {createDestinationGuide} from './destination-guide.mjs?v=1';
 import {boatCameraMode,boatCameraPose,BOAT_CAMERA_MODES,BOAT_CAMERA_LABELS} from './boat-camera.mjs?v=1';
 import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=2';
 import {renderBudget,instanceCapacity,resolutionStep} from './render-budget.mjs?v=1';
@@ -173,7 +174,8 @@ const saveHero=()=>isArenaMap?setArenaSession(ARENA_HERO_KEY,serializeHero(hero)
 const marineDesign=readMarineDesign();
 const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
 let boatCatalog=null,boatDecoration=null;
-let navigationContext=null,mapSelection=null,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationContext=null,mapSelection=null,mapSelectionValid=false,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationGoal=null,navigationAuto=false;
 let navigationHeights={harbor:0,destination:0};
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
@@ -203,6 +205,7 @@ const ambient=new THREE.DirectionalLight(0x9ad4e2,.3); ambient.position.set(40,3
 const brightness=attachBrightness({renderer, hemi, sun, fill:ambient, scene});
 const waypoint=createWaypoint(THREE, scene);
 const navigationMarkers=createNavigationMarkers(THREE,scene);
+const destinationGuide=createDestinationGuide(THREE,scene);
 const boatEffects=createBoatEffects(THREE,scene);
 let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
@@ -400,7 +403,27 @@ async function generateMinimap(){
     const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(Error('Mapa geral indisponível'));img.src=world.manifest.overview;
   });
 }
-function fullMapView(){return mapView(world,mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2},mapOverviewSpan);}
+function fullMapAspect(){
+  const canvas=$('world-map'),r=canvas.getBoundingClientRect();
+  return r.width>0&&r.height>0?r.width/r.height:1;
+}
+function fullMapView(){
+  const center=mapOverviewCenter||{x:world.ox+world.w/2,z:world.oz+world.h/2};
+  return mapViewRect(world,center,mapOverviewSpan,fullMapAspect());
+}
+function assignMapView(view){
+  mapOverviewCenter={x:view.x+view.w/2,z:view.z+view.h/2};
+  mapOverviewSpan=view.h;drawMinimap();
+}
+function resizeExpandedMap(){
+  const canvas=$('world-map'),rect=canvas.getBoundingClientRect();
+  if(rect.width<1||rect.height<1)return;
+  // High enough for legible map labels; capped for mobile GPU/CPU.
+  const density=Math.min(1.7,window.devicePixelRatio||1);
+  const w=Math.max(1,Math.round(rect.width*density));
+  const h=Math.max(1,Math.round(rect.height*density));
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+}
 const localMapCanvas=document.createElement('canvas');localMapCanvas.width=localMapCanvas.height=96;
 function mapDot(ctx,point,color,label,full){
   const r=full?13:10;
