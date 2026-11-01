@@ -11,7 +11,7 @@ const desktop=read('desktop-hud.css');
 const inventory=read('js/inventory-view.mjs');
 
 test('Mobile Compact stylesheet is loaded last and desktop stylesheet remains intact',()=>{
-  const mobile=html.indexOf('mobile-compact.css?v=3');
+  const mobile=html.indexOf('mobile-compact.css?v=4');
   assert.ok(mobile>html.indexOf('desktop-hud.css?v=1'),'compact stylesheet must load after desktop');
   assert.ok(mobile>html.indexOf('mobile-landscape.css'),'compact stylesheet must override old mobile');
   assert.ok(css.includes('@media (orientation:landscape)'));
@@ -25,20 +25,44 @@ test('Mobile Compact stylesheet is loaded last and desktop stylesheet remains in
   assert.ok(desktop.includes('.desktop-menu'),'desktop styles are untouched');
 });
 
-test('Mobile status keeps all data bindings; only secondary cells collapse',()=>{
-  const stats=[...html.matchAll(/<div class="rpg-stat-cell" data-mobile-stat="(core|extra|duplicate)"><span>(.*?)<\/span><strong data-rpg-stat="(.*?)">/g)];
-  assert.equal(stats.length,16);
-  assert.equal(stats.filter(m=>m[1]==='core').length,6);
-  assert.equal(stats.filter(m=>m[1]==='extra').length,8);
-  assert.equal(stats.filter(m=>m[1]==='duplicate').length,2);
-  assert.deepEqual(stats.filter(m=>m[1]==='core').map(m=>m[3]),
-    ['level','hp','mp','attack','magic','defense']);
+test('Mobile Status has three visible pages with all 16 original bindings preserved',()=>{
+  const stats=[...html.matchAll(/<div class="rpg-stat-cell" data-mobile-stat="(core|extra|duplicate)" data-mobile-group="(general|attributes|combat|duplicate)"><span>(.*?)<\/span><strong data-rpg-stat="(.*?)">/g)];
+  assert.equal(stats.length,16,'nenhum atributo histórico pode desaparecer');
+  const grouped=(key)=>stats.filter(m=>m[2]===key).map(m=>m[4]);
+  assert.deepEqual(grouped('general'),['level','hp','mp']);
+  assert.deepEqual(grouped('attributes'),['strength','intelligence','constitution','dexterity','agility']);
+  assert.deepEqual(grouped('combat'),['attack','magic','defense','accuracy','evasion','attackSpeed']);
+  assert.deepEqual(grouped('duplicate'),['maxHp','maxMp']);
   assert.ok(html.includes('class="rpg-mobile-max">/ <b data-rpg-stat="maxHp"'));
   assert.ok(html.includes('class="rpg-mobile-max">/ <b data-rpg-stat="maxMp"'));
-  assert.ok(html.includes('id="rpg-mobile-details" aria-controls="rpg-view-stats" aria-expanded="false"'));
-  assert.ok(js.includes("classList.toggle('mobile-details-expanded')"));
-  assert.ok(js.includes("mobileDetails.setAttribute('aria-expanded',String(expanded))"));
-  assert.ok(css.includes('.rpg-panel.mobile-details-expanded .rpg-stat-cell[data-mobile-stat="extra"]'));
+  assert.ok(html.includes('rpg-mobile-xp" data-mobile-group="general"'));
+  assert.equal((html.match(/data-rpg-stat="xp"/g)||[]).length,2,
+    'XP original do desktop e cópia responsiva do mobile recebem o mesmo valor');
+  for(const page of ['general','attributes','combat']){
+    assert.match(html,new RegExp('data-mobile-stat-tab="'+page+'"'));
+    assert.ok(css.includes('data-mobile-stat-page="'+page+'"'));
+  }
+  assert.ok(js.includes('function setMobileStatPage(page)'));
+  assert.ok(js.includes("setMobileStatPage('general')"));
+  assert.ok(js.includes("button.setAttribute('aria-pressed',String(active))"));
+  assert.ok(js.includes("button.addEventListener('click',()=>setMobileStatPage(button.dataset.mobileStatTab))"));
+  assert.ok(!html.includes('id="rpg-mobile-details"'),'não usar antigo expansor');
+});
+
+test('Mobile selectors appear on one line while desktop retains original card and class row',()=>{
+  assert.ok(html.includes('class="rpg-identity-row"'));
+  assert.ok(html.includes('id="hero-character"'));
+  assert.ok(html.includes('id="hero-class"'));
+  assert.ok(css.includes('.rpg-identity-row{display:contents}'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats .rpg-identity-row{'));
+  assert.ok(css.includes('grid-template-columns:minmax(0,1.9fr) minmax(125px,1fr)'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats .hero-class-row{'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats #hero-class{'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats #hero-character{'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats .hero-stat-heading{'));
+  assert.ok(css.includes('body.mobile-ui #rpg-view-stats .practice-summary{'));
+  assert.ok(html.includes('id="rpg-panel-title"'));
+  assert.ok(desktop.includes('.desktop-menu'));
 });
 
 test('Bag compact layout does not override saved desktop bag preferences',()=>{
