@@ -10,6 +10,7 @@ on:
       - 'development-ui.css'
       - 'rpg-hud.css'
       - 'arena.css'
+      - 'desktop-hud.css'
       - 'assets/arena/**'
       - 'assets/boats/**'
       - 'assets/pets/**'
@@ -46,6 +47,6 @@ jobs:
       - name: Check combat and pet syntax
         run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
       - name: Check camera and inventory UI syntax
-        run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs
+        run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs && node --check js/desktop-hud.mjs
       - name: Check tower syntax
         run: node --check js/arena-state.mjs && node --check js/arena-world.mjs && node --check js/arena-ui.mjs

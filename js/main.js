@@ -8,6 +8,7 @@ import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=6';
+import {initDesktopHud} from './desktop-hud.mjs';
 import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
@@ -138,7 +139,7 @@ let world, player, objects=[], markers=[], moverTarget=null, pendingPose=null, o
 let avatar=null, mixer=null, animations=[], runningAction=null, currentClip='';
 let headBone=null, tailBone=null,cameraHeadHeight=1.55;
 let attackPlaying=false, testing=false;
-let rpgHud=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
+let rpgHud=null, desktopHud=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -235,7 +236,7 @@ const paletteRGB={};
 for(const [id,h] of Object.entries(palette)){const c=new THREE.Color(h); paletteRGB[id]=[c.r,c.g,c.b]}
 const tintRGB=new Float32Array(3);
 let lastToast=0;
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');lastToast=performance.now();}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');lastToast=performance.now();desktopHud?.record(msg);}
 function progress(amount,message){$('progressbar').style.width=`${amount}%`;if(message)$('loadingmessage').textContent=message;}
 function resize(){const w=innerWidth,h=innerHeight;camera.aspect=w/h;applyCameraFraming();camera.updateProjectionMatrix();renderer.setSize(w,h,false)}
 window.addEventListener('resize',resize);resize();
@@ -605,6 +606,7 @@ function teleport(x,z){
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
   const free=findFree(x,z);
   if(!free){toast('Nenhuma posição navegável próxima. Ative “Ignorar bloqueios”.');return false;}
+  desktopHud?.closeSettings();
   if(sailing){sailing=false;if(boat)boat.visible=false;if(avatar)avatar.visible=true;shadow.visible=true;saveSeaTravel();}
   // Teleporte também deve soltar a pose; serve como saída de emergência.
   if(seated){seated=null;attackPlaying=false;playClip('Parado');}
@@ -829,7 +831,7 @@ function toggleAutoAttack(){
   moverTarget=null;pendingPose=null;waypoint.hide();
   combat.toggle();
   if(!attackPlaying)playClip('Parado'); // Guarda configurada (quando disponível).
-  toast('Ataque automático ligado. Toque no botão grande novamente para parar.');
+  toast(MOBILE_UI?'Ataque automático ligado. Toque no botão grande novamente para parar.':'Ataque automático ligado. Pressione F para parar.');
   return true;
 }
 function manualAttack(){
@@ -956,6 +958,7 @@ function updateStealth(){
 }
 function combatEvent(event){
   monsterManager?.onEvent(event);
+  desktopHud?.recordCombat(event);
   if(event.type==='notice')toast(event.message);
   if(event.type==='interrupt'&&!skillAnimationLocked){skillActionQueue=[];attackPlaying=false;playClip('Parado');}
   if(event.type==='cast'){
@@ -994,10 +997,11 @@ function combatEvent(event){
   if(event.type==='revive'){teleport(2218.5,2776.5);toast('Recuperado em Argent.');}
 }
 function updateCombatHud(){
-  rpgHud?.setStats(heroSnapshot(hero));
+  const snapshot=heroSnapshot(hero);
+  rpgHud?.setStats(snapshot);
   rpgHud?.setCombatState({cooldowns:combat?.cooldowns||{},mp:hero.mp});
   const target=combat?.target;
-  $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:'Toque num monstro ou use Alvo';
+  $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:(MOBILE_UI?'Toque num monstro ou use Alvo':'Clique num monstro ou use T');
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
   $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
     ?(target?'Auto · combatendo':'Auto · procurando alvo')
@@ -1044,6 +1048,9 @@ function updateCombatHud(){
     $('equipment-toggle').disabled=true;$('hero-character').disabled=true;$('hero-class').disabled=true;
     if(arenaRun&&monsterManager)arenaUi?.update(arenaRun,monsterManager.monsters);
   }
+  desktopHud?.update({stats:snapshot,position:playerPos,context,target,auto:combat?.auto,sailing,
+    blocked:boardingBoat||hero.hp<=0||changingCharacter||changingLoadout||skillAnimationLocked||!!arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'),
+    character:hero.character,map:isArenaMap?'teampk':'garner',primaryLabel:label?.textContent});
 
 }
 
@@ -2046,7 +2053,7 @@ async function boot(){
       if(arenaRun.phase==='choice')arenaUi.showChoice(arenaRun,hero);
       else toast(`Torre da Provação · Andar ${arenaRun.floor}`);
     }
-    if(sceneObjs3D&&!isArenaMap)toast('Biblioteca original 3D carregada. Botão direito gira a câmera.');
+    if(sceneObjs3D&&!isArenaMap)toast(MOBILE_UI?'Biblioteca original 3D carregada. Botão direito gira a câmera.':'Argent City · WASD para mover · botão direito para girar a câmera.');
     if(!isArenaMap&&launchParams.has('arenaResult')){
       setPref('topweb_garner_position',JSON.stringify([playerPos.x,playerPos.z]));
       toast(launchParams.get('arenaResult')==='defeat'?`Tentativa encerrada no andar ${launchParams.get('arenaFloor')}. De volta à Arena Administrator.`:'De volta à Arena Administrator.');
@@ -2125,7 +2132,7 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
+  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
   combat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
   if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
     saveArenaRun();clearTravelInput();arenaUi.showChoice(arenaRun,hero);
@@ -2174,7 +2181,7 @@ function update(dt){
       else if(step(playerPos.x,playerPos.z+sz)){playerPos.z+=sz;moved=true;}
       else if(moverTarget){moverTarget=null;pendingPose=null;waypoint.hide();toast('Caminho bloqueado. Tente outra direção.');break;}
     }
-    if(chasing&&!moved){stopCombat();toast('Caminho bloqueado. Aproxime-se pelo joystick.');}
+    if(chasing&&!moved){stopCombat();toast(MOBILE_UI?'Caminho bloqueado. Aproxime-se pelo joystick.':'Caminho bloqueado. Aproxime-se com WASD.');}
     if(sailing&&boat){
       const target=Math.atan2(-dx,-dz);
       boat.rotation.y=followAngle(boat.rotation.y,target,dt,8);
@@ -2421,6 +2428,13 @@ rpgHud=initRpgHud({
   onMessage:toast
 });
 rpgHud.setStats(heroSnapshot(hero));
+desktopHud=initDesktopHud({
+  onPrimary:primaryAction,onAuto:toggleAutoAttack,
+  onTarget:()=>{if(!sailing&&!boardingBoat)combat?.cycleTarget(playerPos);},
+  onRest:()=>$('idle').click(),onOpen:tab=>rpgHud.open(tab),onMap:openWorldMap,
+  onPause:()=>{clearTravelInput();stopCombat();rpgHud?.dismiss();},
+  canOpen:()=>!skillAnimationLocked&&!changingCharacter&&!changingLoadout&&!arenaUi?.blocked()&&!arenaTransition&&!mapIsOpen()
+});
 function updateEquipmentUi(){
   $('hero-class').value=hero.job;$('hero-character').value=hero.character;
   for(const option of $('hero-character').options)option.disabled=!CLASSES[hero.job].characters.includes(option.value);
@@ -2659,7 +2673,7 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen()||mapIsOpen()||arenaUi?.blocked()||arenaTransition)return;
+  if(typing||rpgHud?.isOpen()||mapIsOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
