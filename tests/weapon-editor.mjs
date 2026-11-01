@@ -6,7 +6,7 @@ import {MAX_TEXTURE_DATA_CHARS,readWeaponMaterialProfiles,saveWeaponMaterialProf
   parseWeaponMaterialProfiles,weaponPrimitives,weaponMaterialSettings,
   writeWeaponMaterialSettings,applyWeaponMaterialSettings,
   applyWeaponAppearance,applyWeaponAdditiveLayer,isWeaponAdditiveLayer,
-  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=2';
+  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=3';
 
 const $=id=>document.getElementById(id);
 const actor=$('actor'),job=$('job'),slot=$('slot'),subset=$('subset');
@@ -230,8 +230,8 @@ async function loadCharacter(){
    const overlays=layers.filter(isWeaponAdditiveLayer);
    info.textContent='✓ Modelo carregado: '+groups.length+' armas / '+
      layers.length+' submalhas. '+overlays.length+
-     ' camada(s) de efeito aditivo detectada(s) (1.BMP). '+
-     'Ocultas por padrão; selecione Parte 2 para ativar e testar.';
+     ' camada(s) secundária(s) 1.BMP identificada(s). '+
+     'Ocultas por padrão; selecione Parte 2 para comparar com o material principal.';
    status('✓ '+actor.value+' / '+job.value+' · '+groups.length+
      ' arma(s) · '+layers.length+' materiais · '+overlays.length+
      ' camadas aditivas');

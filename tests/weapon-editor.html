@@ -47,8 +47,8 @@
   <label class="check"><input type="checkbox" id="flipV"> Inverter UV vertical (diagnóstico)</label>
   <div class="layer-controls" id="overlay-controls">
     <h2>Camada adicional de efeito (1.BMP)</h2>
-    <p class="hint">A textura <code>1.BMP</code> é uma camada aditiva histórica, não a pintura da espada. Ela fica oculta por padrão para exibir corretamente <code>01010021.bmp</code>.</p>
-    <label class="check"><input type="checkbox" id="overlay-visible">Exibir camada aditiva azul (teste)</label>
+    <p class="hint">Nos 14 GLBs, <code>1.BMP</code> é a segunda textura da arma. A mistura aditiva foi confirmada na Dance of Evanescence; nas demais armas é uma hipótese baseada no mesmo padrão. Esta camada fica oculta por padrão para revelar a textura principal.</p>
+    <label class="check"><input type="checkbox" id="overlay-visible">Exibir camada secundária 1.BMP (teste)</label>
     <label>Intensidade da camada <output id="overlayOpacity-value">0.3</output><input id="overlayOpacity" type="range" min="0" max="1" step=".05" value=".3"></label>
   </div>
   <div class="divider"></div>
@@ -63,5 +63,5 @@
   <p class="hint warn">Os efeitos do refino histórico (.eff/.par) serão uma etapa separada. O brilho aqui é apenas visualização de material emissivo.</p>
  </aside>
 </main>
-<script type="module" src="tests/weapon-editor.mjs?v=2"></script>
+<script type="module" src="tests/weapon-editor.mjs?v=3"></script>
 </body></html>
