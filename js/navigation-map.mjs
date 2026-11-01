@@ -5,11 +5,40 @@ export function mapView(world,position,span=LOCAL_MAP_SPAN){
   return {x:Math.max(world.ox,Math.min(world.ox+world.w-w,position.x-w/2)),
     z:Math.max(world.oz,Math.min(world.oz+world.h-h,position.z-h/2)),w,h};
 }
+const dimensions=size=>typeof size==='number'?{width:size,height:size}:size;
 export function projectMap(point,view,size){
-  return {x:(point.x-view.x)/view.w*size,y:(point.z-view.z)/view.h*size};
+  const {width,height}=dimensions(size);
+  return {x:(point.x-view.x)/view.w*width,y:(point.z-view.z)/view.h*height};
 }
 export function unprojectMap(x,y,view,size){
-  return {x:view.x+x/size*view.w,z:view.z+y/size*view.h};
+  const {width,height}=dimensions(size);
+  return {x:view.x+x/width*view.w,z:view.z+y/height*view.h};
+}
+// The expanded map is rectangular in landscape. Keep world-space zoom
+// independent from screen pixels, and clamp its pan to actual map bounds.
+export function mapViewRect(world,center,verticalSpan,aspect=1){
+  const ratio=Math.max(.5,Math.min(4,Number(aspect)||1));
+  const h=Math.max(Math.min(32,world.h),Math.min(world.h,Number(verticalSpan)||world.h));
+  const w=Math.min(world.w,h*ratio);
+  return {x:Math.max(world.ox,Math.min(world.ox+world.w-w,center.x-w/2)),
+    z:Math.max(world.oz,Math.min(world.oz+world.h-h,center.z-h/2)),w,h};
+}
+export function zoomMapAt(world,view,focus,factor,aspect=1){
+  if(!Number.isFinite(factor)||factor<=0)return view;
+  // Keep the touched coordinate underneath the cursor during zoom.
+  const rx=Math.max(0,Math.min(1,(focus.x-view.x)/view.w));
+  const rz=Math.max(0,Math.min(1,(focus.z-view.z)/view.h));
+  const nextH=Math.max(32,Math.min(world.h,view.h*factor));
+  const nextW=Math.min(world.w,nextH*Math.max(.5,Math.min(4,aspect)));
+  return mapViewRect(world,{x:focus.x+(0.5-rx)*nextW,
+    z:focus.z+(0.5-rz)*nextH},nextH,aspect);
+}
+export function guidanceDirection(player,destination){
+  if(!player||!destination)return null;
+  const dx=destination.x-player.x,dz=destination.z-player.z;
+  if(!Number.isFinite(dx)||!Number.isFinite(dz))return null;
+  const distance=Math.hypot(dx,dz);
+  return distance<.5?null:{dx:dx/distance,dz:dz/distance,distance,bearing:Math.atan2(dx,dz)};
 }
 export function mapTileColor(tile){
   if(!tile)return [12,49,73];
