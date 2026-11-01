@@ -6,7 +6,7 @@ import {MAX_TEXTURE_DATA_CHARS,readWeaponMaterialProfiles,saveWeaponMaterialProf
   parseWeaponMaterialProfiles,weaponPrimitives,weaponMaterialSettings,
   writeWeaponMaterialSettings,applyWeaponMaterialSettings,
   applyWeaponAppearance,applyWeaponAdditiveLayer,isWeaponAdditiveLayer,
-  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=2';
+  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=3';
 
 const $=id=>document.getElementById(id);
 const actor=$('actor'),job=$('job'),slot=$('slot'),subset=$('subset');
