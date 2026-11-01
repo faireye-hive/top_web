@@ -84,22 +84,42 @@ test('save validado conserva classe, equipamento e prática; números inválidos
   assert.equal(restoreHero('not json').level,1);
 });
 
-test('selecionar monstro não liga auto e botão manual executa um golpe por toque',()=>{
-  const {combat,enemies,events}=setup();
-  const pos={x:0,z:0};
-  assert.equal(combat.selectTarget(enemies[0],pos),true);
-  assert.equal(combat.auto,false,'alvo selecionado não deve começar auto ataque');
-  advance(combat,.5,pos);
-  assert.equal(enemies[0].hp,60,'só selecionar não causa dano');
-  assert.equal(combat.manualAttack(pos),true);
+test('selecionar monstro não ataca sozinho; um toque manual repete golpes até derrotar só esse alvo',()=>{
+  const first=monster({hp:42,maxHp:42,attack:0,respawn:false});
+  const second=monster({x:1.5,hp:42,maxHp:42,attack:0,respawn:false});
+  const {combat,enemies,events}=setup([first,second]),pos={x:0,z:0};
+  assert.equal(combat.selectTarget(first,pos),true);
   assert.equal(combat.auto,false);
-  assert.equal(combat.manualAttack(pos),false,'não repetir antes do cooldown');
-  advance(combat,.6,pos);
-  assert.ok(enemies[0].hp<60,'o toque deve causar apenas um golpe');
-  const swings=events.filter(e=>e.type==='swing').length;
-  advance(combat,2,pos);
-  assert.equal(events.filter(e=>e.type==='swing').length,swings,'sem repetição automática');
-  assert.equal(combat.manualAttack(pos),true,'segundo toque pode atacar após o cooldown');
+  assert.equal(combat.manualActive,false);
+  advance(combat,.5,pos);
+  assert.equal(first.hp,42,'selecionar sem atacar não causa dano');
+  assert.equal(combat.manualAttack(pos),true);
+  assert.equal(combat.manualActive,true);
+  assert.equal(combat.auto,false,'não pode ativar o modo Auto');
+  assert.equal(combat.manualAttack(pos),true,'toque adicional não acumula golpes');
+  advance(combat,7,pos);
+  assert.equal(first.hp,0,'o ataque continua até derrotar o alvo');
+  assert.equal(second.hp,42,'manual jamais procura o próximo monstro');
+  assert.equal(combat.manualActive,false);
+  assert.equal(combat.target,null);
+  const swings=events.filter(e=>e.type==='swing');
+  assert.ok(swings.length>=2,'deve realizar vários golpes sem novos toques');
+  advance(combat,5,pos);
+  assert.equal(second.hp,42,'após derrota não muda de alvo, nem se outro estiver perto');
+  assert.equal(combat.auto,false);
+});
+test('modo Auto continua buscando outros monstros depois de cada derrota',()=>{
+  const first=monster({hp:9,maxHp:9,attack:0,respawn:false});
+  const second=monster({x:1.5,hp:9,maxHp:9,attack:0,respawn:false});
+  const {combat,events}=setup([first,second]),pos={x:0,z:0};
+  combat.selectTarget(first,pos);
+  combat.toggle();
+  assert.equal(combat.manualActive,false);
+  advance(combat,6,pos);
+  assert.equal(first.hp,0);
+  assert.equal(second.hp,0,'Auto deve escolher o segundo monstro depois do primeiro');
+  assert.equal(combat.auto,true);
+  assert.equal(events.filter(e=>e.type==='kill').length,2);
 });
 test('botão Auto separado preserva o alvo ao desligar e desativa ataque manual enquanto ligado',()=>{
   const {combat,enemies}=setup();const pos={x:0,z:0};
@@ -118,22 +138,59 @@ test('andar mantém alvo manual, mas cancela automático e golpes pendentes',()=
   assert.equal(combat.target,enemies[0]);
   assert.equal(combat.auto,false);
   assert.equal(combat.manualAttack(pos),true);
+  assert.equal(combat.manualActive,true);
   combat.update(.05,pos,{moving:true});
+  assert.equal(combat.manualActive,false,'movimentar cancela a sequência manual');
   advance(combat,.6,pos);
   assert.equal(enemies[0].hp,60,'movimentar cancela golpe pendente');
   assert.equal(combat.target,enemies[0],'movimentar não apaga o alvo manual');
   combat.toggle();combat.update(.05,pos,{moving:true});
   assert.equal(combat.auto,false,'movimentar continua cancelando auto');
 });
-test('manual precisa de alcance e escolhe alvo próximo sem ligar auto',()=>{
-  const enemy=monster({x:8});
-  const {combat,events}=setup([enemy]);const pos={x:0,z:0};
-  assert.equal(combat.manualAttack(pos),false);
-  assert.equal(combat.auto,false);
-  assert.equal(combat.target,enemy,'identifica o alvo, mas não ataca de longe');
-  assert.ok(events.some(e=>e.type==='notice'&&/Aproxime-se/.test(e.message)));
-  enemy.x=1;
+test('ataque normal aproxima do alvo à distância, sem precisar de segundo toque',()=>{
+  const enemy=monster({x:8,attack:0,maxHp:20,hp:20,respawn:false});
+  const {combat}=setup([enemy]);const pos={x:0,z:0};
   assert.equal(combat.manualAttack(pos),true);
+  assert.equal(combat.auto,false);
+  assert.equal(combat.manualActive,true);
+  assert.equal(combat.target,enemy);
+  assert.deepEqual(combat.approach,{target:enemy,range:combat.approach.range});
+  advance(combat,.8,pos);
+  assert.equal(enemy.hp,20,'fora do alcance não dá dano');
+  enemy.x=1;
+  advance(combat,2,pos);
+  assert.equal(enemy.hp,0,'após se aproximar, ataca sem outro toque');
+  assert.equal(combat.approach,null);
+});
+test('selecionar outro alvo não inicia ataques e interrompe sequência anterior',()=>{
+  const first=monster({hp:40,maxHp:40,respawn:false,attack:0});
+  const second=monster({x:1.2,hp:40,maxHp:40,respawn:false,attack:0});
+  const {combat,events}=setup([first,second]),pos={x:0,z:0};
+  combat.selectTarget(first,pos);combat.manualAttack(pos);
+  assert.equal(combat.manualActive,true);
+  assert.equal(combat.selectTarget(second,pos),true);
+  assert.equal(combat.manualActive,false);
+  advance(combat,3,pos);
+  assert.equal(first.hp,40,'golpe pendente cancelado ao trocar o alvo');
+  assert.equal(second.hp,40,'seleção não inicia novo ataque');
+  assert.equal(events.filter(e=>e.type==='hit').length,0);
+  assert.equal(combat.manualAttack(pos),true);
+  advance(combat,2,pos);
+  assert.ok(second.hp<40);
+});
+test('perda de visão, distância, menu e morte do jogador encerram o ataque manual',()=>{
+  for(const stopBy of ['vision','distance','menu','death']){
+    const enemy=monster({attack:0,respawn:false});
+    let visible=true;const hero=createHero();
+    const combat=createCombat({hero,monsters:[enemy],random:()=>0,canSee:()=>visible});
+    const pos={x:0,z:0};
+    combat.selectTarget(enemy,pos);combat.manualAttack(pos);
+    if(stopBy==='vision')visible=false;
+    if(stopBy==='death')hero.hp=0;
+    combat.update(.1,stopBy==='distance'?{x:70,z:0}:pos,{paused:stopBy==='menu'});
+    assert.equal(combat.manualActive,false,stopBy);
+    assert.equal(combat.auto,false,stopBy);
+  }
 });
 
 test('monstro pacífico só persegue e revida após receber ataque, com preparação antes do dano',()=>{

@@ -97,7 +97,10 @@ test('HUD reflete modo pequeno e execução apenas no botão principal',()=>{
   assert.match(main,/mobileAutoModeEnabled\?toggleAutoAttack\(\):manualAttack\(\)/);
   assert.match(main,/autoModeButton\.setAttribute\('aria-pressed',String\(mobileAutoModeEnabled\)\)/);
   assert.match(main,/button\?\.classList\.toggle\('auto-active',autoAction&&!!combat\?\.auto\)/);
-  assert.match(main,/label\.textContent=combatAction\?\(mobileAutoModeEnabled\?'Auto':'Atacar'\)/);
+  assert.ok(main.includes("mobileAutoModeEnabled?'Auto':combat?.manualActive?'Atacando':'Atacar'"));
+  assert.match(main,/const wasActive=!!combat\?\.auto\|\|!!combat\?\.manualActive\|\|attackPlaying/);
+  assert.ok(main.includes('combat?.manualActive||attackPlaying'));
+  assert.match(main,/Um toque ataca o monstro até derrotá-lo/);
   assert.match(html,/id="mobile-auto"/);
   assert.match(html,/main\.js\?v=\d+/);
   assert.match(html,/mobile-landscape\.css\?v=5/);

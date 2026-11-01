@@ -19,14 +19,16 @@ export function rollDamage(attacker,defender,random=Math.random){
 }
 const CLASS_SKILLS={crusader:[81,84,123,86],cleric:[99,97,106,255],sharpshooter:[94,95,96,456],hunter:[90,93,224,112],voyager:[216,214,213,454],'seal-master':[99,97,256,105],champion:[107,243,83,455]};
 export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,onEvent=()=>{},random=Math.random}){
-  let auto=false,target=null,manual=false,pending=null,intent=null,casting=null,cooldown=0,scan=0,recovery=0,quiet=0;
+  // auto: procura novos monstros; manualActive: combate só o alvo escolhido.
+  // Selecionar um monstro não ativa nenhum dos modos.
+  let auto=false,target=null,manual=false,manualActive=false,pending=null,intent=null,casting=null,cooldown=0,scan=0,recovery=0,quiet=0;
   const cooldowns={},buffs={};
   const visible=m=>m&&m.hp>0&&m.ready!==false&&m.motion!=='return';
   const valid=(m,p)=>visible(m)&&distance(m,p)<=COMBAT.targetRadius&&canSee(p,m);
   function notice(message){onEvent({type:'notice',message});return false;}
   function stop(preserveTarget=false){
     const selected=preserveTarget&&visible(target)?target:null;
-    auto=false;pending=null;intent=null;casting=null;target=selected;manual=!!selected;scan=0;
+    auto=false;manualActive=false;pending=null;intent=null;casting=null;target=selected;manual=!!selected;scan=0;
   }
   function toggle(){
     if(hero.hp<=0)return false;
@@ -34,12 +36,12 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       // Desligar auto não apaga o alvo: o jogador pode atacar manualmente.
       stop(true);return false;
     }
-    auto=true;return true;
+    auto=true;manualActive=false;manual=false;return true;
   }
   function selectTarget(monster,position){
     if(hero.hp<=0||!valid(monster,position))return false;
     // Selecionar um alvo NÃO liga o automático.
-    target=monster;manual=true;pending=null;intent=null;
+    target=monster;manual=true;manualActive=false;pending=null;intent=null;
     onEvent({type:'selected',monster});return true;
   }
   function cycleTarget(position){
@@ -54,16 +56,22 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     onEvent({type:'swing',monster,period,flight});
   }
   function manualAttack(position){
-    if(hero.hp<=0||auto||pending||casting||intent||cooldown>0)return false;
+    if(hero.hp<=0||auto||casting||intent)return false;
+    // Um toque inicia uma sequência contra UM único alvo.
+    // Outros toques não acumulam golpes nem iniciam busca por novas vítimas.
+    if(manualActive&&valid(target,position))return true;
     if(!valid(target,position)){
       target=nearestMonster(monsters,position,COMBAT.targetRadius,canSee);
       manual=!!target;
       if(target)onEvent({type:'selected',monster:target});
     }
     if(!target)return notice('Nenhum monstro próximo. Selecione um alvo.');
-    if(distance(position,target)>basicAttackRange(hero))
-      return notice('Aproxime-se do alvo para atacar manualmente.');
-    startSwing(target,position);
+    manual=true;manualActive=true;
+    // O mesmo sistema de aproximação do Auto funciona com o ataque normal.
+    // Se já estiver perto e a animação/cadência permitirem, inicia agora.
+    if(!pending&&!casting&&!intent&&cooldown===0&&
+       distance(position,target)<=basicAttackRange(hero))
+      startSwing(target,position);
     return true;
   }
   function queueSkill(entry,position){
@@ -92,7 +100,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     if(m.hp===0){
       m.respawnIn=COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
       const levels=gainExperience(hero,m.xp);onEvent({type:'kill',monster:m,levels});
-      if(m===target){target=null;manual=false;scan=0;}
+      if(m===target){target=null;manual=false;manualActive=false;scan=0;}
     }
   }
   function resolveSkill(cast,position){
@@ -115,7 +123,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
   }
   function update(dt,position,{paused=false,moving=false,busy=false}={}){
     if(paused){stop();return;}
-    if(moving)stop(!auto); // Movimento cancela auto; mantém alvo selecionado no manual.
+    if(moving)stop(!auto); // Movimento do jogador cancela ambos, preservando alvo manual.
     cooldown=Math.max(0,cooldown-dt);quiet+=dt;
     for(const id of Object.keys(cooldowns))cooldowns[id]=Math.max(0,cooldowns[id]-dt);
     for(const name of Object.keys(buffs))buffs[name]=Math.max(0,buffs[name]-dt);
@@ -153,7 +161,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       }
       return;
     }
-    if(target&&!valid(target,position)){target=null;manual=false;pending=null;if(intent?.target)intent=null;}
+    if(target&&!valid(target,position)){target=null;manual=false;manualActive=false;pending=null;if(intent?.target)intent=null;}
     scan-=dt;
     if(auto&&scan<=0&&!pending&&!casting&&!intent){
       if(!manual&&!valid(target,position))target=nearestMonster(monsters,position,COMBAT.targetRadius,canSee);
@@ -186,7 +194,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
         }
       }
     }
-    if(auto&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
+    if((auto||manualActive)&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
       startSwing(target,position);
     for(const m of monsters){
       if(!m.engaged||m.hp<=0||m.ready===false)continue;
@@ -213,10 +221,10 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     }
   }
   return {update,stop,toggle,manualAttack,queueSkill,selectTarget,cycleTarget,cooldowns,buffs,
-    get auto(){return auto;},get target(){return target;},get recovering(){return hero.hp<=0;},
+    get auto(){return auto;},get manualActive(){return manualActive;},get target(){return target;},get recovering(){return hero.hp<=0;},
     get approach(){
       if(casting||pending)return null;
       if(intent?.target)return {target:intent.target,range:intent.skill.range};
-      return auto&&target?{target,range:basicAttackRange(hero)}:null;
+      return (auto||manualActive)&&target?{target,range:basicAttackRange(hero)}:null;
     }};
 }
