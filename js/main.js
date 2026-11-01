@@ -19,8 +19,8 @@ import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dr
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
-import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=6';
-import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=1';
+import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=7';
+import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=2';
 import {isInsideCity,extendCombatHold,resolveCityCombatPose} from './city-combat-pose.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator

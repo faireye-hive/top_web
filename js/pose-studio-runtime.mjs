@@ -236,6 +236,9 @@ export class WeaponHolster {
             const view=new THREE.Mesh(transformed,mesh.material);
             view.name='Pose Studio · arma '+index+' · parte '+views.length;
             view.frustumCulled=false;
+            // Manter a camada aditiva opcional 1.BMP oculta também quando
+            // a espada é guardada (cópia da malha do WeaponHolster).
+            view.visible=mesh.visible;
             // GLTFLoader primitive children are normally identity transforms,
             // but retain any local transforms from older converted assets.
             if(mesh!==source&&mesh.matrix&&typeof view.applyMatrix4==='function')

@@ -72,3 +72,42 @@ python3 scripts/audit_weapon_materials.py
 ```
 
 Os testes automatizados conferem a integridade do GLB e os controles sem simular falsamente que o resultado foi inspecionado visualmente num navegador. Compare a imagem original renderizada com a referência histórica para corrigir cor ou UV.
+
+## Correção confirmada da Dance of Evanescence — camada 1.BMP (01/11/2026)
+
+A investigação do `Client/model/item/01010021.lgo` **original** encontrou
+dois materiais distintos:
+
+| Subset | Imagem | Faces | Valor no LGO | Renderização histórica |
+|---|---|---:|---:|---|
+| 0 | `01010021.bmp` | 156 | `blend=0` | Superfície principal, vermelha |
+| 1 | `1.BMP` | 90 | `blend=1` | Passagem aditiva `SRC_ALPHA,ONE` |
+
+A textura `1.BMP` não é a pintura da espada. É uma **camada adicional**
+de 32×32 px, azul, que foi convertida incorretamente como material PBR
+opaco por `Lance/converter.py`. Isso cobria visualmente a textura
+vermelha de 128×128 px, embora o GLB tivesse ambos os mapas corretos.
+
+A nova versão do conversor conserva `extras.topOriginalBlend=1` e
+`extras.topLayer='additive-overlay'` para exportações futuras.
+No GLB publicado anterior, `js/weapon-materials.mjs` identifica essa
+camada por nome de material **somente para a combinação conhecida**
+`01010021.lgo · 1.BMP`. Aplica `THREE.AdditiveBlending` com
+`depthWrite=false` e **deixa a camada desligada por padrão** até
+termos o gatilho histórico de refino. Assim a espada principal
+`01010021.bmp` volta a aparecer em vermelho.
+
+No Weapon Material Studio, selecione **Parte 2 · 1.BMP** para ajustar
+`Exibir camada aditiva azul` e a intensidade. A escolha é salva como
+`overlayVisible` / `overlayOpacity` por espada e por submalha;
+uma configuração explícita também vale no jogo e nas cópias guardadas
+nas costas. O Pose Studio usa a mesma correção visual.
+**Isto não reproduz ainda os níveis históricos de refino**, apenas
+respeita a existência de duas passagens de renderização diferentes.
+
+Reproduzir o caso:
+
+```sh
+node --test tests/weapon-material-studio.test.mjs
+python3 scripts/audit_weapon_materials.py
+```

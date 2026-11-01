@@ -402,6 +402,16 @@ def convert(assets:Path, extras:list[Path], output:Path, flip_v: bool=False,
                       'pbrMetallicRoughness':{'baseColorFactor':list(COLORS[part_index%len(COLORS)]),
                                           'metallicFactor':0,'roughnessFactor':.92},
                       'doubleSided':True}
+                # O LGO marca camadas complementares com blend 1.
+                # ActorSkin.cpp (cliente OpenGL antigo) usa modo 4
+                # (SRC_ALPHA, ONE), não material opaco. glTF puro não
+                # representa soma aditiva: preservar a origem em extras
+                # para Three.js habilitar esse modo apenas quando apropriado.
+                if sub['blend']==1:
+                    material['alphaMode']='BLEND'
+                    material['extras']={'topOriginalBlend':1,
+                                        'topLayer':'additive-overlay',
+                                        'topSourceTexture':sub['tex']}
                 if sub['tex']:
                     raw=find_texture(sub['tex'],sources)
                     if raw:

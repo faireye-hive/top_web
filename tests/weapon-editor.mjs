@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {weaponMeshNodes,WeaponHolster,selectPoseName,readPoseProfiles,poseProfile} from '../js/pose-studio-runtime.mjs';
+import {weaponMeshNodes,WeaponHolster,selectPoseName,readPoseProfiles,poseProfile} from '../js/pose-studio-runtime.mjs?v=7';
 import {MAX_TEXTURE_DATA_CHARS,readWeaponMaterialProfiles,saveWeaponMaterialProfiles,
   parseWeaponMaterialProfiles,weaponPrimitives,weaponMaterialSettings,
   writeWeaponMaterialSettings,applyWeaponMaterialSettings,
-  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs';
+  applyWeaponAppearance,applyWeaponAdditiveLayer,isWeaponAdditiveLayer,
+  updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=2';
 
 const $=id=>document.getElementById(id);
 const actor=$('actor'),job=$('job'),slot=$('slot'),subset=$('subset');
@@ -41,6 +42,8 @@ function clampSettings(){
  v.color=$('color').value;
  v.emissive=$('emissive').value;
  v.flipV=$('flipV').checked;
+ v.overlayVisible=$('overlay-visible').checked;
+ v.overlayOpacity=Number($('overlayOpacity').value);
  const previous=weaponMaterialSettings(store,actor.value,job.value,currentSlot(),selectedIndex());
  if(previous?.textureData)v.textureData=previous.textureData;
  return v;
@@ -59,7 +62,7 @@ function getEffective(){
    roughness:base?.roughness??.85,metalness:base?.metalness??0,
    emissive:base?.emissive?'#'+base.emissive.getHexString():'#000000',
    glow:base?.emissiveIntensity&&base.emissiveIntensity!==1?base.emissiveIntensity:0,
-   pulse:0,pulseSpeed:2,flipV:false
+   pulse:0,pulseSpeed:2,flipV:false,overlayVisible:false,overlayOpacity:.3
  };
 }
 function fields(){
@@ -68,7 +71,15 @@ function fields(){
  for(const key of ['roughness','metalness','glow','pulse','pulseSpeed'])
    $(key).value=values[key];
  $('color').value=values.color;$('emissive').value=values.emissive;
- $('flipV').checked=values.flipV;setOutputs();
+ $('flipV').checked=values.flipV;
+ $('overlay-visible').checked=values.overlayVisible===true;
+ $('overlayOpacity').value=values.overlayOpacity??.3;
+ $('overlayOpacity-value').textContent=Number(values.overlayOpacity??.3).toFixed(2);
+ const overlay=isWeaponAdditiveLayer(mesh);
+ $('overlay-controls').hidden=!overlay;
+ $('overlay-visible').disabled=!overlay;
+ $('overlayOpacity').disabled=!overlay;
+ setOutputs();
  for(const elt of document.querySelectorAll('.settings input:not([type="file"]),.settings button'))
    elt.disabled=!mesh;
  showSource();
@@ -103,6 +114,7 @@ function showSource(){
   'Imagem importada: '+(upload?'SIM':'NÃO'),
   'UV: '+(mesh.geometry.getAttribute('uv')?'SIM':'NÃO'),
   'Tamanho original: '+(tex?.image?.width||'?')+' × '+(tex?.image?.height||'?'),
+  'Camada do LGO: '+(isWeaponAdditiveLayer(mesh)?'EFEITO ADITIVO / 1.BMP (não é a pintura da arma)':'SUPERFÍCIE PRINCIPAL'),
   'Estado: '+(mesh.material.userData?.topTextureStatus||'original')
  ].join('\n');
  drawTexture(upload?mesh.material.map:tex);
@@ -112,10 +124,14 @@ function applyCurrent(){
  const settings=writeWeaponMaterialSettings(
    store,actor.value,job.value,currentSlot(),selectedIndex(),clampSettings());
  applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader);
+ applyWeaponAdditiveLayer(THREE,mesh,settings);
  // The holstered copies share geometry, but must follow the edited material.
  const part=holster?.parts.find(p=>p.slot===currentSlot());
  const index=part?.meshes?.indexOf(mesh)??-1;
- if(index>=0&&part?.views?.[index])part.views[index].material=mesh.material;
+ if(index>=0&&part?.views?.[index]){
+   part.views[index].material=mesh.material;
+   part.views[index].visible=mesh.visible;
+ }
  setOutputs();showSource();
 }
 function selectSubset(){
@@ -193,23 +209,32 @@ async function loadCharacter(){
    model.traverse(x=>{if(x.isMesh)x.frustumCulled=false});
    animations=gltf.animations;mixer=new THREE.AnimationMixer(model);
    groups=weaponMeshNodes(model);
-   for(const node of groups){
-     const slotId=Number(node.userData?.equipmentSlot)||(groups.indexOf(node)===0?6:9);
-     for(const [index,mesh] of weaponPrimitives(node).entries()){
-       const s=weaponMaterialSettings(store,actor.value,job.value,slotId,index);
-       if(s)applyWeaponMaterialSettings(THREE,mesh,s,textureLoader);
-     }
-   }
+   // O GLB contém material 1.BMP (blend=1), que era desenhado
+   // incorretamente como superfície opaca. Ocultar overlay por padrão,
+   // aplicando as preferências locais ou publicadas se existirem.
+   applyWeaponAppearance(THREE,model,actor.value,job.value,store,textureLoader);
    const shippedPose=await fetch('assets/poses/overrides.json?v=1').then(r=>r.json()).catch(()=>({version:1,profiles:{}}));
    const poseProfileData=readPoseProfiles(globalThis.localStorage,shippedPose);
    holster=new WeaponHolster(THREE,model,job.value,
      poseProfile(poseProfileData,actor.value,job.value),actor.value);
    for(const part of holster.parts){
-     part.views?.forEach((view,i)=>{if(part.meshes[i])view.material=part.meshes[i].material});
+     part.views?.forEach((view,i)=>{
+       if(part.meshes[i]){
+         view.material=part.meshes[i].material;
+         view.visible=part.meshes[i].visible;
+       }
+     });
    }
    selectSlot();fitCamera();changeAnimation();applyPlacement();toggleBody();
+   const layers=groups.flatMap(weaponPrimitives);
+   const overlays=layers.filter(isWeaponAdditiveLayer);
+   info.textContent='✓ Modelo carregado: '+groups.length+' armas / '+
+     layers.length+' submalhas. '+overlays.length+
+     ' camada(s) de efeito aditivo detectada(s) (1.BMP). '+
+     'Ocultas por padrão; selecione Parte 2 para ativar e testar.';
    status('✓ '+actor.value+' / '+job.value+' · '+groups.length+
-     ' arma(s) · '+groups.reduce((n,g)=>n+weaponPrimitives(g).length,0)+' materiais editáveis');
+     ' arma(s) · '+layers.length+' materiais · '+overlays.length+
+     ' camadas aditivas');
  }catch(err){
    console.error(err);status('Falha ao abrir modelo: '+err.message);
  }
@@ -262,11 +287,13 @@ $('pause').addEventListener('click',()=>{
  if(currentAction)currentAction.paused=!playing;
 });
 $('reset-camera').addEventListener('click',fitCamera);
-for(const id of ['color','emissive','roughness','metalness','glow','pulse','pulseSpeed','flipV']){
+for(const id of ['color','emissive','roughness','metalness','glow','pulse','pulseSpeed','flipV','overlay-visible','overlayOpacity']){
  $(id).addEventListener('input',()=>{
    if(id==='glow'&&Number($('glow').value)>0&&$('emissive').value==='#000000')
      $('emissive').value='#5ecbff';
    applyCurrent();
+   if(id==='overlayOpacity')
+     $('overlayOpacity-value').textContent=Number($('overlayOpacity').value).toFixed(2);
  });
 }
 $('original').addEventListener('click',()=>{
@@ -275,7 +302,10 @@ $('original').addEventListener('click',()=>{
    store,actor.value,job.value,currentSlot(),selectedIndex(),data);
  delete settings.textureData;
  const mesh=selectedMesh();
- if(mesh)applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader);
+ if(mesh){
+   applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader);
+   applyWeaponAdditiveLayer(THREE,mesh,settings);
+ }
  showSource();status('Textura original do GLB restaurada nesta submalha.');
 });
 $('upload').addEventListener('click',()=>$('texture-file').click());
