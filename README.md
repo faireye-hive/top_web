@@ -1,5 +1,18 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Combate naval e refino:** barcos agora lutam contra os monstros marinhos,
+possuem nível/XP/HP próprios e recuperam o casco fora de combate. No Menu há
+um atalho aos monstros do mar, aumentos GM de nível do barco e refinos de
++0 a +13 com aura vermelha/dourada, faíscas e filamentos nas armas.
+[Como testar e regras de progressão](docs/COMBATE_NAVAL_E_REFINO.md).
+
+**Monstros originais e GM:** Garner voltou a usar as 129 espécies e 160 regiões
+de nascimento originais, com carregamento por proximidade e limites próprios
+para celular e desktop. Em **Menu → GM · Teste de balanceamento**, use
+**+1 / +10 herói** e **+1 / +10 arma** para alterar os atributos reais e salvar
+os níveis localmente. Arma corresponde à proficiência do ataque em uso; sem
+equipamento, aumenta Punhos. [Detalhes](docs/MONSTROS_ORIGINAIS_E_GM.md).
+
 **HUD desktop:** interface compacta inspirada no cliente clássico, com retrato,
 HP e mana no canto superior esquerdo, minimapa quadrado à direita, registro de
 eventos à esquerda e ações/habilidades com experiência embaixo. Molduras e ícones

@@ -1,0 +1,19 @@
+#naval-hud{position:fixed;z-index:18;top:12px;left:12px;width:238px;padding:9px;border:1px solid #b9cdd0;border-radius:7px;background:#123746ee;box-shadow:0 4px 14px #00121b66;color:#edf8f2;font:12px system-ui,sans-serif;pointer-events:none}
+#naval-hud[hidden]{display:none!important}
+#naval-hud strong{display:block;margin-bottom:5px;color:#ffde99;font-size:13px}
+.naval-meter{height:16px;position:relative;background:#061d2b;border:1px solid #8baaaa80;border-radius:3px;overflow:hidden;margin:3px 0;text-align:center}
+.naval-meter i{position:absolute;inset:0 auto 0 0;width:100%;background:linear-gradient(#d78d75,#904330)}
+.naval-meter.xp i{background:linear-gradient(#55cdb3,#247769);width:0}
+.naval-meter span{position:relative;font-size:10px;line-height:16px;text-shadow:0 1px 2px #000}
+#naval-state{font-size:10px;color:#bddbd8}
+body.sailing-mode #desktop-player,body.sailing-mode #mobile-player-open,body.sailing-mode #rpg-hotbar{display:none!important}
+body.mobile-ui #naval-hud{top:var(--safe-top,8px);left:var(--safe-left,8px);width:176px;padding:6px;font-size:11px}
+body.mobile-ui #naval-hud strong{font-size:11px;margin-bottom:3px}
+body.mobile-ui #naval-hud .naval-meter{height:13px;margin:2px 0}
+body.mobile-ui #naval-hud .naval-meter span{line-height:13px;font-size:9px}
+body.mobile-ui #naval-state{font-size:9px}
+body.mobile-ui.mobile-settings-open #naval-hud{display:none!important}
+body.sailing-mode:not(.mobile-ui) .combat-panel{top:122px}
+body.sailing-mode:not(.mobile-ui) #navigation-hint{top:272px}
+#boat-view-controls #sea-disembark{min-height:44px;touch-action:manipulation}
+body.mobile-ui #boat-view-controls{max-width:calc(100vw - 20px)}

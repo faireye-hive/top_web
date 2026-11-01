@@ -178,7 +178,7 @@ test('Auto tem botão pequeno acima do Alvo e o grande é manual',()=>{
   assert.match(page,/id="mobile-attack"[^>]*aria-label="Atacar manualmente"/);
   assert.match(css,/#mobile-auto\{[\s\S]*?right:84px;bottom:58px/);
   assert.match(code,/\$\('mobile-auto'\)\.addEventListener\('click',selectMobileAutoMode\)/);
-  assert.match(code,/if\(context.type==='attack'\)return mobileAutoModeEnabled\?toggleAutoAttack\(\):manualAttack\(\)/);
+  assert.match(code,/if\(context.type==='attack'\|\|context.type==='naval-attack'\)return mobileAutoModeEnabled\?toggleAutoAttack\(\):manualAttack\(\)/);
   assert.match(code,/combat\.manualAttack\(playerPos\)/);
   assert.match(code,/if\(combat\.auto\)return false/);
   assert.match(code,/button\?\.classList\.toggle\('auto-mode-selected',autoAction\)/);

@@ -13,6 +13,17 @@ function setup(enemies=[monster()]) {
 function advance(combat,seconds,position={x:0,z:0},options) {
   for(let time=0;time<seconds;time+=.05)combat.update(.05,position,options);
 }
+test('tempo original de reaparecimento substitui os 12 segundos do treino',()=>{
+  const enemy=monster({hp:1,attack:0,respawnSeconds:120}),{combat}=setup([enemy]);
+  combat.manualAttack({x:0,z:0});advance(combat,1);assert.equal(enemy.hp,0);
+  assert.ok(enemy.respawnIn>118);advance(combat,COMBAT.respawn+1);assert.equal(enemy.hp,0);
+  advance(combat,120);assert.equal(enemy.hp,enemy.maxHp);
+});
+test('plantas originais com ataque zero não causam dano de retaliação',()=>{
+  const {combat,hero,events}=setup([monster({attack:0,immobile:true,engaged:true})]);
+  advance(combat,5);assert.equal(hero.hp,hero.stats.maxHp);
+  assert.equal(events.some(e=>e.type==='monster-swing'||e.type==='hurt'),false);
+});
 test('seleção ignora mortos, modelos não carregados, distantes e caminhos bloqueados',()=>{
   const good=monster({x:4});
   assert.equal(nearestMonster([monster({hp:0}),monster({ready:false}),monster({x:30}),good],{x:0,z:0}),good);

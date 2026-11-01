@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {findMonsterRoute,updateMonsterMotion,returnMonsterHome} from '../js/monster-motion.mjs';
 const monster=extra=>({x:0,z:0,hp:60,ready:true,status:{},...extra});
+test('criatura imóvel do CharacterInfo não patrulha nem persegue',()=>{
+  const m=monster({immobile:true,engaged:true,patrol:[{x:5,z:5}]});
+  updateMonsterMotion(m,1,{x:10,z:10});assert.deepEqual([m.x,m.z],[0,0]);assert.equal(m.moving,false);
+});
 test('patrulha avança nos pontos e respeita pausa por stun e modelo não carregado',()=>{
   const m=monster({patrol:[{x:1,z:0},{x:1,z:1}]});
   for(let i=0;i<25;i++)updateMonsterMotion(m,.05,{x:9,z:9});

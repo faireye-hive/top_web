@@ -8,6 +8,8 @@ on:
       - 'sw.js'
       - 'navigation-map.css'
       - 'development-ui.css'
+      - 'gm-controls.css'
+      - 'naval-combat.css'
       - 'rpg-hud.css'
       - 'arena.css'
       - 'desktop-hud.css'
@@ -21,6 +23,8 @@ on:
       - 'scripts/build_mobile_boat.py'
       - 'scripts/build_default_pet.py'
       - 'scripts/build_arena_map.py'
+      - 'scripts/build_garner_monsters.py'
+      - 'scripts/verify_mobile_assets.py'
       - 'tools/lmo_dump.cpp'
       - '.github/workflows/mobile-gameplay.yml'
   push:
@@ -43,9 +47,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check boat exporter syntax
-        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py scripts/build_default_pet.py scripts/build_arena_map.py
+        run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py scripts/build_default_pet.py scripts/build_arena_map.py scripts/build_garner_monsters.py
+      - name: Verify original monster assets
+        run: python scripts/verify_mobile_assets.py
       - name: Check combat and pet syntax
-        run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
+        run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/monster-population.mjs && node --check js/gm-controls.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
+      - name: Check naval progression and refinement syntax
+        run: node --check js/boat-state.mjs && node --check js/naval-combat.mjs && node --check js/naval-effects.mjs && node --check js/refinement-rules.mjs && node --check js/refinement-effects.mjs
       - name: Check camera and inventory UI syntax
         run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs && node --check js/desktop-hud.mjs
       - name: Check tower syntax

@@ -42,7 +42,7 @@ test('embarque busca a posição livre mais próxima sem atravessar paredes',()=
   assert.equal(clearTransfer(origin,{x:3,z:0},()=>({region:0,blocks:0}),x=>x>1),false);
 });
 
-test('contexto do barco nunca dispara combate e só desembarca em terra livre',()=>{
+test('contexto de transferência só desembarca em terra livre e respeita recuperação',()=>{
   const landing={x:1,z:2};
   assert.equal(resolvePrimaryAction({sailing:true,npc:{},pose:{}}).type,'sailing');
   assert.equal(resolvePrimaryAction({sailing:true,landing}).type,'disembark');

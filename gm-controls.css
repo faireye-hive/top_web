@@ -1,0 +1,7 @@
+#gm-tools{margin:12px 0;border:1px solid #7cb5c566;border-radius:8px;background:#102c38;padding:0 10px;color:#e9f4ee}
+#gm-tools summary{min-height:44px;display:list-item;align-content:center;cursor:pointer;font-weight:700;font-size:12px;touch-action:manipulation}
+#gm-tools .gm-test-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #7cb5c533}
+#gm-tools output{flex:1 1 100%;font-size:12px;font-variant-numeric:tabular-nums}
+#settings #gm-tools button{flex:1;min-width:80px;min-height:44px;font-size:12px;touch-action:manipulation}
+#gm-test-note{font-size:11px;line-height:1.5;margin:4px 0 12px;color:#b7ced6;overflow-wrap:anywhere}
+.refinement-summary{font-size:10px;color:#efb27e;line-height:1.4}

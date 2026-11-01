@@ -1,12 +1,12 @@
-import {gainExperience,trainAttack} from './hero-state.mjs?v=5';
+import {gainExperience,trainAttack} from './hero-state.mjs?v=6';
 import {basicAttackRange,skillWithRules,inSkillArea} from './skill-rules.mjs';
-import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs';
+import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs?v=2';
 export const COMBAT=Object.freeze({targetRadius:30,range:2.2,leash:34,respawn:12,recovery:5});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function nearestMonster(monsters,position,radius=COMBAT.targetRadius,canReach=()=>true){
   let best=null,closest=radius;
   for(const monster of monsters){
-    if(monster.hp<=0||monster.ready===false||monster.motion==='return')continue;
+    if(monster.habitat==='sea'||monster.hp<=0||monster.ready===false||monster.motion==='return')continue;
     const d=distance(monster,position);
     if(d<=closest&&canReach(position,monster)){best=monster;closest=d;}
   }
@@ -23,7 +23,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
   // Selecionar um monstro não ativa nenhum dos modos.
   let auto=false,target=null,manual=false,manualActive=false,pending=null,intent=null,casting=null,cooldown=0,scan=0,recovery=0,quiet=0;
   const cooldowns={},buffs={};
-  const visible=m=>m&&m.hp>0&&m.ready!==false&&m.motion!=='return';
+  const visible=m=>m&&m.habitat!=='sea'&&m.hp>0&&m.ready!==false&&m.motion!=='return';
   const valid=(m,p)=>visible(m)&&distance(m,p)<=COMBAT.targetRadius&&canSee(p,m);
   function notice(message){onEvent({type:'notice',message});return false;}
   function stop(preserveTarget=false){
@@ -98,7 +98,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     m.hp=Math.max(0,m.hp-damage);m.engaged=true;quiet=0;
     onEvent({type,monster:m,damage,skill});
     if(m.hp===0){
-      m.respawnIn=COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
+      m.respawnIn=m.respawnSeconds??COMBAT.respawn;m.engaged=false;m.attackPending=null;m.moving=false;m.status={};
       const levels=gainExperience(hero,m.xp);onEvent({type:'kill',monster:m,levels});
       if(m===target){target=null;manual=false;manualActive=false;scan=0;}
     }
@@ -128,6 +128,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     for(const id of Object.keys(cooldowns))cooldowns[id]=Math.max(0,cooldowns[id]-dt);
     for(const name of Object.keys(buffs))buffs[name]=Math.max(0,buffs[name]-dt);
     for(const m of monsters){
+      if(m.habitat==='sea')continue;
       initMonsterMotion(m);
       m.cooldown=Math.max(0,(m.cooldown||0)-dt);
       if(m.hp<=0){
@@ -155,7 +156,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       stop();recovery+=dt;
       if(recovery>=COMBAT.recovery){
         hero.hp=hero.stats.maxHp;hero.mp=hero.stats.maxMp;recovery=0;
-        for(const m of monsters){m.status={};if(m.hp>0){m.hp=m.maxHp;returnMonsterHome(m);}}
+        for(const m of monsters)if(m.habitat!=='sea'){m.status={};if(m.hp>0){m.hp=m.maxHp;returnMonsterHome(m);}}
         for(const name of Object.keys(buffs))delete buffs[name];
         onEvent({type:'revive'});
       }
@@ -197,7 +198,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
     if((auto||manualActive)&&target&&!pending&&!intent&&!casting&&!busy&&cooldown===0&&distance(position,target)<=basicAttackRange(hero))
       startSwing(target,position);
     for(const m of monsters){
-      if(!m.engaged||m.hp<=0||m.ready===false)continue;
+      if(m.habitat==='sea'||!m.engaged||m.hp<=0||m.ready===false||m.attack<=0)continue;
       if(m.status.stun>0||buffs.stealth>0){m.attackPending=null;continue;}
       if(!m.attackPending){
         if(m.cooldown>0||distance(position,m)>COMBAT.range+.4||!canSee(position,m))continue;
