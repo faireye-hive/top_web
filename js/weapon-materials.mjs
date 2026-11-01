@@ -98,7 +98,7 @@ export function applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader=ne
  m.userData.topGlow=s.glow;
  m.userData.topPulse=s.pulse;
  m.userData.topPulseSpeed=s.pulseSpeed;
- m.userData.topTextureStatus='Original';
+ m.userData.topTextureStatus=s.textureData?'Carregando imagem':'Original';
  const original=mesh.userData.topWeaponBaseMaterial?.map||null;
  // Reuse source map by default. Custom data URL may take one frame to load.
  if(s.textureData){
@@ -115,6 +115,9 @@ export function applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader=ne
        mesh.userData.topUploadedTexture?.dispose();
        mesh.userData.topUploadedTexture=tex;
        m.map=tex;m.needsUpdate=true;
+       // A imagem pode terminar de carregar depois do clique "Inverter UV".
+       // Reaplicar a configuração vigente sem refazer o download.
+       applyWeaponMaterialSettings(THREE,mesh,s,textureLoader);
        m.userData.topTextureStatus='Imagem personalizada';
      },undefined,()=>{
        if(mesh.userData.topTextureToken===token){
@@ -124,8 +127,10 @@ export function applyWeaponMaterialSettings(THREE,mesh,settings,textureLoader=ne
      });
    }
  }else{
-   ++mesh.userData.topTextureToken;
+   mesh.userData.topTextureToken=(mesh.userData.topTextureToken||0)+1;
    mesh.userData.topTextureSrc=null;
+   mesh.userData.topUploadedTexture?.dispose();
+   mesh.userData.topUploadedTexture=null;
    m.map=original;
    m.needsUpdate=true;
  }
