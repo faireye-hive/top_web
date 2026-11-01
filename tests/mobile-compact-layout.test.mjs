@@ -11,7 +11,7 @@ const desktop=read('desktop-hud.css');
 const inventory=read('js/inventory-view.mjs');
 
 test('Mobile Compact stylesheet is loaded last and desktop stylesheet remains intact',()=>{
-  const mobile=html.indexOf('mobile-compact.css?v=2');
+  const mobile=html.indexOf('mobile-compact.css?v=3');
   assert.ok(mobile>html.indexOf('desktop-hud.css?v=1'),'compact stylesheet must load after desktop');
   assert.ok(mobile>html.indexOf('mobile-landscape.css'),'compact stylesheet must override old mobile');
   assert.ok(css.includes('@media (orientation:landscape)'));
