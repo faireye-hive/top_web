@@ -90,7 +90,7 @@ export function initPerformanceMonitor({renderer,getResources,enabled=false,onTo
       set('work',`${sample.workMs.toFixed(1)} ms/quadro`);
       set('gpu',timer?.value!==null&&timer?.value!==undefined?`${timer.value.toFixed(2)} ms`:'N/D neste navegador');
       set('heap',heap?`${mebibytes(heap.used)} / ${mebibytes(heap.total)}`:'N/D neste navegador');
-      set('terrain',`${mebibytes(resources.terrain?.bytes)} · ${resources.terrain?.loaded??0}/${resources.terrain?.limit??24} setores`);
+      set('terrain',`${mebibytes(resources.terrain?.bytes)} dados + ${mebibytes(resources.resources?.terrainBytes)} malhas · ${resources.terrain?.loaded??0}/${resources.terrain?.limit??24} setores`);
       set('render',`${info.render.calls} chamadas · ${info.render.triangles.toLocaleString('pt-BR')} triângulos`);
       set('assets',`${info.memory.geometries} geometrias · ${info.memory.textures} texturas`);
       set('scene',`${resources.objects??0} objetos · ${resources.effects??0} efeitos · ${resources.wake??0} espumas`);

@@ -61,7 +61,7 @@ def main():
             subprocess.run([sys.executable,__file__,str(client),'--ship',str(ship_id),'--slug',slug],check=True)
         dest=ROOT/'assets/boats'
         boats=[json.loads((dest/(slug+'.json')).read_text()) for slug in ['guppy','phantom-galley']]
-        manifest={**boats[0],'version':2,'defaultBoat':'phantom-galley','boats':boats}
+        manifest={**boats[0],'version':2,'defaultBoat':'guppy','boats':boats}
         (dest/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
         return
     ships=table(client/'scripts/table/shipinfo.txt')

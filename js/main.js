@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
-import { createArgentFountain } from './fountain.js?v=3';
+import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=5';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
@@ -26,10 +26,11 @@ import {SEA_LEVEL,sailableAt,landableAt,nearestPosition,clearTransfer,restoreSea
 
 import {mapView,projectMap,unprojectMap,mapTileColor,mapEdgePoint} from './navigation-map.mjs?v=1';
 import {boatCameraMode,boatCameraPose,BOAT_CAMERA_MODES,BOAT_CAMERA_LABELS} from './boat-camera.mjs?v=1';
-import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=1';
+import {initPerformanceMonitor,developmentMonitorDefault} from './performance-monitor.mjs?v=2';
+import {renderBudget,instanceCapacity,resolutionStep} from './render-budget.mjs?v=1';
 import {createStreamedWorld} from './streamed-world.mjs?v=1';
-import {readMarineDesign,editedTile} from './marine-design.mjs?v=1';
-import {createSeaMaterial,decorateBoat,createBoatEffects,waveHeight} from './marine-visuals.mjs?v=1';
+import {readMarineDesign,editedTile} from './marine-design.mjs?v=2';
+import {createSeaMaterial,decorateBoat,createBoatEffects,waveHeight} from './marine-visuals.mjs?v=2';
 import {createNavigationMarkers} from './navigation-markers.mjs?v=1';
 
 // Cliente web do Garner. Este arquivo é o laço: mapa, câmera, colisão e ator
@@ -50,7 +51,7 @@ const ORIGIN = { x: 2218.5, z: 2776.5 };
 const launchParams=new URLSearchParams(location.search),spawnParts=(launchParams.get('spawn')||'').split(',').map(Number);
 const editorSpawn=spawnParts.length===2&&spawnParts.every(n=>Number.isFinite(n)&&n>=0&&n<4096)?{x:spawnParts[0],z:spawnParts[1]}:null;
 if(editorSpawn){ORIGIN.x=editorSpawn.x;ORIGIN.z=editorSpawn.z;}
-const CHUNK=64, RADIUS=3, STRIDE=7;
+const BUDGET=renderBudget(MOBILE_UI),CHUNK=BUDGET.chunk,RADIUS=BUDGET.radius,STRIDE=7;
 const LOOK_H=1.15;
 const BODY_R=0.22;
 // Mesmos limites de sources/Engine/include/top/ClassicCamera.h.
@@ -128,6 +129,7 @@ const marineDesign=readMarineDesign();
 const mapEdits=Object.entries(marineDesign.tiles).map(([key,tile])=>({x:Number(key.split('/')[0]),z:Number(key.split('/')[1]),tile}));
 let boatCatalog=null,boatDecoration=null;
 let navigationContext=null,mapSelection=null,mapSelectionRevision=0,mapOverviewSpan=4096,mapOverviewCenter=null;
+let navigationHeights={harbor:0,destination:0};
 let storedPosition=null, nextDraw=0, lastObjUpdate=0, forceChunks=true;
 const clock=new THREE.Clock();
 const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
@@ -136,7 +138,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
-let maxPixelRatio=Math.min(window.devicePixelRatio || 1,MOBILE_UI?1.15:1.65);
+let maxPixelRatio=Math.min(window.devicePixelRatio || 1,BUDGET.pixelRatio);
 let renderPixelRatio=maxPixelRatio;
 renderer.setPixelRatio(renderPixelRatio);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -169,13 +171,13 @@ function writeAtlasUV(dest, offset, tileId, x, z){
 }
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
 // some quando o terreno está acima de −0,5 m, para a praia não ficar coberta.
-const seaMat=createSeaMaterial(THREE,marineDesign.water);
+const seaMat=createSeaMaterial(THREE,marineDesign.water,{lightweight:MOBILE_UI});
 const chunkMap=new Map();
 const objGroup=new THREE.Group();scene.add(objGroup);
 let sceneObjs3D=null;
 let modelInstances=[]; // instancing dinâmico: geometria única por modelo
 let modelGroups=new Map(), spatialGroups=new Map();
-let sceneVisibilityRadius=MOBILE_UI?100:180, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
+let sceneVisibilityRadius=BUDGET.objects, lastScenePosition=new THREE.Vector3(Infinity,Infinity,Infinity);
 let sceneStats={loaded:0,missing:0,active:0};
 const instanceTemp=new THREE.Object3D();
 
@@ -263,13 +265,13 @@ function writeNormal(out,offset,x,z){
   const dhz=gridHeight(x,z+1)-gridHeight(x,z-1);
   const nx=-dhx, ny=2, nz=-dhz;
   const len=Math.hypot(nx,ny,nz)||1;
-  out[offset]=nx/len; out[offset+1]=ny/len; out[offset+2]=nz/len;
+  out[offset]=Math.round(nx/len*127);out[offset+1]=Math.round(ny/len*127);out[offset+2]=Math.round(nz/len*127);
 }
 function buildChunk(cx,cz){
   const baseX=world.ox+cx*CHUNK,baseZ=world.oz+cz*CHUNK;
   const sideX=Math.min(CHUNK,world.w-cx*CHUNK),sideZ=Math.min(CHUNK,world.h-cz*CHUNK);
   if(sideX<=0||sideZ<=0||!world.hasArea(baseX+sideX/2,baseZ+sideZ/2,CHUNK/2+2))return null;
-  const count=sideX*sideZ, positions=new Float32Array(count*12),normals=new Float32Array(count*12),colors=new Float32Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
+  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
   let j=0,ii=0,sea=false;
   for(let z=0;z<sideZ;z++)for(let x=0;x<sideX;x++){
     const gx=baseX+x,gz=baseZ+z, t=getTile(gx,gz),clr=colorFor(t,gx,gz);
@@ -282,7 +284,7 @@ function buildChunk(cx,cz){
     writeNormal(normals,j*12+3,gx+1,gz);
     writeNormal(normals,j*12+6,gx,gz+1);
     writeNormal(normals,j*12+9,gx+1,gz+1);
-    for(let k=0;k<4;k++)colors.set(clr,j*12+k*3);
+    for(let k=0;k<4;k++)for(let c=0;c<3;c++)colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);
     // 4 vertices: (x,z), (x+1,z), (x,z+1), (x+1,z+1)
     writeAtlasUV(uvs,j*8,t?.tex??0,gx,gz);
     writeAtlasUV(uvs,j*8+2,t?.tex??0,gx+1,gz);
@@ -294,8 +296,8 @@ function buildChunk(cx,cz){
   }
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  geom.setAttribute('normal',new THREE.BufferAttribute(normals,3));
-  geom.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  geom.setAttribute('normal',new THREE.BufferAttribute(normals,3,true));
+  geom.setAttribute('color',new THREE.BufferAttribute(colors,3,true));
   geom.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
   geom.setIndex(new THREE.BufferAttribute(indices,1));
   const mesh=new THREE.Mesh(geom,landMat);mesh.userData.terrain=true;mesh.frustumCulled=true;scene.add(mesh);
@@ -327,7 +329,7 @@ function buildChunk(cx,cz){
 }
 function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
 function updateChunks(){
-  void world.focus(playerPos.x,playerPos.z,RADIUS*CHUNK+68).catch(error=>{console.warn('Setor de Garner:',error);});
+  void world.focus(playerPos.x,playerPos.z,(RADIUS+1)*CHUNK+4).catch(error=>{console.warn('Setor de Garner:',error);});
   const cx=Math.floor((playerPos.x-world.ox)/CHUNK),cz=Math.floor((playerPos.z-world.oz)/CHUNK);
   const need=new Set();let created=0;
   for(let dz=-RADIUS;dz<=RADIUS;dz++)for(let dx=-RADIUS;dx<=RADIUS;dx++){
@@ -450,8 +452,8 @@ function updateNavigationIndicators(){
   if(!seaTravelReady)return;
   const context=navigationContext,destination=context?.destination;
   navigationMarkers.update({harbor:ARGENT_HARBOR,
-    harborHeight:footSurface(ARGENT_HARBOR.x,ARGENT_HARBOR.z,3.5),player:playerPos,context,
-    heightAt:p=>p?(sailing?footSurface(p.x,p.z,3.5):0):0,time:performance.now()/1000});
+    harborHeight:navigationHeights.harbor,player:playerPos,context,
+    heightAt:()=>navigationHeights.destination,time:performance.now()/1000});
   const distance=Math.hypot(ARGENT_HARBOR.x-playerPos.x,ARGENT_HARBOR.z-playerPos.z);
   const hint=$('navigation-hint');hint.hidden=hero.hp<=0||!!rpgHud?.isOpen()||(!destination&&!sailing&&distance>110);
   hint.classList.toggle('transfer-ready',!!destination);
@@ -541,7 +543,7 @@ function teleport(x,z){
   stopCombat(true);
   if(!world.hasArea(x,z,20)){
     toast('Carregando o terreno do destino…');
-    void world.ensureAround(x,z,RADIUS*CHUNK+68).then(()=>{if(teleport(x,z)){document.body.classList.remove('mobile-settings-open');toast('Destino carregado.');}}).catch(()=>toast('Não foi possível carregar o destino.'));return false;
+    void world.ensureAround(x,z,CHUNK+4).then(()=>{if(teleport(x,z)){document.body.classList.remove('mobile-settings-open');toast('Destino carregado.');}}).catch(()=>toast('Não foi possível carregar o destino.'));return false;
   }
   x=THREE.MathUtils.clamp(x,world.ox+.01,world.ox+world.w-1.01);
   z=THREE.MathUtils.clamp(z,world.oz+.01,world.oz+world.h-1.01);
@@ -943,6 +945,8 @@ function updateCombatHud(){
   }
   const context=primaryContext(),button=$('mobile-attack');
   navigationContext=context;
+  navigationHeights.harbor=footSurface(ARGENT_HARBOR.x,ARGENT_HARBOR.z,3.5);
+  navigationHeights.destination=context.destination&&sailing?footSurface(context.destination.x,context.destination.z,3.5):0;
   $('boat-view-controls').hidden=!sailing||!!rpgHud?.isOpen();
   const combatAction=context.type==='attack';
   const autoAction=combatAction&&mobileAutoModeEnabled;
@@ -972,13 +976,15 @@ function updateCombatHud(){
 
 function showLoadingError(error){console.error(error);$('loadingmessage').textContent=`Erro: ${error?.message||error}`;$('loadinghint').textContent='Abra via http://localhost:8000 e verifique sua conexão com a internet.';$('retry').hidden=false;}
 async function fetchMap(){
-  const streamed=await createStreamedWorld({onLoad:()=>{forceChunks=true;}});
+  const streamed=await createStreamedWorld({maxSectors:BUDGET.sectors,onLoad:()=>{forceChunks=true;}});
   let land=null,sea=null;
   try{land=JSON.parse(getPref('topweb_garner_position','null'));sea=JSON.parse(getPref('topweb_sea_travel_v1','null'));}catch{}
   const valid=(x,z)=>Number.isFinite(x)&&Number.isFinite(z)&&x>=0&&z>=0&&x<streamed.w&&z<streamed.h;
-  const focus=editorSpawn|| (Array.isArray(land)&&valid(land[0],land[1])?{x:land[0],z:land[1]}:ORIGIN);
-  await streamed.focus(focus.x,focus.z,RADIUS*CHUNK+68);
-  if(sea?.sailing&&valid(sea.x,sea.z))await streamed.ensureAround(sea.x,sea.z,RADIUS*CHUNK+68);
+  const focus=editorSpawn||(Array.isArray(land)&&valid(land[0],land[1])?{x:land[0],z:land[1]}:ORIGIN);
+  await streamed.focus(focus.x,focus.z,(RADIUS+1)*CHUNK+4);
+  // Só o casco precisa estar disponível para validar a viagem salva.
+  // A vizinhança do mar será carregada após retomar, sem duplicar dois bairros.
+  if(!editorSpawn&&sea?.sailing&&valid(sea.x,sea.z))await streamed.ensureAround(sea.x,sea.z,boatRadius()+3);
   return streamed;
 }
 // Volumes do editor em sceneobjinfo (tipo ≠ 0). O cliente histórico não desenha
@@ -1056,7 +1062,7 @@ function footSurface(x,z,hint){
   for(const list of nearby(walkPlaceCells,x,z,2))for(const place of list){
     const dx=x-place.x, dz=z-place.z;
     if(dx*dx+dz*dz>(place.radius+0.6)*(place.radius+0.6))continue;
-    const walk=walkByFile.get(place.file);
+    const walk=walkByFile.get(place.file)||ensureWalk(place.file);
     if(!walk)continue;
     const [lx,lz]=localOf(place.basis,dx,dz);
     const bucket=walk.cells.get(`${Math.floor(lx/2)}/${Math.floor(lz/2)}`);
@@ -1232,8 +1238,21 @@ function buildWalk(file,meshes){
       put([a[0],a[1],a[2],b[0],b[1],b[2],c[0],c[1],c[2]]);
     }
   }
+  if(walkByFile.size>=32)walkByFile.delete(walkByFile.keys().next().value);
   walkByFile.set(file,{cells,radius:maxR});
   for(const place of walkPlaces)if(place.file===file)place.radius=maxR;
+}
+function ensureWalk(file){
+  const group=modelGroups.get(file);if(!group)return null;
+  buildWalk(file,group.meshes);return walkByFile.get(file);
+}
+function resizeInstances(group,capacity){
+  if(capacity===group.cap)return;
+  for(const mesh of group.meshes){
+    mesh.dispose(); // Libera só o buffer antigo, preservando geometria e materiais compartilhados.
+    mesh.instanceMatrix=new THREE.InstancedBufferAttribute(new Float32Array(capacity*16),16).setUsage(THREE.DynamicDrawUsage);
+  }
+  group.cap=capacity;
 }
 // Um único GLB com malhas LMO distintas. Os objetos de Garner mantêm suas
 // 50 mil posições no JSON: InstancedMesh desenha só os próximos ao Lance.
@@ -1264,13 +1283,15 @@ function createSceneLibrary(gltf){
       continue;
     }
     if(!records.length)continue;
-    const meshes=[];
+    const meshes=[],box=new THREE.Box3(),capacity=Math.min(16,records.length);
     prototype.traverse(obj=>{
       if(!obj.isMesh||obj.isSkinnedMesh)return;
-      const instance=new THREE.InstancedMesh(obj.geometry,obj.material,records.length);
+      if(!obj.geometry.boundingBox)obj.geometry.computeBoundingBox();
+      box.union(obj.geometry.boundingBox.clone().applyMatrix4(obj.matrixWorld));
+      const instance=new THREE.InstancedMesh(obj.geometry,obj.material,capacity);
       instance.name=name+' · '+obj.name;
-      instance.frustumCulled=false;
-      instance.count=0;
+      instance.frustumCulled=true;
+      instance.count=0;instance.visible=false;
       instance.userData.localMatrix=obj.matrixWorld.clone();
       instance.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       sceneObjs3D.add(instance);
@@ -1278,13 +1299,14 @@ function createSceneLibrary(gltf){
       modelInstances.push(instance);
     });
     if(meshes.length){
-      modelGroups.set(name,{meshes,cap:records.length});
-      buildWalk(name,meshes);
+      const radius=Math.max(1,Math.hypot(Math.max(Math.abs(box.min.x),Math.abs(box.max.x)),Math.max(Math.abs(box.min.z),Math.abs(box.max.z))));
+      modelGroups.set(name,{meshes,cap:capacity,total:records.length,radius});
     }
   }
   for(const item of [...poseMarks,...floorSlabs,...solidSlabs,...walkPlaces]){
     const offset=item.rec?.[4]||0;
     Object.defineProperty(item,'base',{configurable:true,get(){return sampleHeight(item.x,item.z)+offset;}});
+    if('radius' in item)item.radius=modelGroups.get(item.file)?.radius||6;
   }
   sceneStats.loaded=modelGroups.size;
   sceneStats.missing=positions.size-modelGroups.size;
@@ -1295,7 +1317,7 @@ function updateSceneInstances(force=false){
   if(!sceneObjs3D)return;
   if(!force && playerPos.distanceToSquared(lastScenePosition)<16*16)return;
   lastScenePosition.copy(playerPos);
-  for(const group of modelGroups.values())for(const mesh of group.meshes)mesh.count=0;
+  for(const group of modelGroups.values())for(const mesh of group.meshes){mesh.count=0;mesh.visible=false;}
   const radius2=sceneVisibilityRadius*sceneVisibilityRadius;
   const nearest=Math.ceil(sceneVisibilityRadius/64);
   const sx=Math.floor(playerPos.x/64),sz=Math.floor(playerPos.z/64);
@@ -1314,6 +1336,8 @@ function updateSceneInstances(force=false){
   const base=new THREE.Matrix4(),local=new THREE.Matrix4();
   for(const [file,recs] of active){
     const group=modelGroups.get(file);
+    const capacity=Math.min(group.total,instanceCapacity(recs.length,group.cap));
+    resizeInstances(group,capacity);
     for(let i=0;i<recs.length;i++){
       const rec=recs[i];
       const yaw=objectYaw(rec);
@@ -1326,17 +1350,18 @@ function updateSceneInstances(force=false){
         mesh.setMatrixAt(i,local);
       }
     }
-    for(const mesh of group.meshes){mesh.count=recs.length;mesh.instanceMatrix.needsUpdate=true;}
+    for(const mesh of group.meshes){mesh.count=recs.length;mesh.visible=true;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
     amount+=recs.length;
   }
   sceneStats.active=amount;
+  for(const [file,group] of modelGroups)if(!active.has(file))resizeInstances(group,Math.min(16,group.total));
   $('scenevisible').textContent=amount.toLocaleString('pt-BR');
 }
 
 // Efeitos de cena (.par/.eff). O yaw do tipo 1 já está em radianos.
 // RectPlane deitado: setGroundMatrix. Rect em pé (feixe): setRectMatrix.
 // O deslocamento do emissor é rotation.y = -yaw, via offsetByEffectYaw.
-const FX_CAP=MOBILE_UI?450:1200;
+const FX_CAP=BUDGET.particles;
 let effectCatalog=null, effectGroup=null, effectBatches=[], effectCells=new Map();
 let effectStats={active:0}, lastEffectPos=new THREE.Vector3(Infinity,Infinity,Infinity);
 const _fxObj=new THREE.Object3D(), _fxM=new THREE.Matrix4(), _fxV=new THREE.Vector3();
@@ -1601,7 +1626,7 @@ async function createEffects(){
           a:new Float32Array(FX_CAP*3), phase:new Float32Array(FX_CAP)
         };
       }
-      mesh.count=0;
+      mesh.count=0;mesh.visible=false;
       mesh.frustumCulled=false;
       mesh.renderOrder=3;
       mesh.userData.part=part;
@@ -1619,9 +1644,10 @@ function updateEffectInstances(force=false){
   if(!effectGroup)return;
   if(!force && playerPos.distanceToSquared(lastEffectPos)<16*16)return;
   lastEffectPos.copy(playerPos);
-  for(const mesh of effectBatches)mesh.count=0;
-  const radius2=sceneVisibilityRadius*sceneVisibilityRadius;
-  const reach=Math.ceil(sceneVisibilityRadius/64);
+  for(const mesh of effectBatches){mesh.count=0;mesh.visible=false;}
+  const effectRadius=Math.min(sceneVisibilityRadius,BUDGET.effects);
+  const radius2=effectRadius*effectRadius;
+  const reach=Math.ceil(effectRadius/64);
   const sx=Math.floor(playerPos.x/64), sz=Math.floor(playerPos.z/64);
   const near=[];
   for(let dz=-reach;dz<=reach;dz++)for(let dx=-reach;dx<=reach;dx++){
@@ -1644,7 +1670,7 @@ function updateEffectInstances(force=false){
       const part=mesh.userData.part;
       const phase=mesh.geometry.getAttribute('aPhase');
       const mot=mesh.userData.motion;
-      const n=burstCount(part);
+      const n=Math.min(burstCount(part),MOBILE_UI?8:24);
       const seed=(Math.floor(rec[0]*10)*1000+Math.floor(rec[1]*10))|0;
       for(let s=0;s<n && mesh.count<FX_CAP;s++){
         const motion=particleMotion(part,s,seed);
@@ -1682,7 +1708,7 @@ function updateEffectInstances(force=false){
     }
   }
   let amount=0;
-  for(const mesh of effectBatches)amount+=mesh.count;
+  for(const mesh of effectBatches){mesh.visible=mesh.count>0;amount+=mesh.count;}
   effectStats.active=amount;
   const label=$('fxcount');
   if(label)label.textContent=amount.toLocaleString('pt-BR');
@@ -1713,6 +1739,7 @@ function applyEffectMotion(mesh){
   mesh.instanceMatrix.needsUpdate=true;
 }
 function tickEffects(dt){
+  if(!effectGroup?.visible)return;
   for(const mesh of effectBatches){
     if(!effectHold)mesh.material.uniforms.uTime.value+=dt;
     applyEffectMotion(mesh);
@@ -1742,6 +1769,15 @@ function selfTestEffects(){
   return out;
 }
 window.__selfTestEffects=selfTestEffects;
+function renderResources(){
+  let terrainBytes=0;
+  for(const chunk of chunkMap.values())for(const mesh of [chunk.mesh,chunk.water]){
+    if(!mesh)continue;
+    for(const attr of Object.values(mesh.geometry.attributes))terrainBytes+=attr.array.byteLength;
+    terrainBytes+=mesh.geometry.index?.array.byteLength||0;
+  }
+  return {terrainBytes,chunks:chunkMap.size,instanceBytes:modelInstances.reduce((n,m)=>n+m.instanceMatrix.array.byteLength,0),walkModels:walkByFile.size,pixelRatio:renderPixelRatio};
+}
 window.__fx={
   stats(){
     const ids={};
@@ -1776,6 +1812,7 @@ window.__fx={
       world:{width:world.w,height:world.h,...world.stats()},boat:{sailing,radius:boatRadius(),scale:marineDesign.boat.scale,visualY:boat?.position.y,wake:boatEffects.stats()},
       cameraMode:sailing?boatViewMode:'land',cameraTarget:[_look.x,_look.y,_look.z],
       cameraSize:boatCameraSize,performance:performanceMonitor.snapshot(),
+      resources:renderResources(),
       cam:[cam.x,cam.y,cam.z], yaw:CAM.yaw, dist:CAM.dist,
       calls:renderer.info.render.calls, tris:renderer.info.render.triangles,
       gl:gl.getError(), group:effectGroup.visible,
@@ -1856,6 +1893,8 @@ async function boot(){
       if(npcManager.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
+      // O treino de Argent também deve existir ao iniciar em outra região.
+      await world.ensureAround(2218.5,2776.5,20);
       monsterManager=await createMonsterManager({scene,heightAt:sampleHeight,findSpawn:(x,z)=>{
         for(let radius=0;radius<=8;radius+=1)for(let angle=0;angle<Math.PI*2;angle+=Math.PI/8){
           const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
@@ -1896,7 +1935,7 @@ async function boot(){
 }
 let hudTime=0;
 function update(dt){
-  if(mixer&&!effectHold)mixer.update(dt);
+  if(mixer&&!effectHold&&!sailing)mixer.update(dt);
   if(!effectHold)seaMat.uniforms.uTime.value+=dt;
   if(keys.has('ArrowLeft')||keys.has('KeyQ')){if(MOBILE_UI)mobileOrbitYaw-=dt*1.1;else CAM.yaw-=dt*1.6;manualCamera();}
   if(keys.has('ArrowRight')||keys.has('KeyE')){if(MOBILE_UI)mobileOrbitYaw+=dt*1.1;else CAM.yaw+=dt*1.6;manualCamera();}
@@ -2077,9 +2116,9 @@ function update(dt){
   }
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
-  if(avatar)updateWeaponMaterialGlow(avatar,performance.now());
+  if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
   waypoint.update(dt, performance.now()/1000);
-  if(fountain)fountain.update(dt);
+  if(fountain)fountain.update(dt,playerPos);
   if(npcManager)npcManager.update(dt,playerPos.x,playerPos.z);
   monsterManager?.update(dt,playerPos,combat?.target);
   if(showMarkers&&performance.now()-lastObjUpdate>700){updateObjectMarkers();lastObjUpdate=performance.now()}
@@ -2089,14 +2128,13 @@ function update(dt){
 let qualitySampleTime=0, qualityFrameCount=0, qualityFrameMs=0, lastFrameTime=0;
 function adaptMobileResolution(time){
   if(!MOBILE_UI||testing)return;
-  if(lastFrameTime){qualityFrameMs+=Math.min(100,time-lastFrameTime);qualityFrameCount++;}
+  if(lastFrameTime){qualityFrameMs+=time-lastFrameTime;qualityFrameCount++;}
   lastFrameTime=time;
   if(!qualitySampleTime)qualitySampleTime=time;
   if(time-qualitySampleTime<4000)return;
-  if(qualityFrameCount>40){
+  if(qualityFrameCount>=4){
     const avg=qualityFrameMs/qualityFrameCount;
-    const next=avg>26?Math.max(0.65,renderPixelRatio-0.1):
-      avg<18?Math.min(maxPixelRatio,renderPixelRatio+0.05):renderPixelRatio;
+    const next=resolutionStep(renderPixelRatio,avg,maxPixelRatio);
     if(Math.abs(next-renderPixelRatio)>0.02){renderPixelRatio=next;renderer.setPixelRatio(renderPixelRatio);resize();}
   }
   qualitySampleTime=time;qualityFrameCount=0;qualityFrameMs=0;
@@ -2151,7 +2189,7 @@ window.__selfTestControls=async function(){
     const top=footSurface(step.x,step.z,ground+3);
     assert(top>ground+0.15,`degrau de 6 m eleva o pé (${(top-ground).toFixed(2)} m)`);
   }
-  assert(walkByFile.size>20,'malhas de piso das escadas e das casas');
+  assert(modelGroups.size>20&&walkByFile.size<=32,'biblioteca de pisos com cache local limitado');
   const nrm=new Float32Array(3);
   writeNormal(nrm,0,Math.floor(playerPos.x),Math.floor(playerPos.z));
   assert(nrm[1]>0.2,'normal do terreno aponta para cima');
@@ -2492,7 +2530,7 @@ mobileQuery.addEventListener('change',()=>{
   MOBILE_UI=mobileQuery.matches;mobileOrbitYaw=CAM.yaw;mobileOrbitLift=CAM.lift;document.body.classList.toggle('mobile-ui',MOBILE_UI);
   mobileCameraFocus.copy(playerPos); // Sem transição deslocada ao entrar/sair do modo mobile.
   mobileSteeringReferenceYaw=null;mobileFollowAnchorYaw=null;
-  maxPixelRatio=Math.min(window.devicePixelRatio||1,MOBILE_UI?1.15:1.65);
+  maxPixelRatio=Math.min(window.devicePixelRatio||1,renderBudget(MOBILE_UI).pixelRatio);
   renderPixelRatio=maxPixelRatio;renderer.setPixelRatio(renderPixelRatio);
   configureMobileControls();resize();stopCombat();
   document.dispatchEvent(new Event('topweb:menu-open'));
@@ -2615,6 +2653,6 @@ const defaultMonitor=developmentMonitorDefault(location.hostname,location.search
 const performanceMonitor=initPerformanceMonitor({renderer,
   enabled:launchParams.has('debug')?defaultMonitor:getPref('topweb_dev_monitor',defaultMonitor?'1':'0')==='1',
   onToggle:enabled=>setPref('topweb_dev_monitor',enabled?'1':'0'),
-  getResources:()=>({terrain:world?.stats(),objects:sceneStats.active,effects:effectStats.active,wake:boatEffects.stats().particles})
+  getResources:()=>({terrain:world?.stats(),objects:sceneStats.active,effects:effectStats.active,wake:boatEffects.stats().particles,resources:renderResources()})
 });
 boot();

@@ -14,7 +14,7 @@
     "shipiteminfo.txt",
     "characterinfo.txt"
   ],
-  "defaultBoat": "phantom-galley",
+  "defaultBoat": "guppy",
   "boats": [
     {
       "version": 1,

@@ -29,7 +29,7 @@ test('importação recusa coordenadas inválidas e limita tamanho, velocidade e 
 });
 test('veleiro grande tem mais de 12 m e consegue embarcar com o casco inteiro livre',()=>{
   const manifest=JSON.parse(readFileSync(new URL('../assets/boats/manifest.json',import.meta.url)));
-  const selected=manifest.boats.find(b=>b.slug===DEFAULT_MARINE_DESIGN.boat.hull),scale=DEFAULT_MARINE_DESIGN.boat.scale;
+  const selected=manifest.boats.find(b=>b.slug==='phantom-galley'),scale=3.5;
   assert.ok(selected.length*scale>12);const radius=selected.radius*scale;
   const b=gunzipSync(readFileSync(new URL('../assets/argent/region.gmap.gz',import.meta.url)));
   const data=decodeTerrain(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength)),tileAt=(x,z)=>terrainTile(data,x,z);
@@ -38,6 +38,26 @@ test('veleiro grande tem mais de 12 m e consegue embarcar com o casco inteiro li
   assert.equal(sailableAt(tileAt,ARGENT_HARBOR.x,ARGENT_HARBOR.z,radius),false);
   const glb=readFileSync(new URL('../'+selected.model,import.meta.url)),gltf=JSON.parse(glb.toString('utf8',20,20+glb.readUInt32LE(12)));
   assert.ok(gltf.images.length&&gltf.meshes.length,'casco e textura originais devem estar incluídos');
+});
+test('barco padrão volta ao Guppy pequeno, sem mastros adicionais',()=>{
+  const d=readMarineDesign({getItem:()=>null});
+  assert.equal(d.boat.hull,'guppy');assert.equal(d.boat.scale,1);assert.equal(d.boat.sails,false);
+  const manifest=JSON.parse(readFileSync(new URL('../assets/boats/manifest.json',import.meta.url)));
+  assert.equal(manifest.defaultBoat,'guppy');assert.ok(manifest.boats[0].length*d.boat.scale<5);
+});
+test('migração do barco antigo preserva terreno e mar e só acontece uma vez',()=>{
+  let raw=JSON.stringify({version:1,boat:{hull:'phantom-galley',scale:3.5,sails:true},water:{waves:1.2},tiles:{'10/20':{height:2}}});
+  const storage={getItem:()=>raw,setItem:(_,s)=>raw=s};
+  const d=readMarineDesign(storage);assert.equal(d.boat.hull,'guppy');assert.equal(d.boat.scale,1);
+  assert.equal(d.water.waves,1.2);assert.deepEqual(d.tiles,{'10/20':{height:2}});
+  d.boat.scale=2;d.boat.sails=true;saveMarineDesign(d,storage);
+  assert.equal(readMarineDesign(storage).boat.scale,2,'edições novas não são sobrescritas');
+  assert.equal(readMarineDesign(storage).boat.sails,true);
+});
+test('importar e salvar um barco grande explicitamente continua permitido',()=>{
+  let raw=null;const storage={getItem:()=>raw,setItem:(_,s)=>raw=s};
+  saveMarineDesign({version:1,boat:{hull:'phantom-galley',scale:4}},storage);
+  assert.equal(readMarineDesign(storage).boat.scale,4);
 });
 test('ondulação é contínua e limitada sem alterar a altura física do personagem',()=>{
   for(let t=0;t<20;t+=.1){const h=waveHeight(2218,2825,t,1.5);assert.ok(Number.isFinite(h)&&Math.abs(h)<=.2476);assert.ok(Math.abs(h-waveHeight(2218,2825,t+.001,1.5))<.001);}

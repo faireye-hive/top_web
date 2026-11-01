@@ -2,7 +2,7 @@
 <header><a class="brand" href="index.html">⚓ <span>Marina <em>Studio</em><small>Garner · terreno, embarcações e mar</small></span></a><nav><button id="save" class="primary">Salvar no jogo</button><button id="export">↓ Exportar</button><button id="import">↑ Importar</button><input type="file" id="file" accept="application/json,.json" hidden><a href="index.html">Voltar ao jogo</a></nav></header>
 <div class="tabs" role="tablist"><button id="tab-boat" role="tab" aria-selected="true">⛵ Editor de barco</button><button id="tab-map" role="tab" aria-selected="false">◈ Editor de mapa</button></div>
 <main id="boat-panel"><section class="preview"><canvas id="boat-preview" aria-label="Prévia 3D do barco e dos efeitos na água"></canvas><div class="preview-caption"><strong id="boat-summary">Carregando embarcação…</strong><span>Arraste para girar · pinça ou roda para aproximar</span></div></section><aside>
-<h1>Seu veleiro</h1><p>Um barco grande, com velas ao vento e rastro na água. Ajuste e veja o resultado aqui.</p>
+<h1>Seu barco</h1><p>Guppy pequeno por padrão, com rastro na água. Ajuste e veja o resultado aqui.</p>
 <label>Casco original<select id="boat-hull"><option value="phantom-galley">Phantom Galley · veleiro</option><option value="guppy">Guppy · casco largo</option></select></label>
 <label>Tamanho <output id="boat-scale-value"></output><input id="boat-scale" type="range" min="0.75" max="5" step="0.05"></label>
 <label>Velocidade (m/s)<input id="boat-speed" type="number" min="1" max="12" step="0.1"></label>
@@ -11,7 +11,7 @@
 <label>Espuma do rastro<input id="boat-wake" type="range" min="0" max="2" step="0.05"></label>
 <label>Balanço da embarcação<input id="boat-bob" type="range" min="0" max="1.5" step="0.05"></label>
 <h2>Aparência do mar</h2><label>Ondulação<input id="water-waves" type="range" min="0" max="1.5" step="0.05"></label><label>Reflexos do sol<input id="water-sparkle" type="range" min="0" max="1.5" step="0.05"></label>
-<button id="boat-reset">Restaurar veleiro grande</button><p class="note">Salvar aplica no próximo carregamento do jogo, neste navegador. O tamanho do casco também aumenta o espaço necessário para navegar e atracar.</p>
+<button id="boat-reset">Restaurar barco pequeno</button><p class="note">Salvar aplica no próximo carregamento do jogo, neste navegador. O tamanho do casco também aumenta o espaço necessário para navegar e atracar.</p>
 </aside></main>
 <main id="map-panel" hidden><section class="map-preview"><canvas id="terrain-preview" width="768" height="768" aria-label="Editor de terreno de Garner"></canvas><div class="map-toolbar"><button id="map-less" aria-label="Afastar terreno">−</button><button id="map-all">Garner inteiro</button><button id="map-port">Porto de Argent</button><button id="map-more" aria-label="Aproximar terreno">+</button></div></section><aside>
 <h1>Terreno de Garner</h1><p>Edite uma cópia local do mapa original. Aproxime para pintar e arraste com “Mover mapa” para explorar.</p>
@@ -22,4 +22,4 @@
 <button id="test-location" class="primary">Salvar e testar no centro da vista</button>
 <button id="map-clear">Restaurar todas as edições do terreno</button><p class="note">Este editor altera água, terra, elevação e passagem. Casas e objetos originais continuam no cenário. Exporte o projeto para guardar uma cópia ou compartilhar.</p>
 </aside></main>
-<footer id="status" role="status">Carregando Marina Studio…</footer><script type="module" src="tests/marine-editor.mjs?v=1"></script></body></html>
+<footer id="status" role="status">Carregando Marina Studio…</footer><script type="module" src="tests/marine-editor.mjs?v=2"></script></body></html>

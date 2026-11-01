@@ -1,8 +1,9 @@
 export function waveHeight(x,z,time,strength=.65){
   return (Math.sin(x*.24+z*.17+time*1.15)*.10+Math.sin(x*-.16+z*.31-time*.9)*.065)*strength;
 }
-export function createSeaMaterial(THREE,settings={waves:.65,sparkle:.55}){
+export function createSeaMaterial(THREE,settings={waves:.65,sparkle:.55},{lightweight=false}={}){
   return new THREE.ShaderMaterial({transparent:true,depthWrite:false,toneMapped:true,
+    defines:lightweight?{LIGHT_WATER:1}:{},
     uniforms:{uTime:{value:0},uWaves:{value:settings.waves},uSparkle:{value:settings.sparkle}},
     vertexShader:`
       attribute float aShore;
@@ -31,7 +32,11 @@ export function createSeaMaterial(THREE,settings={waves:.65,sparkle:.55}){
         vec2 p=vSurface.xz;
         float a=cos(dot(p,vec2(.24,.17))+uTime*1.15);
         float b=cos(dot(p,vec2(-.16,.31))-uTime*.9);
-        vec2 ripple=vec2(noise(p*.85+vec2(uTime*.38,-uTime*.21)),noise(p*.71+vec2(17.3-uTime*.29,uTime*.18)))*2.0-1.0;
+        #ifdef LIGHT_WATER
+          vec2 ripple=vec2(sin(p.x*.85+p.y*.51+uTime*.38),cos(p.y*.71-p.x*.43-uTime*.29))*.55;
+        #else
+          vec2 ripple=vec2(noise(p*.85+vec2(uTime*.38,-uTime*.21)),noise(p*.71+vec2(17.3-uTime*.29,uTime*.18)))*2.0-1.0;
+        #endif
         vec3 normal=normalize(vec3(-(.024*a-.0104*b+ripple.x*.055)*uWaves,1.0,-(.017*a+.02015*b+ripple.y*.055)*uWaves));
         vec3 eye=normalize(cameraPosition-vSurface);
         float fresnel=pow(1.0-max(dot(normal,eye),0.0),3.0);

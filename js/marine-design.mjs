@@ -1,6 +1,6 @@
 export const MARINE_DESIGN_KEY='topweb_marine_design_v1';
 export const DEFAULT_MARINE_DESIGN={version:1,
-  boat:{hull:'phantom-galley',scale:3.5,speed:5.3,color:'#ffffff',sailColor:'#f3e4b5',sails:true,wake:1,bob:.6},
+  boat:{revision:2,hull:'guppy',scale:1,speed:4.5,color:'#ffffff',sailColor:'#f3e4b5',sails:false,wake:.7,bob:.4},
   water:{waves:.65,sparkle:.55},tiles:{}};
 const number=(value,fallback,min,max)=>Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
 const color=(value,fallback)=>/^#[\da-f]{6}$/i.test(value)?value:fallback;
@@ -8,6 +8,7 @@ export function normalizeMarineDesign(value){
   if(!value||value.version!==1)throw Error('Projeto da marina inválido');
   const b=value.boat||{},d=DEFAULT_MARINE_DESIGN.boat,w=value.water||{};
   const result={version:1,boat:{
+    revision:2,
     hull:['guppy','phantom-galley'].includes(b.hull)?b.hull:d.hull,
     scale:number(b.scale,d.scale,.75,5),speed:number(b.speed,d.speed,1,12),
     color:color(b.color,d.color),sailColor:color(b.sailColor,d.sailColor),
@@ -29,7 +30,15 @@ export function normalizeMarineDesign(value){
   return result;
 }
 export function readMarineDesign(storage=globalThis.localStorage){
-  try{return normalizeMarineDesign(JSON.parse(storage.getItem(MARINE_DESIGN_KEY)||'null'));}
+  try{
+    const raw=JSON.parse(storage.getItem(MARINE_DESIGN_KEY)||'null'),design=normalizeMarineDesign(raw);
+    // Troca uma única vez o barco antigo; conserva a água e o terreno editados.
+    if(raw.boat?.revision!==2){
+      Object.assign(design.boat,{revision:2,hull:'guppy',scale:1,speed:4.5,sails:false});
+      try{storage.setItem?.(MARINE_DESIGN_KEY,JSON.stringify(design));}catch{}
+    }
+    return design;
+  }
   catch{return structuredClone(DEFAULT_MARINE_DESIGN);}
 }
 export function saveMarineDesign(design,storage=globalThis.localStorage){
