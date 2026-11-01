@@ -2,8 +2,10 @@ export const BOAT_LEVEL_LIMIT=100;
 export const boatExperienceRequired=level=>100+40*level;
 export function boatStats(level){
   return {maxHp:1800+(level-1)*140,attack:135+(level-1)*14,
-    defense:40+(level-1)*3,accuracy:100+level,evasion:15+level*.5,attackSpeed:.8};
+    defense:40+(level-1)*3,accuracy:100+level,evasion:15+level*.5,attackSpeed:.8,
+    movementMultiplier:1+(level-1)*.01};
 }
+export const boatMovementSpeed=(ship,baseSpeed)=>baseSpeed*ship.stats.movementMultiplier;
 export function refreshBoat(ship,{heal=false}={}){
   const before=ship.stats?.maxHp??0;ship.stats=boatStats(ship.level);
   ship.hp=heal?ship.stats.maxHp:Math.max(0,Math.min(ship.stats.maxHp,(ship.hp??ship.stats.maxHp)+Math.max(0,ship.stats.maxHp-before)));

@@ -40,7 +40,7 @@ test('mapa usa espaço disponível, suporte a pinch, wheel e destinos distintos'
  assert.match(html,/id="map-manual" disabled/);
  assert.match(html,/id="map-travel" disabled/);
  assert.match(html,/id="map-clear" disabled/);
- assert.ok(html.includes('navigation-map.css?v=2'));
+ assert.match(html,/navigation-map\.css\?v=\d+/);
  assert.match(html,/main\.js\?v=\d+/);
  assert.ok(css.includes('.world-map-surface{\n  position:relative;width:100%;height:100%;aspect-ratio:auto'));
  assert.ok(css.includes('touch-action:none'));

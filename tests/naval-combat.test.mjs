@@ -86,3 +86,13 @@ test('alvo naval prioriza canhão na margem; desembarque continua separado',()=>
   assert.equal(resolvePrimaryAction({sailing:true,naval:true,landing,navalTarget:true}).type,'naval-attack');
   assert.equal(resolvePrimaryAction({sailing:true,naval:true,recovering:true}).type,'recovering');
 });
+test('cada nível do barco aumenta velocidade real, HP e ataque, preservando a base do casco',async()=>{
+ const {boatMovementSpeed}=await import('../js/boat-state.mjs');
+ const ship=createBoatState();assert.equal(boatMovementSpeed(ship,4.5),4.5);
+ const hp=ship.stats.maxHp,attack=ship.stats.attack;
+ raiseBoatLevel(ship,10);assert.equal(ship.stats.maxHp,hp+1400);assert.equal(ship.stats.attack,attack+140);
+ assert.ok(Math.abs(boatMovementSpeed(ship,4.5)-4.95)<1e-9);
+ assert.ok(Math.abs(boatMovementSpeed(ship,8)-8.8)<1e-9);
+ const restored=restoreBoat(serializeBoat(ship));assert.equal(boatMovementSpeed(restored,4.5),boatMovementSpeed(ship,4.5));
+ raiseBoatLevel(ship,1000);assert.ok(Math.abs(boatMovementSpeed(ship,4.5)-8.955)<1e-9);
+});

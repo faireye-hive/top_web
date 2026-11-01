@@ -19,13 +19,13 @@
 <link rel="stylesheet" href="./arena.css?v=1">
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
 <link rel="stylesheet" href="./mobile-landscape.css?v=5">
-<link rel="stylesheet" href="./navigation-map.css?v=2">
+<link rel="stylesheet" href="./navigation-map.css?v=3">
 <link rel="stylesheet" href="./development-ui.css?v=1">
 <link rel="stylesheet" href="./desktop-hud.css?v=1">
 <link rel="stylesheet" href="./mobile-compact.css?v=4">
 <link rel="stylesheet" href="./npc-nameplates.css?v=1">
 <link rel="stylesheet" href="./gm-controls.css?v=1">
-<link rel="stylesheet" href="./naval-combat.css?v=1">
+<link rel="stylesheet" href="./naval-combat.css?v=2">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -59,7 +59,7 @@ font:600 12px system-ui,sans-serif}
 <body>
 <canvas id="game"></canvas>
 <section id="naval-hud" hidden aria-label="Status do barco">
- <strong id="naval-name">Guppy · Nv. 1</strong>
+ <button type="button" id="naval-stats-open" aria-haspopup="dialog" aria-controls="boat-stats-dialog" aria-label="Ver atributos do barco"><strong id="naval-name">Guppy · Nv. 1</strong><span aria-hidden="true">Atributos ›</span></button>
  <div class="naval-meter hp" id="naval-hp-meter" role="meter" aria-label="HP do barco"><i id="naval-hp-fill"></i><span id="naval-hp">1800 / 1800 HP</span></div>
  <div class="naval-meter xp" id="naval-xp-meter" role="meter" aria-label="Experiência do barco"><i id="naval-xp-fill"></i><span id="naval-xp">XP 0 / 140</span></div>
  <small id="naval-state">Casco íntegro</small>
@@ -126,6 +126,7 @@ font:600 12px system-ui,sans-serif}
   <div class="line"></div>
   <a href="./tests/skill-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#ffe4ad;text-decoration:none;font-size:12px">⚗ Editor visual das skills ↗</a>
   <a href="./tests/pose-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#a6f6e3;text-decoration:none;font-size:12px">⚔ Editor de poses e armas ↗</a>
+  <a href="./tests/refinement-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#ffbc83;text-decoration:none;font-size:12px">🔥 Editor de efeitos de refino ↗</a>
   <a href="./tests/weapon-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#93ddff;text-decoration:none;font-size:12px">🗡 Editor de texturas e materiais das armas ↗</a>
   <div class="section">RENDERIZAÇÃO</div>
   <div class="col">
@@ -206,6 +207,7 @@ font:600 12px system-ui,sans-serif}
    <label class="check"><input type="checkbox" id="noclip"> Ignorar bloqueios (exploração)</label>
    <div class="section">Navegação marítima</div>
    <a class="marine-editor-link" href="tests/marine-editor.html" target="_blank" rel="noopener">⚒ Editor de mapa e barco</a>
+   <button type="button" id="boat-stats-open" aria-haspopup="dialog" aria-controls="boat-stats-dialog">⚓ Atributos do barco</button>
    <button type="button" id="go-harbor">Ir ao porto de Argent</button>
    <button type="button" id="sea-travel">Embarcar no veleiro</button>
    <div class="small" id="sea-status" role="status">No porto, aproxime-se da água e toque em Embarcar.</div>
@@ -233,6 +235,7 @@ font:600 12px system-ui,sans-serif}
   <aside class="world-map-details">
    <p id="map-location"></p>
    <ul class="world-map-legend"><li><i class="player"></i>Você</li><li><i class="harbor"></i>Porto · embarque e desembarque</li><li><i class="landing"></i>Transferência disponível</li><li><i class="target"></i>Destino marcado</li></ul>
+   <label class="map-monster-toggle"><input type="checkbox" id="map-monsters" checked><i aria-hidden="true"></i> Monstros · terra e mar <small>áreas aproximadas</small></label>
    <div class="map-zoom-tools"><button type="button" id="map-zoom-out" aria-label="Afastar mapa">−</button><button type="button" id="map-world">Garner inteiro</button><button type="button" id="map-zoom-in" aria-label="Aproximar mapa">+</button></div>
    <button type="button" id="map-harbor">⚓ Marcar porto de Argent</button>
    <p id="map-selection-info" role="status">Selecione um ponto para traçar seu rumo.</p>
@@ -241,6 +244,17 @@ font:600 12px system-ui,sans-serif}
    <p class="map-region-note">Garner original · 4096 × 4096 m. Explore o continente e suas ilhas. O movimento respeita a costa e os bloqueios.</p>
   </aside>
  </div>
+</dialog>
+<dialog id="boat-stats-dialog" aria-labelledby="boat-stats-title">
+ <header><div><small>NAVEGAÇÃO · ATRIBUTOS DO CASCO</small><h2 id="boat-stats-title">Meu barco</h2></div><button type="button" id="boat-stats-close" aria-label="Fechar atributos do barco">×</button></header>
+ <dl class="boat-stats-grid">
+  <div><dt>HP do barco</dt><dd id="boat-stat-hp">—</dd></div><div><dt>Experiência própria</dt><dd id="boat-stat-xp">—</dd></div>
+  <div><dt>Ataque do canhão</dt><dd id="boat-stat-attack">—</dd></div><div><dt>Defesa do casco</dt><dd id="boat-stat-defense">—</dd></div>
+  <div><dt>Velocidade de movimento</dt><dd id="boat-stat-speed">—</dd></div><div><dt>Bônus de velocidade por nível</dt><dd id="boat-stat-bonus">—</dd></div>
+  <div><dt>Precisão</dt><dd id="boat-stat-accuracy">—</dd></div><div><dt>Esquiva</dt><dd id="boat-stat-evasion">—</dd></div>
+  <div><dt>Tiros por segundo</dt><dd id="boat-stat-cadence">—</dd></div>
+ </dl>
+ <p id="boat-stats-growth"></p><p class="boat-stats-help">Derrote monstros no mar para evoluir este barco. O casco recupera 4% do HP por segundo após 6 segundos fora de combate. Para testar níveis: Menu → GM → +1/+10 barco.</p>
 </dialog>
 <div class="hud bottom panel"><button id="idle" class="active">Parado</button><button id="run">Correr</button><button id="atk" aria-pressed="false">⚔ Auto</button><button id="sit">Sentar</button><button id="dance">Acenar</button><button id="show">⊞ Interface</button></div>
 <div class="hud foothelp">Clique no chão: cristal azul até chegar · cursor de cadeira senta · cursor de parede encosta · <span class="kbd">Insert</span> no ponto · brilho no painel</div>
@@ -393,7 +407,7 @@ font:600 12px system-ui,sans-serif}
  <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
  <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
 </dialog>
-<script type="module" src="./js/main.js?v=71"></script>
+<script type="module" src="./js/main.js?v=72"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

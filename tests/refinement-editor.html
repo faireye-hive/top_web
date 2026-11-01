@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<base href="../"><meta name="theme-color" content="#180f18">
+<title>TOP Web · Estúdio de Refino</title>
+<link rel="stylesheet" href="tests/refinement-editor.css?v=1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<header class="top"><a class="brand" href="tests/refinement-editor.html"><span>✦</span><div><strong>Estúdio de <em>Refino</em></strong><small>TOP Web · energia das armas</small></div></a>
+ <nav><a href="index.html">Jogo</a><a href="tests/weapon-editor.html">Materiais</a><button id="save" class="primary">Salvar no jogo</button><button id="export">Exportar</button><button id="import">Importar</button><input id="json-file" type="file" accept=".json,application/json" hidden></nav>
+</header>
+<main>
+ <aside class="panel selection">
+  <h2>01 · Equipamento</h2>
+  <label>Personagem<select id="actor"><option value="lance">Lance</option><option value="phyllis">Phyllis</option><option value="carsise">Carsise</option><option value="ami">Ami</option></select></label>
+  <label>Classe<select id="job"></select></label>
+  <p id="weapon-name" class="hint">Carregando espadas…</p>
+  <h2>02 · Prévia</h2>
+  <label class="level-label">Nível de refino <output id="level-value">+13</output><input id="level" type="range" min="0" max="13" step="1" value="13"></label>
+  <p class="hint">+0 sem efeito. Os níveis seguintes aumentam brilho, faíscas e filamentos.</p>
+  <label>Animação<select id="animation"><option value="guard">Guarda</option><option value="idle">Descanso</option><option value="run">Corrida</option><option value="armedRun">Corrida armada</option><option value="attack">Ataque</option></select></label>
+  <label>Posição das armas<select id="placement"><option value="hand">Nas mãos</option><option value="back">Nas costas</option><option value="hidden">Ocultas</option></select></label>
+  <label class="check"><input id="mobile" type="checkbox"> Limites de partículas do mobile</label>
+  <label class="check"><input id="grid" type="checkbox" checked> Mostrar chão</label>
+  <div class="actions"><button id="pause">Pausar</button><button id="reset-camera">Centralizar</button></div>
+  <div class="note">Prévia usa o mesmo efeito do jogo. O nível escolhido aqui não muda o refino nem os atributos do personagem.</div>
+ </aside>
+ <section class="viewer" aria-label="Prévia interativa do refino">
+  <div class="viewer-caption"><span>PRÉVIA AO VIVO</span><strong id="preview-badge">Refino +13</strong></div>
+  <canvas id="view" aria-label="Personagem 3D com aura e partículas de refino"></canvas>
+  <div class="viewer-footer"><span>Arraste para girar · pinça ou roda para zoom</span><span id="budget"></span></div>
+  <p id="status" role="status" aria-live="polite">Preparando as armas…</p>
+ </section>
+ <aside class="panel settings"><fieldset id="style-controls" disabled>
+  <h2>03 · Estilo do efeito</h2>
+  <label>Começar com um estilo<select id="preset"><option value="custom" disabled>Personalizado / salvo</option><option value="original">Rubi e ouro</option><option value="flame">Chama carmesim</option><option value="ice">Aura glacial</option><option value="violet">Energia violeta</option></select></label>
+  <div class="color-row"><label>Cor da aura<input id="color" type="color" value="#ff1505"></label><label>Núcleo da lâmina<input id="coreColor" type="color" value="#ffcf80"></label><label>Filamentos<input id="strandColor" type="color" value="#ff6e21"></label></div>
+  <div id="sliders"></div>
+  <button id="reset-style">Restaurar padrão deste perfil</button>
+  <div class="note"><strong id="profile-label">Perfil Lance / Crusader</strong><p>Salvar aplica este estilo ao personagem e classe no jogo, neste navegador. Cada perfil é independente. Exporte o JSON para guardar ou publicar em outro dispositivo.</p></div>
+ </fieldset></aside>
+</main>
+<script type="module" src="tests/refinement-editor.mjs?v=1"></script>
+</body></html>

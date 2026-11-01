@@ -17,3 +17,17 @@ body.sailing-mode:not(.mobile-ui) .combat-panel{top:122px}
 body.sailing-mode:not(.mobile-ui) #navigation-hint{top:272px}
 #boat-view-controls #sea-disembark{min-height:44px;touch-action:manipulation}
 body.mobile-ui #boat-view-controls{max-width:calc(100vw - 20px)}
+#naval-stats-open{pointer-events:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;padding:3px 0;min-height:32px;border:0;background:transparent;text-align:left;border-radius:3px;touch-action:manipulation}
+#naval-stats-open strong{margin:0}#naval-stats-open span{font-size:9px;color:#b8e9db;white-space:nowrap}
+#boat-stats-dialog{color:#e6f4f4;background:#0c2938;border:1px solid #b99d69;border-radius:14px;width:min(580px,calc(100vw - 24px));max-height:calc(100dvh - 20px);padding:20px;overflow:auto;box-shadow:0 16px 80px #0009}
+#boat-stats-dialog::backdrop{background:#00131cbb}
+#boat-stats-dialog header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#boat-stats-dialog header small{color:#85cfc6;font-size:10px;letter-spacing:1px}
+#boat-stats-dialog h2{color:#ffdc9e;font-size:21px;margin:7px 0 12px}
+#boat-stats-close{font-size:24px;min-width:44px;min-height:44px;padding:0}
+.boat-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 16px}
+.boat-stats-grid>div{background:#163d4b;border:1px solid #3e626c;border-radius:8px;padding:10px}
+.boat-stats-grid dt{font-size:11px;color:#afccd1}.boat-stats-grid dd{margin:5px 0 0;font-size:18px;color:#f6e4be;font-variant-numeric:tabular-nums}
+#boat-stats-growth{color:#85e1c6;font-size:12px;line-height:1.6}.boat-stats-help{font-size:11px;color:#afccd1;line-height:1.6}
+@media(max-height:500px){#boat-stats-dialog{padding:12px 18px}.boat-stats-grid{grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}.boat-stats-grid>div{padding:7px}.boat-stats-grid dd{font-size:15px;margin-top:3px}#boat-stats-dialog h2{font-size:18px;margin:4px 0}.boat-stats-help,#boat-stats-growth{margin:7px 0}}
+@media(max-width:420px){.boat-stats-grid{grid-template-columns:1fr 1fr}}

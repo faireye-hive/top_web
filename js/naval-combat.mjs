@@ -1,5 +1,5 @@
 import {rollDamage} from './combat-state.mjs?v=9';
-import {gainBoatExperience} from './boat-state.mjs';
+import {gainBoatExperience} from './boat-state.mjs?v=2';
 import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs?v=2';
 
 export const NAVAL=Object.freeze({range:24,targetRadius:50,monsterRange:6,leash:65,regenDelay:6,regenRate:.04,recovery:5});
