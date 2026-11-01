@@ -504,25 +504,34 @@ function drawMinimap(){
   }
 }
 async function selectMapDestination(point){
-  mapSelection=point;const revision=++mapSelectionRevision;
-  $('map-travel').disabled=true;$('map-selection-info').textContent='Carregando o terreno do destino…';
+  mapSelection=point;mapSelectionValid=false;const revision=++mapSelectionRevision;
+  $('map-travel').disabled=true;$('map-manual').disabled=true;
+  $('map-clear').disabled=false;
+  $('map-selection-info').textContent='Carregando o terreno do destino…';drawMinimap();
   try{await world.ensureAround(point.x,point.z,boatRadius()+3);}
-  catch{$('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
+  catch{if(revision===mapSelectionRevision)
+    $('map-selection-info').textContent='Não foi possível carregar este destino. Tente novamente.';return;}
   if(revision!==mapSelectionRevision)return;
-  const allowed=sailing?canSail(point.x,point.z):walkable(point.x,point.z);
-  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Destino marcado. Confirme para seguir.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
-  $('map-travel').disabled=!allowed;
-  $('map-travel').textContent=sailing?'Navegar até aqui':'Caminhar até aqui';drawMinimap();
+  const allowed=sailing?canSail(point.x,point.z):occupied(point.x,point.z);
+  mapSelectionValid=allowed;
+  $('map-selection-info').textContent=`${point.x.toFixed(0)}, ${point.z.toFixed(0)} · ${allowed?'Escolha guia manual ou caminhada automática.':sailing?'Sem espaço para o casco. Escolha água livre.':'Área bloqueada ou marítima. Escolha terra livre.'}`;
+  $('map-travel').disabled=!allowed;$('map-manual').disabled=!allowed;
+  drawMinimap();
 }
 function openWorldMap(){
   if(!world||!seaTravelReady||mapIsOpen())return;
   if(skillAnimationLocked){toast('Aguarde a skill terminar para abrir o mapa.');return;}
   stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
   document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
-  mapSelection=null;$('map-travel').disabled=true;$('map-travel').textContent='Selecione um destino';
-  $('map-selection-info').textContent='Selecione um ponto para traçar seu rumo.';
-  mapOverviewSpan=world.w;mapOverviewCenter=null;
+  mapSelection=navigationGoal?{x:navigationGoal.x,z:navigationGoal.z}:null;
+  mapSelectionValid=false;mapSelectionRevision++;
+  $('map-travel').disabled=true;$('map-manual').disabled=true;
+  $('map-clear').disabled=!navigationGoal;
+  $('map-selection-info').textContent=mapSelection?'Destino anterior. Validando o terreno…':'Toque em um ponto para escolher o destino.';
+  mapOverviewSpan=Math.min(world.h,1000);
+  mapOverviewCenter=navigationGoal||{x:playerPos.x,z:playerPos.z};
   document.body.classList.add('map-open');$('world-map-dialog').showModal();drawMinimap();
+  if(mapSelection)void selectMapDestination(mapSelection);
 }
 function updateNavigationIndicators(){
   if(isArenaMap){$('navigation-hint').hidden=true;return;}
@@ -648,6 +657,7 @@ function teleport(x,z){
   if(avatar)avatar.position.copy(playerPos);
   shadow.position.set(playerPos.x,playerPos.y+.04,playerPos.z);
   moverTarget=null;pendingPose=null;waypoint.hide();
+  navigationGoal=null;navigationAuto=false;
   placeCamera();
   updateChunks();updateSceneInstances(true);updateEffectInstances(true);updateObjectMarkers();updateHUD();drawMinimap();
   return true;
@@ -2300,6 +2310,18 @@ function update(dt){
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
   if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
+  if(navigationGoal){
+    const direction=guidanceDirection(playerPos,navigationGoal);
+    if(!direction||direction.distance<.8){
+      navigationGoal=null;navigationAuto=false;
+      if(moverTarget){moverTarget=null;waypoint.hide();}
+    }else if(navigationAuto&&!moverTarget){
+      // A caminhada direta chegou a um bloqueio; a indicação manual
+      // permanece disponível, sem fingir um caminho através de paredes.
+      navigationAuto=false;
+    }
+  }
+  destinationGuide.update(playerPos,navigationGoal,sampleHeight,performance.now()/1000);
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
   if(npcManager){
