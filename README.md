@@ -1,5 +1,14 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Câmera e Bolsa:** no Menu, a barra **Câmera a pé** aproxima da vista atual até
+quase primeira pessoa. A Bolsa tem grade clássica, painel com atributos ao lado
+e lista detalhada, com escolha salva, busca e filtros. Os três formatos mostram
+os equipamentos reais da classe e os atributos atuais.
+
+**Próxima etapa:** [plano de progressão](docs/PLANO_DE_PROGRESSAO.md) com nível do
+herói, proficiência por uso, nível da arma e marcos de brilho de refino.
+O balanceamento proposto ainda não foi aplicado ao combate.
+
 **Combate e pet:** monstros voltam a patrulhar, perseguir e revidar com animação e
 impacto sincronizados. Rotas contornam bloqueios e retornam à origem após a
 perseguição. **Mordo Jr** acompanha todos os personagens por padrão, com voo e

@@ -12,7 +12,7 @@
 </style>
 <link rel="stylesheet" href="./mobile.css?v=1">
 <link rel="stylesheet" href="./game-theme.css?v=1">
-<link rel="stylesheet" href="./rpg-hud.css?v=1">
+<link rel="stylesheet" href="./rpg-hud.css?v=2">
 <link rel="stylesheet" href="./skills-mobile.css?v=2">
 <link rel="stylesheet" href="./combat.css?v=1">
 <link rel="stylesheet" href="./mobile-fantasy.css?v=1">
@@ -108,6 +108,15 @@ font:600 12px system-ui,sans-serif}
   <div class="col">
    <label class="small">Brilho <strong id="brightvalue">58</strong></label><input id="brightness" type="range" min="0" max="100" step="1" value="58">
    <div class="seg"><button type="button" data-bright="28">Suave</button><button type="button" data-bright="58">Dia</button><button type="button" data-bright="86">Forte</button></div>
+   <div class="camera-tuning" aria-label="Distância da câmera a pé">
+    <label class="small" for="camera-proximity"><strong>Câmera a pé</strong> · <output id="camera-proximity-value" for="camera-proximity">Vista atual · 15 m</output></label>
+    <input id="camera-proximity" type="range" min="0" max="100" step="1" value="0" aria-label="Aproximar câmera da vista atual até quase primeira pessoa">
+    <div class="camera-tuning-footer"><span class="small">Vista atual → Quase 1ª pessoa</span><button type="button" id="camera-proximity-reset">Vista clássica</button></div>
+    <div class="small">No barco, use as opções de visão abaixo.</div>
+   </div>
+   <label class="small" for="bag-layout"><strong>Tipo de Bolsa</strong></label>
+   <select id="bag-layout"><option value="classic">Grade clássica</option><option value="split">Painel do aventureiro · lado a lado</option><option value="list">Lista detalhada · toque fácil</option></select>
+   <button type="button" data-open-rpg="inventory">Experimentar Bolsa</button>
    <label class="small" for="boat-camera-mode"><strong>Visão no barco</strong></label>
    <select id="boat-camera-mode"><option value="chase">Atrás 3D · caminho à frente livre</option><option value="bow">Proa 3D · olhar sobre a água</option><option value="classic">Vista alta · visão geral</option></select>
    <div class="small">No barco, alterne pelo botão da câmera. A seta ↑ retorna o olhar ao rumo do casco. Arraste para olhar ao redor.</div>
@@ -289,13 +298,30 @@ font:600 12px system-ui,sans-serif}
     <div class="rpg-info-note">Os atributos crescem automaticamente com a classe. Ataques contra monstros treinam a arma utilizada. Progresso salvo neste navegador.</div>
    </section>
    <section class="rpg-view" id="rpg-view-inventory" role="tabpanel" data-rpg-panel="inventory" hidden>
-    <h3>Evanescence <small>· liberado no nível 1</small></h3>
-    <button id="equipment-toggle" type="button">Equipar Evanescence · nível 1</button>
-    <ul id="equipment-list" class="equipment-list"></ul>
-    <p id="equipment-note" class="rpg-info-note"></p>
-    <h3>Bolsa <small>· 24 espaços</small></h3>
-    <div class="rpg-inventory-grid" id="rpg-inventory-grid" aria-label="Itens do inventário"></div>
-    <div class="rpg-info-note" id="rpg-inventory-empty">Bolsa vazia por enquanto. A interface está pronta para receber itens reais do jogo.</div>
+    <div class="bag-toolbar"><div><h3>Minha Bolsa</h3><span class="bag-caption" id="bag-count">Coleção da classe atual</span></div>
+     <label for="bag-layout-panel">Visual<select id="bag-layout-panel"><option value="classic">Grade clássica</option><option value="split">Painel do aventureiro</option><option value="list">Lista detalhada</option></select></label>
+    </div>
+    <div class="bag-workspace">
+     <aside class="bag-hero" aria-label="Atributos do personagem">
+      <div class="bag-hero-title"><strong data-rpg-stat="name">Lance</strong><span>Nv. <b data-rpg-stat="level">1</b> · <span data-rpg-stat="className">Crusader</span></span></div>
+      <dl class="bag-stats">
+       <div><dt>HP</dt><dd><span data-rpg-stat="hp">—</span> / <span data-rpg-stat="maxHp">—</span></dd></div>
+       <div><dt>Mana</dt><dd><span data-rpg-stat="mp">—</span> / <span data-rpg-stat="maxMp">—</span></dd></div>
+       <div><dt>Ataque</dt><dd data-rpg-stat="attack">—</dd></div><div><dt>Defesa</dt><dd data-rpg-stat="defense">—</dd></div>
+       <div><dt>Magia</dt><dd data-rpg-stat="magic">—</dd></div><div><dt>Ataques/s</dt><dd data-rpg-stat="attackSpeed">—</dd></div>
+      </dl>
+      <div class="bag-practice"><span data-rpg-stat="practiceName">Punhos</span> · prof. <b data-rpg-stat="practiceLevel">10</b><small data-rpg-stat="practiceProgress">0 / 20</small></div>
+      <div class="bag-pet">✦ Mordo Jr <small>Pet ativo</small></div>
+     </aside>
+     <div class="bag-content">
+      <div class="bag-filters"><label class="bag-search" for="bag-search"><span class="sr-only">Buscar item</span><input id="bag-search" type="search" placeholder="Buscar item ou espaço…" autocomplete="off"></label><label for="bag-filter"><span class="sr-only">Filtrar itens</span><select id="bag-filter"><option value="all">Tudo</option><option value="weapon">Armas</option><option value="armor">Armaduras</option></select></label></div>
+      <div class="rpg-inventory-grid" id="rpg-inventory-grid" aria-label="Itens do inventário"></div>
+      <div class="rpg-info-note" id="rpg-inventory-empty" hidden>Nenhum item encontrado.</div>
+      <section class="bag-detail" id="bag-item-detail" aria-label="Detalhes do item selecionado" aria-live="polite" hidden><strong id="bag-item-name"></strong><p id="bag-item-description"></p><span id="bag-item-status"></span></section>
+      <button id="equipment-toggle" type="button">Equipar Evanescence · nível 1</button>
+      <details class="bag-equipment-info"><summary>Sobre o conjunto</summary><ul id="equipment-list" class="equipment-list"></ul><p id="equipment-note" class="rpg-info-note"></p></details>
+     </div>
+    </div>
    </section>
    <section class="rpg-view" id="rpg-view-skills" role="tabpanel" data-rpg-panel="skills" hidden>
     <h3>Skills e ataques disponíveis</h3>
@@ -308,7 +334,7 @@ font:600 12px system-ui,sans-serif}
  </section>
 </div>
 <div class="loading" id="loading"><div class="loadcard"><div class="logo" style="margin:auto;width:60px;height:60px;font-size:26px">TOP</div><h1>Explorando Argent</h1><p id="loadingmessage">Carregando terreno e personagem originais...</p><div class="progress"><div id="progressbar" class="progressbar"></div></div><p id="loadinghint">A primeira abertura precisa de internet para carregar o Three.js.</p><button id="retry" hidden onclick="location.reload()">Tentar novamente</button></div></div>
-<script type="module" src="./js/main.js?v=57"></script>
+<script type="module" src="./js/main.js?v=58"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

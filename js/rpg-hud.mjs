@@ -1,6 +1,7 @@
 import { availableSkillClips, resolveSlots, statText } from './rpg-state.mjs';
 import { classSkillEntries } from './class-skills.mjs?v=3';
 import {skillWithRules} from './skill-rules.mjs';
+import {BAG_LAYOUT_KEY,bagLayout,filterInventory,inventorySelection} from './inventory-view.mjs';
 
 export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={}){
   const $=id=>document.getElementById(id);
@@ -11,6 +12,7 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
   let available=[],slots=[null,null,null,null],classSkills=null,isOpen=false,lastFocused=null;
   const KEY='topweb_rpg_skill_slots_v1';
   let saved=null,combatState={cooldowns:{},mp:Infinity};
+  let items=[],selectedItemKey=null;
   try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch{}
   const hotbar=[...document.querySelectorAll('[data-hotbar-slot]')];
   const panels=[...overlay.querySelectorAll('[data-rpg-panel]')];
@@ -20,6 +22,7 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
   const hotbarIcons=['#ui-blade','#ui-flame','#ui-ice','#ui-vortex'];
   const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(slots))}catch{}};
   function setTab(tab){
+    $('rpg-panel').dataset.activeTab=tab;
     for(const b of tabs){
       const active=b.dataset.rpgTab===tab;
       b.classList.toggle('active',active);
@@ -28,6 +31,15 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     }
     for(const panel of panels)panel.hidden=panel.dataset.rpgPanel!==tab;
   }
+  function setBagLayout(value){
+    const layout=bagLayout(value);$('rpg-panel').dataset.bagLayout=layout;
+    for(const id of ['bag-layout','bag-layout-panel'])if($(id))$(id).value=layout;
+    try{localStorage.setItem(BAG_LAYOUT_KEY,layout)}catch{}
+    return layout;
+  }
+  let initialLayout='classic';try{initialLayout=localStorage.getItem(BAG_LAYOUT_KEY)}catch{}
+  setBagLayout(initialLayout);
+  for(const id of ['bag-layout','bag-layout-panel'])$(id)?.addEventListener('change',e=>setBagLayout(e.target.value));
   function open(tab='stats'){
     if(isOpen){setTab(tab);return;}
     isOpen=true;lastFocused=document.activeElement;
@@ -192,26 +204,53 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     const info=$('rpg-stats-pending');
     if(info)info.hidden=Object.keys(stats).some(k=>k!=='name'&&stats[k]!=null);
   }
-  function setItems(items=[]){
+  function drawItemDetail(item){
+    const detail=$('bag-item-detail');if(!detail)return;
+    detail.hidden=!item;if(!item)return;
+    $('bag-item-name').textContent=item.name;
+    $('bag-item-description').textContent=item.description||item.slotName||'Equipamento';
+    $('bag-item-status').textContent=item.equipped?'Equipado · parte do conjunto ativo':'Disponível · use Equipar conjunto para vestir';
+  }
+  function drawInventory(){
     const grid=$('rpg-inventory-grid');if(!grid)return;
     grid.replaceChildren();
-    const valid=Array.isArray(items)?items.slice(0,24):[];
-    for(let i=0;i<24;i++){
+    const valid=filterInventory(items,{query:$('bag-search')?.value||'',kind:$('bag-filter')?.value||'all'});
+    const selected=inventorySelection(valid,selectedItemKey);selectedItemKey=selected?.key||null;
+    const filtered=!!$('bag-search')?.value||$('bag-filter')?.value!=='all';
+    const count=filtered?valid.length:24;
+    for(let i=0;i<count;i++){
       const item=valid[i],button=document.createElement('button');button.type='button';
       button.className='rpg-item-slot';button.disabled=!item;
       const n=document.createElement('span');n.className='rpg-item-icon';
       n.textContent=item?(item.symbol||'◇'):'';
       button.append(n);
       const label=item?.name||`Espaço vazio ${i+1}`;
-      button.setAttribute('aria-label',label);button.title=label;
+      button.setAttribute('aria-label',label+(item?` · ${item.slotName||''} · ${item.equipped?'Equipado':'Disponível'}`:''));button.title=label;
+      if(item){
+        button.dataset.itemKey=item.key;button.setAttribute('aria-pressed',String(item.key===selectedItemKey));
+        button.classList.toggle('is-equipped',!!item.equipped);
+        const text=document.createElement('span');text.className='bag-item-label';text.textContent=item.name;
+        const state=document.createElement('span');state.className='bag-item-state';state.textContent=`${item.slotName||'Item'} · ${item.equipped?'Equipado':'Disponível'}`;
+        button.append(text,state);
+        if(item.equipped){const marker=document.createElement('span');marker.className='bag-equipped-marker';marker.textContent='✓';marker.setAttribute('aria-hidden','true');button.append(marker);}
+      }
       if(item?.quantity>1){
         const count=document.createElement('small');count.textContent=String(item.quantity);button.append(count);
       }
-      if(item)button.addEventListener('click',()=>onMessage?.(label));
+      if(item)button.addEventListener('click',()=>{
+        selectedItemKey=item.key;
+        for(const slot of grid.querySelectorAll('[data-item-key]'))slot.setAttribute('aria-pressed',String(slot.dataset.itemKey===selectedItemKey));
+        drawItemDetail(item);
+      });
       grid.append(button);
     }
     const empty=$('rpg-inventory-empty');if(empty)empty.hidden=valid.some(Boolean);
+    const counter=$('bag-count');if(counter)counter.textContent=filtered?`${valid.length} de ${items.length} itens`:`${items.length} / 24 espaços · classe atual`;
+    drawItemDetail(selected);
   }
+  function setItems(value=[]){items=Array.isArray(value)?value.slice(0,24):[];drawInventory();}
+  $('bag-search')?.addEventListener('input',drawInventory);
+  $('bag-filter')?.addEventListener('change',drawInventory);
   trigger.addEventListener('click',()=>isOpen?dismiss():open());
   for(const nav of document.querySelectorAll('[data-open-rpg]')){
     nav.addEventListener('click',()=>open(nav.dataset.openRpg));
@@ -224,8 +263,8 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     if(!isOpen)return;
     if(e.key==='Escape'){e.preventDefault();dismiss();}
     if(e.key==='Tab'){
-      const focusables=[...overlay.querySelectorAll('button:not([disabled]):not([hidden])')]
-        .filter(el=>el.offsetParent!==null);
+      const focusables=[...overlay.querySelectorAll('button:not([disabled]),select:not([disabled]),input:not([disabled]),a[href],summary')]
+        .filter(el=>el.offsetParent!==null&&el.tabIndex>=0);
       if(!focusables.length)return;
       const first=focusables[0],last=focusables.at(-1);
       if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
@@ -233,5 +272,5 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     }
   });
   setItems([]);setStats({name:'Lance'});drawHotbar();setTab('stats');
-  return {isOpen:()=>isOpen,open,dismiss,setClips,setClassSkills,setStats,setItems,setCombatState,triggerSkill};
+  return {isOpen:()=>isOpen,open,dismiss,setClips,setClassSkills,setStats,setItems,setBagLayout,setCombatState,triggerSkill};
 }
