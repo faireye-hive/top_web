@@ -11,7 +11,7 @@ const desktop=read('desktop-hud.css');
 const inventory=read('js/inventory-view.mjs');
 
 test('Mobile Compact stylesheet is loaded last and desktop stylesheet remains intact',()=>{
-  const mobile=html.indexOf('mobile-compact.css?v=1');
+  const mobile=html.indexOf('mobile-compact.css?v=2');
   assert.ok(mobile>html.indexOf('desktop-hud.css?v=1'),'compact stylesheet must load after desktop');
   assert.ok(mobile>html.indexOf('mobile-landscape.css'),'compact stylesheet must override old mobile');
   assert.ok(css.includes('@media (orientation:landscape)'));
@@ -61,4 +61,36 @@ test('Empty mobile combat panel hides; desktop combat remains untouched',()=>{
   assert.ok(html.includes('id="combat-mode"'));
   assert.ok(html.includes('id="combat-target-fill"'));
   assert.ok(css.includes('body.mobile-ui .combat-panel[data-mobile-active="false"]{display:none!important}'));
+});
+
+test('Mobile: retrato/HP/MP abre Status, com teclado e estado acessível',()=>{
+  assert.match(html,/id="mobile-player-open" role="button" tabindex="0"/);
+  assert.match(html,/id="mobile-player-open"[^>]+aria-controls="rpg-panel"[^>]+aria-expanded="false"/);
+  assert.match(html,/id="rpg-open"[^>]+aria-controls="rpg-panel"/);
+  assert.ok(js.includes("mobilePlayer?.addEventListener('click',openFromMobileCard)"));
+  assert.ok(js.includes("mobilePlayer?.addEventListener('keydown',event=>"));
+  assert.ok(js.includes("['Enter',' ','Spacebar'].includes(event.key)"));
+  assert.ok(js.includes("event.stopPropagation(); // não ativar atalhos de ataque do jogo"));
+  assert.ok(js.includes("document.body.classList.contains('mobile-ui'))open('stats')"));
+  assert.ok(js.includes("mobilePlayer?.setAttribute('aria-expanded','true')"));
+  assert.ok(js.includes("mobilePlayer?.setAttribute('aria-expanded','false')"));
+  assert.match(css,/body\.mobile-ui #rpg-open\s*\{\s*display:none!important/);
+  assert.match(css,/body\.mobile-ui #mobile-player-open\s*\{\s*pointer-events:auto/);
+  assert.match(css,/body\.mobile-ui #mobile-player-open:focus-visible/);
+});
+test('Mobile: dica de navegação e zoom no HUD ocultos; mapa abre só com ícone na borda',()=>{
+  assert.ok(html.includes('id="navigation-hint"'));
+  assert.match(css,/body\.mobile-ui #navigation-hint\s*\{\s*display:none!important/);
+  assert.match(css,/body\.mobile-ui \.mobile-zoom\s*\{\s*display:none!important/);
+  assert.match(html, /id="map-expand"[^>]+aria-label="Expandir mapa"/);
+  assert.ok(html.includes('class="map-expand-symbol"'));
+  assert.ok(html.includes('class="map-expand-word">Mapa</span>'));
+  assert.match(css,/body\.mobile-ui #map-expand\s*\{[\s\S]*?right:-8px;bottom:-8px;/);
+  assert.match(css,/body\.mobile-ui #map-expand \.map-expand-word\s*\{\s*display:none!important/);
+  assert.match(css,/body\.mobile-ui #map-expand\s*\{[\s\S]*?width:40px;height:40px/);
+  assert.match(game,/\$\('minimap-open'\)\.addEventListener\('click',openWorldMap\)/);
+  assert.match(game,/\$\('map-expand'\)\.addEventListener\('click',openWorldMap\)/);
+  // Travel hint and camera zoom remain in the DOM for desktop and other UI flows.
+  assert.ok(html.includes('id="mobile-zoom-in"'));
+  assert.ok(html.includes('id="mobile-zoom-out"'));
 });

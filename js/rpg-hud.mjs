@@ -5,7 +5,8 @@ import {BAG_LAYOUT_KEY,bagLayout,filterInventory,inventorySelection} from './inv
 
 export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={}){
   const $=id=>document.getElementById(id);
-  const overlay=$('rpg-overlay'),trigger=$('rpg-open'),close=$('rpg-close'),content=$('rpg-skill-list');
+  const overlay=$('rpg-overlay'),trigger=$('rpg-open'),mobilePlayer=$('mobile-player-open'),
+    close=$('rpg-close'),content=$('rpg-skill-list');
   if(!overlay||!trigger||!close||!content)return {
     isOpen:()=>false,setClips:()=>{},setStats:()=>{},setItems:()=>{},setCombatState:()=>{},triggerSkill:()=>false
   };
@@ -55,6 +56,7 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     document.body.classList.add('rpg-open');
     overlay.hidden=false;
     trigger.setAttribute('aria-expanded','true');
+    mobilePlayer?.setAttribute('aria-expanded','true');
     setTab(tab);
     onOpen?.();
     close.focus({preventScroll:true});
@@ -64,6 +66,7 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     isOpen=false;overlay.hidden=true;
     document.body.classList.remove('rpg-open');
     trigger.setAttribute('aria-expanded','false');
+    mobilePlayer?.setAttribute('aria-expanded','false');
     onClose?.();
     if(lastFocused&&lastFocused.isConnected)lastFocused.focus({preventScroll:true});
     else trigger.focus({preventScroll:true});
@@ -263,6 +266,18 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
   for(const nav of document.querySelectorAll('[data-open-rpg]')){
     nav.addEventListener('click',()=>open(nav.dataset.openRpg));
   }
+  // O card com retrato + HP/MP substitui o botão "Herói" somente no
+  // mobile. A mesma função open('stats') é utilizada, sem menu duplicado.
+  const openFromMobileCard=()=>{
+    if(document.body.classList.contains('mobile-ui'))open('stats');
+  };
+  mobilePlayer?.addEventListener('click',openFromMobileCard);
+  mobilePlayer?.addEventListener('keydown',event=>{
+    if(!['Enter',' ','Spacebar'].includes(event.key))return;
+    event.preventDefault();
+    event.stopPropagation(); // não ativar atalhos de ataque do jogo
+    openFromMobileCard();
+  });
   close.addEventListener('click',dismiss);
   overlay.querySelector('.rpg-backdrop')?.addEventListener('click',dismiss);
   for(const tab of tabs)tab.addEventListener('click',()=>setTab(tab.dataset.rpgTab));
