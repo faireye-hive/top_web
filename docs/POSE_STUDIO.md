@@ -364,3 +364,43 @@ Dica: para descobrir por que uma pose "sem arma" aparece armada, use
 **Sem armas** sem trocar o clipe. Se as armas desaparecem, a animação
 está correta e o problema é somente o modo de exibição/equipamento.
 Para avaliar os encaixes, use **Nas costas** e verifique o diagnóstico.
+
+## Postura automática: cidade, skill e campo (TOP Web)
+
+O jogo agora diferencia o **estado visual de guarda** do modo de **ataque
+automático**. A animação e as espadas são selecionadas assim:
+
+| Situação | Estado do Pose Studio | Comportamento automático das armas |
+|---|---|---|
+| Dentro da cidade, parado | `idle` | Nas costas |
+| Dentro da cidade, andando | `run` | Nas costas |
+| Skill/ataque em execução | `attack` | Nas mãos |
+| Durante **3,5 segundos após o último clipe** da skill na cidade | `guard` / `armedRun` | Nas mãos |
+| Fora da cidade, parado | `guard` | Nas mãos |
+| Fora da cidade, andando | `armedRun` | Nas mãos |
+
+Quando a duração temporária termina, a animação volta automaticamente a
+`idle` ou `run` se o jogador ainda estiver na cidade. Quando cruza o
+perímetro, o estado é recalculado automaticamente, mesmo parado. Skills
+com sequência de clipes só iniciam a espera após a última animação.
+Uma nova skill renova o prazo. Se for necessário interromper por
+teleporte/troca de personagem, o prazo é zerado.
+
+As configurações manuais **Auto / Sem armas / Nas mãos / Nas costas** no
+Pose Studio continuam tendo prioridade por estado e por espada. Estar
+em guarda fora da cidade **não significa que o Auto foi ligado**; nenhum
+inimigo é atacado somente pela troca de pose.
+
+**Nota sobre o perímetro:** a versão atual do projeto não contém dados
+oficiais dos limites da zona segura. O módulo
+`js/city-combat-pose.mjs` usa temporariamente um círculo configurável
+de raio **115 unidades**, centrado em `(2222, 2775.5)`, na região de
+Argent. A tela de diagnóstico de terreno indica `Cidade (aprox.)` ou
+`Exterior` para facilitar ajustar esse limite futuramente usando a
+informação histórica de áreas, sem confundir uma borda aproximada com
+a definição original do jogo.
+
+Teste:
+```sh
+node --test tests/city-combat-pose.test.mjs
+```
