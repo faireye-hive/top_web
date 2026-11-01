@@ -1,0 +1,243 @@
+/* Mobile Compact v1 — deliberately scoped to .mobile-ui.
+   Desktop selectors, geometry and saved desktop bag layouts stay untouched. */
+.rpg-mobile-max,.rpg-mobile-details-toggle{display:none}
+
+@media (orientation:landscape) {
+  body.mobile-ui{
+    --compact-edge-left:max(7px,env(safe-area-inset-left));
+    --compact-edge-right:max(7px,env(safe-area-inset-right));
+    --compact-edge-top:max(6px,env(safe-area-inset-top));
+    --compact-edge-bottom:max(7px,env(safe-area-inset-bottom));
+  }
+  /* World HUD: keep actual HP/MP and usable commands, not redundant location text. */
+  body.mobile-ui .mobile-player-card{
+    top:var(--compact-edge-top);left:var(--compact-edge-left);
+    width:156px;height:48px;padding:3px 8px 3px 3px;
+    gap:7px;border-radius:12px;border-width:1px;
+    box-shadow:0 3px 12px #000a;
+  }
+  body.mobile-ui .mobile-player-portrait{
+    width:39px;height:39px;border-width:2px;outline-width:1px;
+  }
+  body.mobile-ui .mobile-player-data{gap:3px}
+  body.mobile-ui .mobile-player-title strong{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+  body.mobile-ui .mobile-player-title span{display:none}
+  body.mobile-ui .mobile-stat-track{height:10px;border-width:1px}
+  body.mobile-ui .mobile-stat-track span{font-size:8px;gap:3px}
+  body.mobile-ui .minimapbox{
+    top:var(--compact-edge-top);right:var(--compact-edge-right);
+    width:78px;height:78px;padding:4px;border-width:1px;
+    box-shadow:0 0 0 2px #0b2b43,0 3px 10px #0009;
+  }
+  body.mobile-ui .minimapbox::after{display:none}
+  body.mobile-ui .mobile-top-nav{
+    top:var(--compact-edge-top);
+    right:calc(var(--compact-edge-right) + 86px);
+    gap:5px;
+  }
+  body.mobile-ui .mobile-nav-button{
+    min-width:42px;width:42px;min-height:47px;gap:1px;
+    font-size:9px;line-height:1.05;
+  }
+  body.mobile-ui .mobile-nav-button svg{
+    width:34px;height:34px;padding:7px;border-width:1px;outline-width:1px;
+    box-shadow:0 2px 7px #0008;
+  }
+  body.mobile-ui .mobile-nav-button span{white-space:nowrap}
+  body.mobile-ui .rpg-toggle{
+    top:calc(var(--compact-edge-top) + 54px);
+    left:var(--compact-edge-left);
+    min-width:73px;width:73px;min-height:32px;
+    padding:4px 7px;font-size:11px;border-radius:9px;border-width:1px;
+  }
+  body.mobile-ui .combat-panel{
+    top:calc(var(--compact-edge-top) + 93px);
+    left:var(--compact-edge-left);width:156px;max-width:156px;
+    padding:6px 9px;border-radius:9px;
+    font-size:10px;line-height:1.25;pointer-events:none;
+  }
+  body.mobile-ui .combat-panel[data-mobile-active="false"]{display:none!important}
+  body.mobile-ui .combat-panel strong{font-size:10px;display:block}
+  body.mobile-ui #combat-target{
+    display:block;max-width:100%;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  body.mobile-ui .combat-panel small{display:none}
+  body.mobile-ui .combat-health{height:3px;margin-top:4px}
+  body.mobile-ui .mobile-zoom{
+    top:calc(var(--compact-edge-top) + 86px);
+    right:var(--compact-edge-right);gap:4px;width:78px;
+  }
+  body.mobile-ui .mobile-zoom button{
+    width:35px;height:35px;min-width:35px;min-height:35px;
+    border-width:1px;font-size:19px;
+  }
+  /* Never shrink attack, skills or movement controls below comfortable tapping sizes. */
+  body.mobile-ui .mobile-joystick{left:var(--compact-edge-left);bottom:var(--compact-edge-bottom)}
+  body.mobile-ui .mobile-actions{right:var(--compact-edge-right);bottom:var(--compact-edge-bottom)}
+  body.mobile-ui .rpg-skill-hotbar{right:var(--compact-edge-right);bottom:var(--compact-edge-bottom)}
+
+  /* RPG overlay: wider and shallow instead of desktop-style tall cards. */
+  body.mobile-ui .rpg-overlay{padding:6px;align-items:center;justify-content:center}
+  body.mobile-ui .rpg-panel{
+    position:relative;inset:auto;width:min(660px,calc(100vw - 14px));
+    max-height:calc(100dvh - 12px);border-radius:13px;
+    box-shadow:0 12px 38px #000b;
+  }
+  body.mobile-ui .rpg-panel-header{padding:5px 10px;min-height:36px}
+  body.mobile-ui .rpg-panel-header h2{font-size:14px}
+  body.mobile-ui .rpg-panel-header p{display:none}
+  body.mobile-ui .rpg-panel-header button{
+    width:38px;height:38px;min-height:38px;font-size:22px;
+  }
+  body.mobile-ui .rpg-tabs{padding:3px 9px;gap:5px}
+  body.mobile-ui .rpg-tabs button{
+    min-height:34px;padding:4px 6px;font-size:11px;border-radius:8px;
+  }
+  body.mobile-ui .rpg-panel-body{min-height:0;overflow:auto;padding:8px 10px}
+  body.mobile-ui .rpg-panel-footer{display:none}
+  body.mobile-ui .rpg-info-note:not([id]){display:none}
+  body.mobile-ui .rpg-view h3{margin-bottom:5px;font-size:11px}
+
+  /* Status: readable six-cell overview; details remain accessible on demand. */
+  body.mobile-ui #rpg-view-stats .rpg-character-card{
+    padding:5px 8px;margin-bottom:6px;border-radius:9px;gap:8px;
+    min-height:41px;
+  }
+  body.mobile-ui #rpg-view-stats .rpg-avatar-symbol{
+    width:29px;height:29px;font-size:19px;border-radius:7px;
+  }
+  body.mobile-ui #rpg-view-stats .rpg-character-card strong{font-size:13px}
+  body.mobile-ui #rpg-view-stats .rpg-character-card small{display:none}
+  body.mobile-ui .hero-character-choice{width:120px}
+  body.mobile-ui .hero-character-choice .hero-character-label{display:none}
+  body.mobile-ui #hero-character{
+    margin:0;min-height:35px;height:35px;padding:4px 7px;font-size:12px;
+  }
+  body.mobile-ui .hero-class-row{margin:5px 0;gap:8px;font-size:11px}
+  body.mobile-ui .hero-class-row select{
+    min-height:35px;height:35px;padding:4px 7px;max-width:185px;font-size:12px;
+  }
+  body.mobile-ui .hero-class-row>span{display:none}
+  body.mobile-ui .hero-stat-heading{margin:5px 0;gap:8px}
+  body.mobile-ui .hero-stat-heading h3{font-size:11px;margin:0}
+  body.mobile-ui .hero-stat-heading p{font-size:10px}
+  body.mobile-ui .rpg-stat-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+  }
+  body.mobile-ui .rpg-stat-cell{
+    display:block;min-height:45px;padding:5px 8px;border-radius:8px;
+    overflow:hidden;
+  }
+  body.mobile-ui .rpg-stat-cell>span{display:block;font-size:10px;white-space:nowrap}
+  body.mobile-ui .rpg-stat-cell>strong{
+    display:inline-block;font-size:15px;line-height:1.25;
+    margin-top:2px;grid-column:auto;grid-row:auto;white-space:nowrap;
+  }
+  body.mobile-ui .rpg-mobile-max{
+    display:inline;font-size:10px;color:#aabfc9;
+    margin-left:3px;white-space:nowrap;
+  }
+  body.mobile-ui .rpg-stat-cell[data-mobile-stat="duplicate"],
+  body.mobile-ui .rpg-stat-cell[data-mobile-stat="extra"]{display:none}
+  body.mobile-ui .rpg-panel.mobile-details-expanded .rpg-stat-cell[data-mobile-stat="extra"]{display:block}
+  body.mobile-ui .rpg-mobile-details-toggle{
+    display:block;min-height:34px;width:100%;margin:7px 0 1px;
+    padding:5px 9px;border:1px solid #587a7b;
+    border-radius:8px;background:#143847;color:#bfebdf;
+    font-size:11px;text-align:center;
+  }
+  body.mobile-ui .practice-summary{display:none}
+  body.mobile-ui .rpg-panel.mobile-details-expanded .practice-summary{
+    display:block;font-size:11px;padding:5px 8px;margin:7px 0;
+  }
+  /* Bag: items, search and filters come first; status duplication is removed. */
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"]{
+    width:min(660px,calc(100vw - 14px));
+  }
+  body.mobile-ui .bag-toolbar{margin-bottom:7px}
+  body.mobile-ui .bag-toolbar h3{margin:0;font-size:13px}
+  body.mobile-ui .bag-caption{font-size:10px}
+  body.mobile-ui .bag-toolbar>label{display:none}
+  body.mobile-ui .bag-hero{display:none}
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-workspace{
+    display:block!important;grid-template-columns:none!important;
+    height:auto!important;min-height:0;
+  }
+  body.mobile-ui .bag-content{
+    min-height:0;overflow:visible!important;padding:0!important;
+  }
+  body.mobile-ui .bag-filters{gap:6px;margin-bottom:7px}
+  body.mobile-ui .bag-search input,body.mobile-ui .bag-filters select{
+    height:38px;min-height:38px;padding:5px 9px;font-size:14px;
+  }
+  body.mobile-ui .bag-filters select{min-width:92px}
+  /* Compact grid regardless of saved desktop classic/split/list preference. */
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-inventory-grid{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fill,minmax(45px,1fr))!important;
+    gap:5px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-item-slot{
+    display:grid!important;aspect-ratio:1!important;
+    min-width:0!important;min-height:45px;
+    grid-template-columns:1fr!important;grid-template-rows:1fr!important;
+    gap:0!important;padding:2px!important;text-align:center!important;
+    border-radius:8px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-item-slot:disabled{
+    display:grid!important;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .rpg-item-icon{
+    display:block;grid-area:1/1;align-self:center;justify-self:center;
+    font-size:21px;
+  }
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-item-label,
+  body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-item-state{
+    display:none!important;
+  }
+  body.mobile-ui .bag-detail{
+    padding:7px 9px;margin:7px 0;font-size:11px;
+    border-radius:8px;line-height:1.3;
+  }
+  body.mobile-ui .bag-detail p{margin:3px 0}
+  body.mobile-ui .bag-content #equipment-toggle{
+    min-height:37px;padding:6px 8px;font-size:11px;border-radius:8px;
+  }
+  body.mobile-ui .bag-equipment-info{margin-top:5px;font-size:11px}
+  body.mobile-ui .bag-equipment-info summary{
+    min-height:31px;padding:4px 7px;
+  }
+  body.mobile-ui .equipment-list{gap:4px;margin:5px 0}
+  body.mobile-ui .equipment-list li{padding:5px 8px;font-size:11px}
+  body.mobile-ui .bag-content #equipment-note{display:none}
+  /* Skills gain a little more useful scroll area in short landscape screens. */
+  body.mobile-ui .rpg-skill-list{gap:5px}
+  body.mobile-ui .rpg-skill-entry{padding:6px 8px;gap:8px}
+  body.mobile-ui .rpg-skill-entry-icon{width:33px;height:33px;font-size:18px}
+  body.mobile-ui .rpg-assign-actions button{min-width:38px;min-height:38px}
+}
+@media(orientation:landscape) and (max-width:700px){
+  body.mobile-ui .mobile-player-card{width:145px}
+  body.mobile-ui .mobile-top-nav{gap:2px;right:calc(var(--compact-edge-right) + 82px)}
+  body.mobile-ui .mobile-nav-button{min-width:38px;width:38px}
+  body.mobile-ui .mobile-nav-button svg{width:32px;height:32px}
+  body.mobile-ui .combat-panel{width:145px;max-width:145px}
+  body.mobile-ui .rpg-panel{width:calc(100vw - 12px)}
+  body.mobile-ui .rpg-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(orientation:landscape) and (max-height:370px){
+  body.mobile-ui .rpg-panel-header{min-height:30px;padding:3px 9px}
+  body.mobile-ui .rpg-panel-header button{width:34px;height:34px;min-height:34px}
+  body.mobile-ui .rpg-tabs{padding:2px 8px}
+  body.mobile-ui .rpg-tabs button{min-height:31px}
+  body.mobile-ui .rpg-panel-body{padding:5px 8px}
+  body.mobile-ui #rpg-view-stats .rpg-character-card{min-height:36px;margin-bottom:4px}
+  body.mobile-ui .rpg-stat-cell{min-height:40px;padding:4px 7px}
+  body.mobile-ui .rpg-stat-cell>strong{font-size:14px}
+  body.mobile-ui .rpg-mobile-details-toggle{min-height:31px;margin:5px 0 0}
+}
+@media(prefers-reduced-motion:reduce){
+  body.mobile-ui .mobile-player-card,body.mobile-ui .rpg-panel{transition:none}
+}

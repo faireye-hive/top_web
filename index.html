@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="./navigation-map.css?v=1">
 <link rel="stylesheet" href="./development-ui.css?v=1">
 <link rel="stylesheet" href="./desktop-hud.css?v=1">
+<link rel="stylesheet" href="./mobile-compact.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -289,23 +290,24 @@ font:600 12px system-ui,sans-serif}
     <div class="hero-stat-heading"><h3>Atributos</h3><p>XP: <strong data-rpg-stat="xp">0 / 40</strong></p></div>
     <div class="practice-summary"><span data-rpg-stat="practiceName">Punhos</span> <strong data-rpg-stat="practiceLevel">10</strong><span> · Prática: <b data-rpg-stat="practiceProgress">0 / 20</b></span></div>
     <div class="rpg-stat-grid">
-     <div class="rpg-stat-cell"><span>Nível</span><strong data-rpg-stat="level">—</strong></div>
-     <div class="rpg-stat-cell"><span>HP</span><strong data-rpg-stat="hp">—</strong></div>
-     <div class="rpg-stat-cell"><span>HP máximo</span><strong data-rpg-stat="maxHp">—</strong></div>
-     <div class="rpg-stat-cell"><span>Mana</span><strong data-rpg-stat="mp">—</strong></div>
-     <div class="rpg-stat-cell"><span>Mana máxima</span><strong data-rpg-stat="maxMp">—</strong></div>
-     <div class="rpg-stat-cell"><span>Força</span><strong data-rpg-stat="strength">—</strong></div>
-     <div class="rpg-stat-cell"><span>Inteligência</span><strong data-rpg-stat="intelligence">—</strong></div>
-     <div class="rpg-stat-cell"><span>Constituição</span><strong data-rpg-stat="constitution">—</strong></div>
-     <div class="rpg-stat-cell"><span>Destreza</span><strong data-rpg-stat="dexterity">—</strong></div>
-     <div class="rpg-stat-cell"><span>Agilidade</span><strong data-rpg-stat="agility">—</strong></div>
-     <div class="rpg-stat-cell"><span>Ataque</span><strong data-rpg-stat="attack">—</strong></div>
-     <div class="rpg-stat-cell"><span>Magia</span><strong data-rpg-stat="magic">—</strong></div>
-     <div class="rpg-stat-cell"><span>Defesa</span><strong data-rpg-stat="defense">—</strong></div>
-     <div class="rpg-stat-cell"><span>Acerto</span><strong data-rpg-stat="accuracy">—</strong></div>
-     <div class="rpg-stat-cell"><span>Esquiva</span><strong data-rpg-stat="evasion">—</strong></div>
-     <div class="rpg-stat-cell"><span>Ataques / s</span><strong data-rpg-stat="attackSpeed">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>Nível</span><strong data-rpg-stat="level">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>HP</span><strong data-rpg-stat="hp">—</strong><small class="rpg-mobile-max">/ <b data-rpg-stat="maxHp">—</b></small></div>
+     <div class="rpg-stat-cell" data-mobile-stat="duplicate"><span>HP máximo</span><strong data-rpg-stat="maxHp">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>Mana</span><strong data-rpg-stat="mp">—</strong><small class="rpg-mobile-max">/ <b data-rpg-stat="maxMp">—</b></small></div>
+     <div class="rpg-stat-cell" data-mobile-stat="duplicate"><span>Mana máxima</span><strong data-rpg-stat="maxMp">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Força</span><strong data-rpg-stat="strength">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Inteligência</span><strong data-rpg-stat="intelligence">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Constituição</span><strong data-rpg-stat="constitution">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Destreza</span><strong data-rpg-stat="dexterity">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Agilidade</span><strong data-rpg-stat="agility">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>Ataque</span><strong data-rpg-stat="attack">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>Magia</span><strong data-rpg-stat="magic">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="core"><span>Defesa</span><strong data-rpg-stat="defense">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Acerto</span><strong data-rpg-stat="accuracy">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Esquiva</span><strong data-rpg-stat="evasion">—</strong></div>
+     <div class="rpg-stat-cell" data-mobile-stat="extra"><span>Ataques / s</span><strong data-rpg-stat="attackSpeed">—</strong></div>
     </div>
+    <button type="button" class="rpg-mobile-details-toggle" id="rpg-mobile-details" aria-controls="rpg-view-stats" aria-expanded="false">+ Ver todos os atributos</button>
     <div class="rpg-info-note">Os atributos crescem automaticamente com a classe. Ataques contra monstros treinam a arma utilizada. Progresso salvo neste navegador.</div>
    </section>
    <section class="rpg-view" id="rpg-view-inventory" role="tabpanel" data-rpg-panel="inventory" hidden>
@@ -359,7 +361,7 @@ font:600 12px system-ui,sans-serif}
  <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
  <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
 </dialog>
-<script type="module" src="./js/main.js?v=62"></script>
+<script type="module" src="./js/main.js?v=63"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>

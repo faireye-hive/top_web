@@ -7,7 +7,7 @@ import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
 import { createArgentFountain } from './fountain.js?v=4';
 import { initMobileControls } from './mobile-controls.js?v=2';
-import { initRpgHud } from './rpg-hud.mjs?v=6';
+import { initRpgHud } from './rpg-hud.mjs?v=7';
 import {initDesktopHud} from './desktop-hud.mjs';
 import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
@@ -1001,6 +1001,11 @@ function updateCombatHud(){
   rpgHud?.setStats(snapshot);
   rpgHud?.setCombatState({cooldowns:combat?.cooldowns||{},mp:hero.mp});
   const target=combat?.target;
+  // No mobile, abrir o painel de combate somente quando há alvo
+  // ou um ataque ativo; esconder o card vazio devolve espaço ao mundo.
+  const combatPanel=document.querySelector('.combat-panel');
+  if(combatPanel)combatPanel.dataset.mobileActive=String(
+    !!target||!!combat?.auto||!!combat?.manualActive);
   $('combat-target').textContent=target?`${target.name} · ${target.hp} / ${target.maxHp} HP`:(MOBILE_UI?'Toque num monstro ou use Alvo':'Clique num monstro ou use T');
   $('combat-target-fill').style.width=target?`${100*target.hp/target.maxHp}%`:'0%';
   $('combat-mode').textContent=hero.hp<=0?'Recuperando…':combat?.auto
