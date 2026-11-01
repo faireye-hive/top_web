@@ -2321,7 +2321,8 @@ function update(dt){
       navigationAuto=false;
     }
   }
-  destinationGuide.update(playerPos,navigationGoal,sampleHeight,performance.now()/1000);
+  destinationGuide.update(playerPos,navigationGoal,
+    (x,z)=>sailing?boatProfile.seaLevel:sampleHeight(x,z),performance.now()/1000);
   waypoint.update(dt, performance.now()/1000);
   if(fountain)fountain.update(dt,playerPos);
   if(npcManager){
@@ -2733,6 +2734,9 @@ function orderMove(x,z,pose){
   if(hero.hp<=0||changingCharacter)return false;
   const free=sailing?(canSail(x,z)?[x,z]:null):walkable(x,z)?[x,z]:findFree(x,z);
   if(!free){toast('Destino bloqueado. Clique em área navegável.');return false;}
+  // Direct click orders replace the previous map destination. A map-auto
+  // order installs its own goal immediately after this function returns.
+  navigationGoal=null;navigationAuto=false;
   moverTarget=new THREE.Vector3(free[0],sampleHeight(free[0],free[1]),free[1]);
   pendingPose=sailing?null:pose||null;
   waypoint.show(free[0],free[1],sailing?boatProfile.seaLevel:sampleHeight(free[0],free[1]));
