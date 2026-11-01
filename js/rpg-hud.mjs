@@ -39,6 +39,14 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
       b.tabIndex=active?0:-1;
     }
     for(const panel of panels)panel.hidden=panel.dataset.rpgPanel!==tab;
+    if(tab==='inventory'&&document.body.classList.contains('mobile-ui')){
+      // Mobile has no search/filter field: always display all 24 slots.
+      // Never change the user's desktop bag layout saved in localStorage.
+      const search=$('bag-search'),filter=$('bag-filter');
+      if(search)search.value='';
+      if(filter)filter.value='all';
+      drawInventory();
+    }
   }
   function setBagLayout(value){
     const layout=bagLayout(value);$('rpg-panel').dataset.bagLayout=layout;
@@ -259,7 +267,31 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     const counter=$('bag-count');if(counter)counter.textContent=filtered?`${valid.length} de ${items.length} itens`:`${items.length} / 24 espaços · classe atual`;
     drawItemDetail(selected);
   }
-  function setItems(value=[]){items=Array.isArray(value)?value.slice(0,24):[];drawInventory();}
+  function drawMobileSet(){
+    const preview=$('bag-mobile-set-summary');
+    if(!preview)return;
+    preview.replaceChildren();
+    for(const item of items){
+      // Use the same equipment data as the inventory; this is a visual
+      // summary only. The original #equipment-toggle handles equip/unequip.
+      const row=document.createElement('div');row.className='bag-mobile-set-row';
+      row.setAttribute('role','listitem');
+      row.title=item.name;
+      const symbol=document.createElement('span');symbol.className='bag-mobile-set-icon';
+      symbol.textContent=item.symbol||'◇';symbol.setAttribute('aria-hidden','true');
+      const name=document.createElement('span');name.className='bag-mobile-set-name';
+      name.textContent=item.slotName||item.name;
+      const state=document.createElement('span');state.className='bag-mobile-set-state';
+      state.textContent=item.equipped?'✓':'○';
+      state.setAttribute('aria-label',item.equipped?'Equipado':'Não equipado');
+      row.append(symbol,name,state);preview.append(row);
+    }
+  }
+  function setItems(value=[]){
+    items=Array.isArray(value)?value.slice(0,24):[];
+    drawMobileSet();
+    drawInventory();
+  }
   $('bag-search')?.addEventListener('input',drawInventory);
   $('bag-filter')?.addEventListener('change',drawInventory);
   trigger.addEventListener('click',()=>isOpen?dismiss():open());

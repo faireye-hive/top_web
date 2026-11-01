@@ -11,7 +11,7 @@ const desktop=read('desktop-hud.css');
 const inventory=read('js/inventory-view.mjs');
 
 test('Mobile Compact stylesheet is loaded last and desktop stylesheet remains intact',()=>{
-  const mobile=html.indexOf('mobile-compact.css?v=2');
+  const mobile=html.indexOf('mobile-compact.css?v=3');
   assert.ok(mobile>html.indexOf('desktop-hud.css?v=1'),'compact stylesheet must load after desktop');
   assert.ok(mobile>html.indexOf('mobile-landscape.css'),'compact stylesheet must override old mobile');
   assert.ok(css.includes('@media (orientation:landscape)'));
@@ -93,4 +93,63 @@ test('Mobile: dica de navegação e zoom no HUD ocultos; mapa abre só com ícon
   // Travel hint and camera zoom remain in the DOM for desktop and other UI flows.
   assert.ok(html.includes('id="mobile-zoom-in"'));
   assert.ok(html.includes('id="mobile-zoom-out"'));
+});
+
+test('Bolsa mobile usa as tabs na barra do título em vez de duas linhas',()=>{
+  const header=html.indexOf('<header class="rpg-panel-header">');
+  const nav=html.indexOf('<nav class="rpg-tabs" role="tablist"');
+  assert.ok(header>0&&nav>header);
+  assert.ok(html.includes('id="rpg-panel-title">☷ Aventureiro'));
+  const compact=css.slice(css.indexOf('/* Mobile-exclusive set preview'));
+  assert.ok(compact.includes('body.mobile-ui .rpg-panel-header>div'));
+  assert.ok(compact.includes('clip-path:inset(50%)'));
+  assert.ok(compact.includes('body.mobile-ui .rpg-tabs{'));
+  assert.ok(compact.includes('position:absolute;'));
+  assert.ok(compact.includes('grid-template-columns:repeat(3,minmax(0,1fr))'));
+  assert.ok(compact.includes('body.mobile-ui .rpg-panel-header #rpg-close'));
+  for(const tab of ['stats','inventory','skills']){
+    assert.ok(html.includes('data-rpg-tab="'+tab+'"'));
+    assert.ok(html.includes('data-rpg-panel="'+tab+'"'));
+  }
+  assert.ok(desktop.includes('.rpg-panel')===false||desktop.includes('.desktop-menu'));
+});
+
+test('Bolsa mobile mostra slots na metade esquerda e peças de Set na direita',()=>{
+  const compact=css.slice(css.indexOf('/* Mobile-exclusive set preview'));
+  assert.ok(compact.includes('body.mobile-ui .rpg-panel[data-active-tab="inventory"] .bag-content{'));
+  assert.ok(compact.includes('grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)'));
+  assert.ok(compact.includes('#rpg-inventory-grid{'));
+  assert.ok(compact.includes('grid-column:1;'));
+  assert.ok(compact.includes('grid-template-columns:repeat(6,minmax(0,1fr))!important'));
+  assert.ok(compact.includes('#equipment-toggle{'));
+  assert.ok(compact.includes('grid-column:2;'));
+  assert.ok(compact.includes('.bag-mobile-set-summary{'));
+  assert.ok(compact.includes('.bag-equipment-info{'));
+  assert.ok(html.includes('id="bag-mobile-set-summary" role="list"'));
+  assert.ok(html.includes('id="equipment-toggle"'));
+  assert.ok(js.includes('function drawMobileSet()'));
+  assert.ok(js.includes('item.slotName||item.name'));
+  assert.ok(js.includes("item.equipped?'✓':'○'"));
+  assert.ok(js.includes('drawMobileSet();'));
+  assert.ok(game.includes("hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1'"));
+  assert.ok(game.includes("hero.equipped=!hero.equipped"));
+  assert.ok(game.includes('rpgHud?.setItems(heroInventory(hero,equipmentManifest))'));
+  assert.ok(inventory.includes('hero.equipped'));
+});
+
+test('Busca e título redundante desaparecem somente no mobile, sem perder itens',()=>{
+  const compact=css.slice(css.indexOf('/* Mobile-exclusive set preview'));
+  assert.ok(compact.includes('.bag-toolbar,'));
+  assert.ok(compact.includes('.bag-filters{'));
+  assert.ok(compact.includes('display:none!important'));
+  assert.ok(html.includes('<h3>Minha Bolsa</h3>')); // desktop permanece
+  assert.ok(html.includes('id="bag-search"')); // desktop permanece funcional
+  assert.ok(html.includes('id="bag-filter"'));
+  assert.ok(js.includes("if(tab==='inventory'&&document.body.classList.contains('mobile-ui'))"));
+  assert.ok(js.includes("if(search)search.value=''"));
+  assert.ok(js.includes("if(filter)filter.value='all'"));
+  assert.ok(js.includes('drawInventory();'));
+  assert.ok(js.includes('const count=filtered?valid.length:24'));
+  assert.ok(js.includes("setBagLayout(initialLayout);"));
+  assert.ok(!game.includes('mobile-bag-layout-saved')); // Nenhuma preferência nova no desktop
 });
