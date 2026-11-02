@@ -2,10 +2,12 @@ import {updateFollowTarget} from './mobile-camera-follow.mjs';
 import {cameraDegrees,cameraRadians,CAMERA_SPEED_DEFAULT_DEG,CAMERA_TURN_DEFAULT_DEG,CAMERA_TOUCH_DEFAULT,cameraTouchSensitivity} from './mobile-camera-settings.mjs?v=2';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import {createTextureRuntime} from './texture-runtime.mjs?v=1';
+import {writeTerrainUV} from './terrain-textures.mjs?v=1';
 import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
-import { createArgentFountain } from './fountain.js?v=4';
+import { createArgentFountain } from './fountain.js?v=5';
 import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=10';
 import {initDesktopHud} from './desktop-hud.mjs?v=2';
@@ -17,25 +19,25 @@ import {createRefinementHeadgear} from './refinement-headgear.mjs?v=2';
 import {createRefinementSurfaces} from './refinement-surfaces.mjs?v=5';
 import {createRefinementEffects} from './refinement-effects.mjs?v=10';
 import { resolvePrimaryAction } from './context-action.mjs?v=4';
-import { createCombat, COMBAT } from './combat-state.mjs?v=9';
-import {createNavalCombat} from './naval-combat.mjs?v=2';
+import { createCombat, COMBAT } from './combat-state.mjs?v=10';
+import {createNavalCombat} from './naval-combat.mjs?v=3';
 import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel,boatMovementSpeed} from './boat-state.mjs?v=2';
 import {initBoatStatsUi} from './boat-stats-ui.mjs';
 import {monsterMapDots} from './monster-map.mjs';
 import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs?v=4';
 import {createNavalEffects} from './naval-effects.mjs';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
-import { createMonsterManager } from './monster-manager.mjs?v=7';
+import { createMonsterManager } from './monster-manager.mjs?v=8';
 import {initGmControls} from './gm-controls.mjs?v=2';
 import {createArenaWorld} from './arena-world.mjs';
 import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrator,createArenaRun,arenaWave,arenaDestination} from './arena-state.mjs';
 import {initArenaUi} from './arena-ui.mjs';
-import { createPetManager } from './pet-manager.mjs?v=1';
+import { createPetManager } from './pet-manager.mjs?v=2';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs?v=6';
+import { createNpcManager } from './npc-manager.mjs?v=7';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
-import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=2';
+import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=3';
 import { seatCenter, findSafeExit } from './pose-utils.mjs';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from './pose-studio-runtime.mjs?v=7';
 import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from './weapon-materials.mjs?v=3';
@@ -211,12 +213,14 @@ const scene=new THREE.Scene();
 const navalEffects=createNavalEffects({THREE,scene,mobile:()=>MOBILE_UI});
 const refinementEffects=createRefinementEffects({THREE,scene,viewportHeight:()=>renderer.domElement.height});
 const refinementSurfaces=createRefinementSurfaces({THREE});
-const refinementHeadgear=createRefinementHeadgear({THREE,loader:new GLTFLoader(),onBeforeChange:()=>refinementSurfaces.clear(),
-  onChange:()=>{if(avatar){refinementSurfaces.bind(avatar,weaponHolster,hero.character);refinementSurfaces.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));}},
-  onError:()=>toast('Chapéu indisponível. Tente selecionar novamente no editor.')});
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
+const textureRuntime=createTextureRuntime({THREE,renderer,mobile:MOBILE_UI});
+const modelLoader=textureRuntime.wrapLoader(new GLTFLoader());
+const refinementHeadgear=createRefinementHeadgear({THREE,loader:modelLoader,onBeforeChange:()=>refinementSurfaces.clear(),
+  onChange:()=>{if(avatar){refinementSurfaces.bind(avatar,weaponHolster,hero.character);refinementSurfaces.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));}},
+  onError:()=>toast('Chapéu indisponível. Tente selecionar novamente no editor.')});
 let maxPixelRatio=Math.min(window.devicePixelRatio || 1,BUDGET.pixelRatio);
 let renderPixelRatio=maxPixelRatio;
 renderer.setPixelRatio(renderPixelRatio);
@@ -228,7 +232,7 @@ const combatFeedback=createCombatFeedback({
   THREE,camera,canvas:renderer.domElement,
   playerPosition:()=>playerPos,mobile:()=>MOBILE_UI
 });
-const skillVisuals=createSkillVisuals({scene,camera,heightAt:(x,z)=>world?sampleHeight(x,z):0});
+const skillVisuals=createSkillVisuals({scene,camera,modelLoader,textureRuntime,heightAt:(x,z)=>world?sampleHeight(x,z):0});
 window.__skillVfxInfo=()=>skillVisuals.diagnostics();
 const hemi=new THREE.HemisphereLight(0xd5e4ee,0x4a5850,0.9);
 scene.add(hemi);
@@ -244,15 +248,6 @@ const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasic
 shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
 let terrainAtlas=null;
 const landMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
-const ATLAS_DIV=8, ATLAS_CELL=256, ATLAS_PAD=2;
-function writeAtlasUV(dest, offset, tileId, x, z){
-  // O client histórico repete a textura original a cada quatro tiles.
-  const id=(tileId>=0&&tileId<64)?tileId:0;
-  const px=ATLAS_PAD+(x%4)*((ATLAS_CELL-2*ATLAS_PAD)/4);
-  const py=ATLAS_PAD+(z%4)*((ATLAS_CELL-2*ATLAS_PAD)/4);
-  dest[offset]=(id%ATLAS_DIV+px/ATLAS_CELL)/ATLAS_DIV;
-  dest[offset+1]=1-(Math.floor(id/ATLAS_DIV)+py/ATLAS_CELL)/ATLAS_DIV;
-}
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
 // some quando o terreno está acima de −0,5 m, para a praia não ficar coberta.
 const seaMat=createSeaMaterial(THREE,marineDesign.water,{lightweight:MOBILE_UI});
@@ -370,10 +365,10 @@ function buildChunk(cx,cz){
     writeNormal(normals,j*12+9,gx+1,gz+1);
     for(let k=0;k<4;k++)for(let c=0;c<3;c++)colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);
     // 4 vertices: (x,z), (x+1,z), (x,z+1), (x+1,z+1)
-    writeAtlasUV(uvs,j*8,t?.tex??0,gx,gz);
-    writeAtlasUV(uvs,j*8+2,t?.tex??0,gx+1,gz);
-    writeAtlasUV(uvs,j*8+4,t?.tex??0,gx,gz+1);
-    writeAtlasUV(uvs,j*8+6,t?.tex??0,gx+1,gz+1);
+    writeTerrainUV(uvs,j*8,t?.tex??0,gx,gz,0,0);
+    writeTerrainUV(uvs,j*8+2,t?.tex??0,gx,gz,1,0);
+    writeTerrainUV(uvs,j*8+4,t?.tex??0,gx,gz,0,1);
+    writeTerrainUV(uvs,j*8+6,t?.tex??0,gx,gz,1,1);
     const offset=j*4;
     indices.set([offset,offset+2,offset+1,offset+1,offset+2,offset+3],ii);
     ii+=6;j++;
@@ -716,6 +711,7 @@ function teleport(x,z){
 function updateHUD(){
   const t=getTile(playerPos.x,playerPos.z);
   $('textureinfo').textContent=t?`Textura #${t.tex} · ${TERRAIN_LABELS[t.tex]||'sem nome'}`:'—';
+  $('texture-editor-link').href='./tests/texture-editor.html'+(t?.tex?'?terrain='+t.tex:'');
   $('coords').textContent=`${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
   $('height').textContent=`${playerPos.y.toFixed(2)} m`;
   $('texid').textContent=t?`#${t.tex}`:'fora';
@@ -761,7 +757,7 @@ async function loadBoat(){
     if(!response.ok)throw new Error('Catálogo de barcos indisponível.');
     boatCatalog=await response.json();
     const profile=boatCatalog.boats.find(b=>b.slug===marineDesign.boat.hull)||boatCatalog.boats[0];
-    const gltf=await new GLTFLoader().loadAsync(profile.model);
+    const gltf=await modelLoader.loadAsync(profile.model);
     boatProfile={...profile,speed:marineDesign.boat.speed};boat=gltf.scene;boatDecoration=decorateBoat(THREE,boat,marineDesign.boat);
     boat.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(boat).getSize(new THREE.Vector3());
     boatCameraSize={length:Math.max(size.x,size.z),height:size.y};boat.visible=false;scene.add(boat);
@@ -954,11 +950,11 @@ async function loadCharacter(id){
     const relative=hero.equipped?equipmentManifest?.sets?.[hero.job]?.models?.[id]:null;
     if(hero.equipped&&!relative)throw new Error('Conjunto indisponível para esse personagem.');
     const model=relative?'assets/equipment/'+relative:CHARACTERS[id].model;
-    const gltf=await new GLTFLoader().loadAsync(model+'?v=5');
+    const gltf=await modelLoader.loadAsync(model+'?v=5');
     let extraClips=[];
     if(await skillCatalogReady && SKILL_ANIMATION_ACTORS.includes(id)){
       try{
-        const extra=await new GLTFLoader().loadAsync('assets/skills/animations/'+id+'.glb?v=2');
+        const extra=await modelLoader.loadAsync('assets/skills/animations/'+id+'.glb?v=2');
         extraClips=extra.animations||[];
       }catch(err){console.info('Ações extras ausentes para '+id,err);}
     }
@@ -1846,6 +1842,7 @@ async function createEffects(){
         map.wrapS=map.wrapT=THREE.ClampToEdgeWrapping;
         map.magFilter=THREE.LinearFilter;
         map.minFilter=THREE.LinearMipmapLinearFilter;
+        await textureRuntime.applyImage(map,'assets/effects/textures/'+part.texture);
         map.needsUpdate=true;
         maps.set(part.texture,map);
       }
@@ -2108,18 +2105,20 @@ async function boot(){
   try{
     progress(9,isArenaMap?'Restaurando o terreno original da Arena...':'Carregando alturas e bloqueios de Garner...');
     world=await fetchMap();
-    if(!isArenaMap)createArgentFountain(THREE, scene, sampleHeight(2232, 2773)).then(fx=>{fountain=fx;}).catch(err=>console.error('Fonte de Argent:',err));
+    if(!isArenaMap)createArgentFountain(THREE, scene, sampleHeight(2232, 2773),textureRuntime).then(fx=>{fountain=fx;}).catch(err=>console.error('Fonte de Argent:',err));
     if(ORIGIN.x<world.ox || ORIGIN.x>=world.ox+world.w || ORIGIN.z<world.oz || ORIGIN.z>=world.oz+world.h){
       ORIGIN.x=world.ox+world.w/2; ORIGIN.z=world.oz+world.h/2;
     }
     progress(20,'Carregando atlas das texturas históricas...');
     try{
-      terrainAtlas=await new THREE.TextureLoader().loadAsync('assets/terrain_atlas.jpg');
+      await textureRuntime.ready;
+      terrainAtlas=await new THREE.TextureLoader().loadAsync(textureRuntime.atlasUrl);
       terrainAtlas.colorSpace=THREE.SRGBColorSpace;
       terrainAtlas.flipY=true; // PNG/JPEG possui origem superior; UVs usam origem inferior.
       terrainAtlas.magFilter=THREE.LinearFilter;
       terrainAtlas.minFilter=THREE.LinearMipmapLinearFilter;
       terrainAtlas.anisotropy=Math.min(MOBILE_UI?2:8,renderer.capabilities.getMaxAnisotropy());
+      await textureRuntime.bindTerrain(terrainAtlas,textureRuntime.atlasUrl);
       landMat.map=terrainAtlas;landMat.needsUpdate=true;
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
@@ -2151,7 +2150,7 @@ async function boot(){
     updateEquipmentUi();
     progress(78,'Carregando biblioteca compartilhada de casas, árvores e objetos...');
     try {
-      const sceneGltf=await new GLTFLoader().loadAsync(world.manifest.scenery);
+      const sceneGltf=await modelLoader.loadAsync(world.manifest.scenery);
       createSceneLibrary(sceneGltf);
       updateSceneInstances(true);
     } catch (err) {
@@ -2163,11 +2162,11 @@ async function boot(){
     // Carrega NPCs apenas quando manifest.json tiver GLBs convertidos e posições.
     // Sem NPCs, o módulo não cria nenhum mesh / draw call adicional.
     try{
-      if(!isArenaMap)npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight});
+      if(!isArenaMap)npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight,modelLoader});
       if(npcManager?.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
-      monsterManager=await createMonsterManager({scene,mobile:MOBILE_UI,
+      monsterManager=await createMonsterManager({scene,mobile:MOBILE_UI,modelLoader,
         heightAt:(x,z,m)=>m?.habitat==='sea'?SEA_LEVEL:sampleHeight(x,z),
         manifest:isArenaMap?arenaWave(arenaRun.floor):null,findSpawn:(x,z,type)=>{
         // Validar apenas a vizinhança carregada; nunca buscar terreno do mapa
@@ -2185,7 +2184,7 @@ async function boot(){
       if(isArenaMap)await monsterManager.prepare();
     }catch(error){if(isArenaMap)throw error;console.warn('Monstros indisponíveis:',error);toast('Não foi possível carregar os monstros de Garner.');}
     try{
-      petManager=await createPetManager({scene,camera});
+      petManager=await createPetManager({scene,camera,modelLoader,textureRuntime});
       petManager.update(0,playerPos);
     }catch(error){console.error('Mordo Jr indisponível:',error);toast('Não foi possível carregar o Mordo Jr. Recarregue para tentar novamente.');}
     progress(90,'Carregando ondas, fumaça e brilhos do mapa...');

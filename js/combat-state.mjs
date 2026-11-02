@@ -110,10 +110,12 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       onEvent({type:'healed',skill,amount:hero.hp-before});return;
     }
     if(skill.kind==='buff'){buffs[skill.status]=skill.duration;onEvent({type:'buff',skill});return;}
-    if(victim&&(!valid(victim,position)||distance(position,victim)>skill.range))return;
+    // Range is checked when casting starts. A moving target cannot undo an
+    // accepted attack; death, return and an obstructed impact still invalidate it.
+    if(victim&&(!visible(victim)||!canSee(position,victim)))return;
     const center=victim||position,values=stats();
     for(const m of monsters){
-      if(!visible(m)||!inSkillArea(m,position,center,skill)||!canSee(position,m))continue;
+      if(!visible(m)||m!==victim&&!inSkillArea(m,position,center,skill)||!canSee(position,m))continue;
       const damage=Math.max(1,Math.round((skill.magic?values.magic:values.attack)*skill.power-m.defense*.35));
       m.status??={};
       if(skill.stun)m.status.stun=skill.stun;
@@ -162,7 +164,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       }
       return;
     }
-    if(target&&!valid(target,position)){target=null;manual=false;manualActive=false;pending=null;if(intent?.target)intent=null;}
+    if(target&&!valid(target,position)){target=null;manual=false;manualActive=false;if(intent?.target)intent=null;}
     scan-=dt;
     if(auto&&scan<=0&&!pending&&!casting&&!intent){
       if(!manual&&!valid(target,position))target=nearestMonster(monsters,position,COMBAT.targetRadius,canSee);
@@ -188,7 +190,7 @@ export function createCombat({hero,monsters,canReach=()=>true,canSee=canReach,on
       pending.time-=dt;
       if(pending.time<=0){
         const victim=pending.monster;pending=null;
-        if(valid(victim,position)&&distance(position,victim)<=basicAttackRange(hero)){
+        if(visible(victim)&&canSee(position,victim)){
           const damage=rollDamage(stats(),victim,random),improved=trainAttack(hero);
           damageMonster(victim,damage,'hit');
           onEvent({type:'practice',improved});

@@ -21,7 +21,7 @@ function editorEdits(manifest){
 }
 const mobile=()=>matchMedia('(max-width: 770px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
+export function createSkillVisuals({scene,camera,heightAt,maxSprites=100,modelLoader=null,textureRuntime=null}){
   if(!camera)throw Error('Skill VFX: câmera necessária para billboards PAR/EFF');
   const textureLoader=new THREE.TextureLoader(),textureCache=new Map(),models=new Map();
   const active=[];
@@ -37,7 +37,7 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     fetch(resourcePath+'vfx-presets.json',{cache:'no-cache'})
       .then(r=>r.ok?r.json():null).then(data=>{if(data)basePresets=data;}).catch(()=>{})
   ]);
-  const modelReady=new GLTFLoader().loadAsync(resourcePath+'models.glb')
+  const modelReady=(modelLoader||new GLTFLoader()).loadAsync(resourcePath+'models.glb')
     .then(gltf=>{gltf.scene.traverse(mesh=>{
       if(!mesh.isMesh)return;
       const name=mesh.name.replace(/\.lgo$/i,'');
@@ -52,7 +52,9 @@ export function createSkillVisuals({scene,camera,heightAt,maxSprites=100}){
     if(!name)return null;
     let tex=textureCache.get(name);
     if(tex)return tex;
-    tex=textureLoader.load(resourcePath+'textures/'+encodeURIComponent(name),undefined,
+    tex=textureLoader.load(resourcePath+'textures/'+encodeURIComponent(name),texture=>{
+      void textureRuntime?.applyImage(texture,resourcePath+'textures/'+encodeURIComponent(name)).catch(error=>console.warn('Textura editada de skill:',error));
+    },
       undefined,err=>console.warn('Skill VFX: textura ausente',name,err));
     tex.colorSpace=THREE.SRGBColorSpace;tex.flipY=false;
     textureCache.set(name,tex);

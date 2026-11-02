@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../"><meta name="theme-color" content="#18201c"><title>TOP Web · Ateliê de Texturas</title>
+<link rel="stylesheet" href="tests/texture-editor.css?v=2">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head><body>
+<header><a class="brand" href="tests/texture-editor.html"><span>▧</span><div>Ateliê de <em>Texturas</em><small>TOP WEB · MATERIAIS DO MUNDO</small></div></a>
+<nav><a href="index.html" target="_blank" rel="noopener">Abrir jogo ↗</a><button id="export-pack">Exportar pacote</button><button id="import-pack">Importar pacote</button><button id="save" class="primary" disabled>Salvar no jogo</button></nav></header>
+<main>
+<aside class="library panel"><div class="eyebrow">01 / BIBLIOTECA</div><h1>Por dentro<br>do mundo.</h1><p class="muted">Inspecione os pixels originais e experimente uma nova aparência.</p>
+<label>Categoria<select id="category"><option>Terreno</option></select></label><label>Buscar textura<input id="search" type="search" placeholder="Grama, terra, nome do arquivo…"></label>
+<p id="count" class="muted">Carregando biblioteca…</p><label>Textura<select id="texture" size="11" aria-label="Texturas disponíveis"></select></label>
+<section class="diagnostic"><div class="eyebrow">RAIO X DA TEXTURA</div><h2 id="source-name">Escolha uma textura</h2><dl id="source-info"></dl><p id="diagnosis"></p><button id="download-original" disabled>Baixar original PNG</button></section>
+<details><summary>Sobre a qualidade do terreno</summary><p>As imagens históricas têm resolução pequena. A repetição a cada quatro metros e a filtragem à distância influenciam a nitidez. Corrigimos o esticamento no último quadrado de cada repetição.</p><p>O jogo agora pode usar um atlas sem a compressão JPEG adicional. Ampliar uma imagem não cria detalhes novos: importe uma textura melhor ou pinte os detalhes desejados.</p></details>
+</aside>
+<section id="workspace" class="workspace"><div class="workspace-heading"><div><div class="eyebrow">02 / MESA DE EDIÇÃO</div><h2 id="title">Carregando textura…</h2></div><span id="dimensions" class="badge">—</span></div>
+<div class="toolbar"><label>Comparar com<select id="baseline"><option value="source">Original do cliente</option><option value="jpeg">Atlas JPEG anterior</option></select></label><label>Zoom<select id="zoom"><option value="fit">Ajustar</option><option value="1">100%</option><option value="2">200%</option><option value="4">400%</option><option value="8">800%</option></select></label><label class="check"><input id="pixels" type="checkbox"> Ver pixels sem suavizar</label><button id="undo" disabled>Desfazer pintura</button><button id="redo" disabled>Refazer</button></div>
+<div class="comparison"><figure><figcaption><span>01</span><b id="baseline-label">ORIGINAL</b><small id="original-size"></small></figcaption><div class="image-window"><canvas id="before" aria-label="Textura original"></canvas></div></figure>
+<figure><figcaption><span>02</span> SUA EDIÇÃO <small id="edited-size"></small></figcaption><div class="image-window"><canvas id="after" aria-label="Textura editada; área de pintura"></canvas></div></figure></div>
+<div class="preview-heading"><h3>Como ela se repete no chão</h3><label>Repetições<select id="repeat"><option value="1">1 × 1</option><option value="3" selected>3 × 3</option><option value="5">5 × 5</option></select></label></div>
+<canvas id="ground" aria-label="Prévia 3D da textura repetida no chão"></canvas><p class="muted ground-note">Arraste para mudar o ângulo. Use pinça ou a roda para aproximar. Esta prévia isola a textura, sem a coloração e a iluminação do mapa.</p>
+<p id="status" role="status" aria-live="polite">Preparando a biblioteca…</p></section>
+<aside id="settings" class="settings panel"><fieldset id="edit-controls" disabled><div class="eyebrow">03 / AJUSTES</div><h2>Explore os detalhes.</h2>
+<label>Imagem para trabalhar<input id="upload" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="muted">Substitua por PNG, JPG ou WebP. A transparência é preservada.</p>
+<label>Resolução de saída<select id="resolution"><option value="0">Manter resolução</option><option value="128">128 px</option><option value="256">256 px</option><option value="512">512 px</option><option value="1024">1024 px</option><option value="2048">2048 px</option></select></label>
+<label>Brilho <output id="brightness-value">1.00</output><input id="brightness" type="range" min="0.2" max="2" value="1" step="0.01"></label>
+<label>Contraste <output id="contrast-value">1.00</output><input id="contrast" type="range" min="0" max="2" value="1" step="0.01"></label>
+<label>Saturação <output id="saturation-value">1.00</output><input id="saturation" type="range" min="0" max="2" value="1" step="0.01"></label>
+<label>Nitidez <output id="sharpness-value">0.00</output><input id="sharpness" type="range" min="0" max="2" value="0" step="0.05"></label>
+<div class="buttons"><button id="detail-preset">Realçar detalhes</button><button id="reset-adjustments">Zerar ajustes</button></div>
+<h3>Pintura</h3><label>Ferramenta<select id="tool"><option value="inspect">Inspecionar</option><option value="brush">Pincel</option><option value="erase">Apagar pintura</option></select></label>
+<div class="pair"><label>Cor<input id="paint-color" type="color" value="#679348"></label><label>Tamanho em pixels<input id="brush-size" type="number" min="1" max="120" value="12"></label></div>
+<label>Opacidade <output id="opacity-value">0.70</output><input id="opacity" type="range" min="0.05" max="1" value="0.7" step="0.05"></label><p class="muted">Pinte na imagem “Sua edição”. A borracha remove só a pintura, preservando a imagem de base.</p>
+<button id="download-edited">Baixar edição PNG</button><button id="restore" class="quiet">Restaurar textura original</button></fieldset>
+<section class="quality"><div class="eyebrow">04 / QUALIDADE NO JOGO</div><label>Atlas do terreno<select id="atlas-quality"><option value="lossless">Original sem perdas · WebP</option><option value="light">Download menor · JPEG anterior</option></select></label>
+<label>Detalhe do terreno<select id="cell-size"><option value="256">256 px por textura · padrão</option><option value="512">512 px por textura · para imagens HD</option></select></label><p id="memory" class="muted"></p>
+<label>Filtro de ampliação<select id="game-filter"><option value="smooth">Suave</option><option value="pixel">Pixels visíveis</option></select></label><label>Nitidez em ângulos inclinados<select id="anisotropy"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>16</option></select></label>
+<button id="save-quality">Aplicar qualidade no jogo</button><p class="muted">O celular usa no máximo 4× neste último ajuste. As alterações são locais e podem ser levadas para outro dispositivo com um pacote.</p></section>
+</aside></main><nav class="mobile-jumps" aria-label="Atalhos do editor"><a href="tests/texture-editor.html#category">Biblioteca</a><a href="tests/texture-editor.html#workspace">Ver prévia</a><a href="tests/texture-editor.html#settings">Ajustes</a><button id="save-mobile" class="primary">Salvar</button></nav><input id="pack-file" type="file" accept=".json,application/json" hidden>
+<script type="module" src="tests/texture-editor.mjs?v=4"></script></body></html>

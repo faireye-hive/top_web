@@ -4,9 +4,10 @@
 const TOWER = { x: 2232.0, z: 2773.2 };
 const RADIUS = 3.25;
 
-export async function createArgentFountain(THREE, scene, groundY) {
+export async function createArgentFountain(THREE, scene, groundY,textureRuntime=null) {
   const tex = await new THREE.TextureLoader().loadAsync('assets/effects/textures/eff0049.tga.png');
   tex.colorSpace = THREE.NoColorSpace;
+  await textureRuntime?.applyImage(tex,'assets/effects/textures/eff0049.tga.png');
   const group = new THREE.Group();
   group.name = 'Fonte de Argent';
   scene.add(group);

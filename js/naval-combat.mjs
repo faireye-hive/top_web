@@ -1,4 +1,4 @@
-import {rollDamage} from './combat-state.mjs?v=9';
+import {rollDamage} from './combat-state.mjs?v=10';
 import {gainBoatExperience} from './boat-state.mjs?v=2';
 import {initMonsterMotion,returnMonsterHome,updateMonsterMotion} from './monster-motion.mjs?v=2';
 
@@ -65,13 +65,13 @@ export function createNavalCombat({ship,monsters,canReach=()=>true,canSee=canRea
     }
     recovery=0;
     if(active){
-      if(target&&!valid(target,p)){target=null;manualActive=false;pending=null;}
+      if(target&&!valid(target,p)){target=null;manualActive=false;}
       if(auto&&!valid(target,p)&&!pending)target=choices(p)[0]||null;
       if(pending){
         pending.time-=dt;
         if(pending.time<=0){
           const victim=pending.monster;pending=null;
-          if(valid(victim,p)&&distance(victim,p)<=NAVAL.range){
+          if(ready(victim)&&canSee(p,victim)){
             const damage=rollDamage(ship.stats,victim,random);
             victim.hp=Math.max(0,victim.hp-damage);victim.engaged=true;quiet=0;
             onEvent({type:'hit',monster:victim,damage});

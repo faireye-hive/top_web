@@ -3,11 +3,11 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {FxPlayer,normalizeStore,d3d2gl} from './skill-fx-core.mjs?v=manual2';
 import {petPathPose,followPetPosition} from './pet-motion.mjs';
 
-export async function createPetManager({scene,camera,url='assets/pets/manifest.json'}){
+export async function createPetManager({scene,camera,url='assets/pets/manifest.json',modelLoader=null,textureRuntime=null}){
   const response=await fetch(url);
   if(!response.ok)throw Error(`Pet: HTTP ${response.status}`);
   const manifest=await response.json(),base=new URL('.',new URL(url,location.href));
-  const gltf=await new GLTFLoader().loadAsync(new URL(manifest.model,base).href),models=new Map();
+  const gltf=await (modelLoader||new GLTFLoader()).loadAsync(new URL(manifest.model,base).href),models=new Map();
   gltf.scene.traverse(mesh=>{if(mesh.isMesh)models.set(mesh.name.replace(/\.lgo$/i,''),mesh);});
   for(const resource of Object.values(manifest.resources))for(const part of resource.parts||[]){
     if(/\.lgo$/i.test(part.model)&&!models.has(part.model.replace(/\.lgo$/i,'')))
@@ -17,7 +17,8 @@ export async function createPetManager({scene,camera,url='assets/pets/manifest.j
   const names=new Set(Object.values(manifest.resources).flatMap(r=>(r.parts||[]).flatMap(p=>[p.texture,...p.frames])));
   await Promise.all([...names].filter(Boolean).map(async name=>{
     const texture=await loader.loadAsync(new URL('textures/'+name,base).href);
-    texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;textures.set(name,texture);
+    texture.colorSpace=THREE.SRGBColorSpace;texture.flipY=false;
+    await textureRuntime?.applyImage(texture,new URL('textures/'+name,base).href);textures.set(name,texture);
   }));
   // O pet é contínuo; as durações de emissão de skills não o fazem desaparecer.
   const paths=new Map();

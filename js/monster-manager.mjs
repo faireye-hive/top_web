@@ -3,11 +3,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import {createMonsterPopulation,monsterBudget} from './monster-population.mjs';
 
-export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true,url='assets/monsters/manifest.json?v=3',manifest:initialManifest=null}) {
+export async function createMonsterManager({scene,heightAt,findSpawn,mobile=true,url='assets/monsters/manifest.json?v=3',manifest:initialManifest=null,modelLoader=null}) {
   let manifest=initialManifest;
   if(!manifest){const response=await fetch(url);if(!response.ok)throw new Error(`Monstros: HTTP ${response.status}`);manifest=await response.json();}
   const group=new THREE.Group();group.name=manifest.streaming?'Monstros originais de Garner':'Horda da Torre';scene.add(group);
-  const loader=new GLTFLoader(),cache=new Map(),budget=monsterBudget(mobile);
+  const loader=modelLoader||new GLTFLoader(),cache=new Map(),budget=monsterBudget(mobile);
   let loading=0,syncTime=.5,simulationTime=0;
   function release(m){
     m.mixer?.stopAllAction();
