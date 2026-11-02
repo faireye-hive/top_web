@@ -21,6 +21,8 @@ on:
       - 'tests/marine-editor.*'
       - 'tests/refinement-editor.*'
       - 'assets/weapons/refinement-effects.json'
+      - 'assets/equipment/headgear/**'
+      - 'scripts/build_refinement_headgear.py'
       - 'scripts/build_garner_stream.py'
       - 'scripts/build_mobile_boat.py'
       - 'scripts/build_default_pet.py'
@@ -55,7 +57,7 @@ jobs:
       - name: Check combat and pet syntax
         run: node --check js/combat-state.mjs && node --check js/monster-motion.mjs && node --check js/monster-manager.mjs && node --check js/monster-population.mjs && node --check js/gm-controls.mjs && node --check js/pet-manager.mjs && node --check js/pet-motion.mjs
       - name: Check naval progression and refinement syntax
-        run: node --check js/boat-state.mjs && node --check js/naval-combat.mjs && node --check js/naval-effects.mjs && node --check js/refinement-rules.mjs && node --check js/refinement-effects.mjs && node --check js/refinement-profiles.mjs && node --check js/monster-map.mjs && node --check js/boat-stats-ui.mjs && node --check tests/refinement-editor.mjs
+        run: node --check js/boat-state.mjs && node --check js/naval-combat.mjs && node --check js/naval-effects.mjs && node --check js/refinement-rules.mjs && node --check js/refinement-effects.mjs && node --check js/refinement-geometry.mjs && node --check js/refinement-headgear.mjs && node --check js/refinement-surfaces.mjs && node --check js/refinement-profiles.mjs && node --check js/monster-map.mjs && node --check js/boat-stats-ui.mjs && node --check tests/refinement-editor.mjs
       - name: Check camera and inventory UI syntax
         run: node --check js/camera-distance.mjs && node --check js/inventory-view.mjs && node --check js/rpg-hud.mjs && node --check js/desktop-hud.mjs
       - name: Check tower syntax

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "itemId": 5488,
+  "name": "Royal Major Hat",
+  "models": [
+    {
+      "actor": "lance",
+      "model": "lance-royal-major.glb",
+      "source": "0000770001.lgo",
+      "bytes": 159356
+    },
+    {
+      "actor": "carsise",
+      "model": "carsise-royal-major.glb",
+      "source": "0001740001.lgo",
+      "bytes": 210328
+    },
+    {
+      "actor": "phyllis",
+      "model": "phyllis-royal-major.glb",
+      "source": "0002650001.lgo",
+      "bytes": 159836
+    },
+    {
+      "actor": "ami",
+      "model": "ami-royal-major.glb",
+      "source": "0003470001.lgo",
+      "bytes": 280088
+    }
+  ]
+}

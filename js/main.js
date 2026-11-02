@@ -13,14 +13,16 @@ import {heroInventory} from './inventory-view.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement } from './hero-state.mjs?v=6';
-import {createRefinementEffects} from './refinement-effects.mjs?v=2';
+import {createRefinementHeadgear} from './refinement-headgear.mjs?v=2';
+import {createRefinementSurfaces} from './refinement-surfaces.mjs?v=4';
+import {createRefinementEffects} from './refinement-effects.mjs?v=9';
 import { resolvePrimaryAction } from './context-action.mjs?v=4';
 import { createCombat, COMBAT } from './combat-state.mjs?v=9';
 import {createNavalCombat} from './naval-combat.mjs?v=2';
 import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel,boatMovementSpeed} from './boat-state.mjs?v=2';
 import {initBoatStatsUi} from './boat-stats-ui.mjs';
 import {monsterMapDots} from './monster-map.mjs';
-import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs';
+import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs?v=3';
 import {createNavalEffects} from './naval-effects.mjs';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
 import { createMonsterManager } from './monster-manager.mjs?v=7';
@@ -174,6 +176,8 @@ let refinementProfiles={version:1,profiles:{}},shippedRefinements={version:1,pro
 function refreshRefinementStyle(){
   refinementProfiles=readRefinementProfiles(globalThis.localStorage,shippedRefinements);
   refinementEffects.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));
+  refinementSurfaces.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));
+  void refinementHeadgear.setStyle(hero.equipped?refinementStyle(refinementProfiles,hero.character,hero.job):{hatModel:'none'});
 }
 fetch('assets/weapons/refinement-effects.json?v=1').then(r=>r.ok?r.json():shippedRefinements)
   .then(data=>{shippedRefinements=data;refreshRefinementStyle();}).catch(()=>refreshRefinementStyle());
@@ -205,7 +209,11 @@ const playerPos=new THREE.Vector3(ORIGIN.x,0,ORIGIN.z);
 const mobileCameraFocus=playerPos.clone();
 const scene=new THREE.Scene();
 const navalEffects=createNavalEffects({THREE,scene,mobile:()=>MOBILE_UI});
-const refinementEffects=createRefinementEffects({THREE,scene});
+const refinementEffects=createRefinementEffects({THREE,scene,viewportHeight:()=>renderer.domElement.height});
+const refinementSurfaces=createRefinementSurfaces({THREE});
+const refinementHeadgear=createRefinementHeadgear({THREE,loader:new GLTFLoader(),onBeforeChange:()=>refinementSurfaces.clear(),
+  onChange:()=>{if(avatar){refinementSurfaces.bind(avatar,weaponHolster,hero.character);refinementSurfaces.setStyle(refinementStyle(refinementProfiles,hero.character,hero.job));}},
+  onError:()=>toast('Chapéu indisponível. Tente selecionar novamente no editor.')});
 scene.background=new THREE.Color('#7ea8b6');
 scene.fog=new THREE.FogExp2(0x8aafba,.0042); // menos névoa desbotando o cenário
 const renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:!MOBILE_UI, powerPreference:'high-performance'});
@@ -929,6 +937,7 @@ function manualAttack(){
   return fired;
 }
 function clearAvatar(){
+  refinementSurfaces.clear();refinementHeadgear.clear();
   refinementEffects.setAvatar(null,null);
   weaponHolster?.dispose();weaponHolster=null;
   mixer?.stopAllAction();if(avatar)mixer?.uncacheRoot(avatar);
@@ -974,6 +983,7 @@ async function loadCharacter(id){
     if(hero.equipped)applyWeaponAppearance(THREE,avatar,id,hero.job,weaponMaterialProfiles);
     weaponHolster=hero.equipped?new WeaponHolster(THREE,avatar,hero.job,activePoseProfile,id):null;
     refinementEffects.setAvatar(avatar,weaponHolster);
+    refinementSurfaces.bind(avatar,weaponHolster,id);refinementHeadgear.bind(avatar,id);
     refreshRefinementStyle();
     skillVisuals.setActor(id,animations,{avatar,job:hero.job,equipped:hero.equipped});
     mixer=new THREE.AnimationMixer(avatar);
@@ -2409,6 +2419,7 @@ function update(dt){
   tickEffects(dt);
   skillVisuals.update(dt);updateStealth();
   if(avatar&&!sailing)updateWeaponMaterialGlow(avatar,performance.now());
+  refinementSurfaces.update(performance.now()/1000,currentRefinement(hero),{hidden:sailing,equipped:hero.equipped});
   refinementEffects.update(performance.now()/1000,camera,currentRefinement(hero),{mobile:MOBILE_UI,hidden:sailing||!hero.equipped});
   if(navigationGoal){
     const direction=guidanceDirection(playerPos,navigationGoal);

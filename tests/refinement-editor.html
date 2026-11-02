@@ -3,7 +3,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <base href="../"><meta name="theme-color" content="#180f18">
 <title>TOP Web · Estúdio de Refino</title>
-<link rel="stylesheet" href="tests/refinement-editor.css?v=1">
+<link rel="stylesheet" href="tests/refinement-editor.css?v=3">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head><body>
 <header class="top"><a class="brand" href="tests/refinement-editor.html"><span>✦</span><div><strong>Estúdio de <em>Refino</em></strong><small>TOP Web · energia das armas</small></div></a>
@@ -14,7 +14,7 @@
   <h2>01 · Equipamento</h2>
   <label>Personagem<select id="actor"><option value="lance">Lance</option><option value="phyllis">Phyllis</option><option value="carsise">Carsise</option><option value="ami">Ami</option></select></label>
   <label>Classe<select id="job"></select></label>
-  <p id="weapon-name" class="hint">Carregando espadas…</p>
+  <p id="weapon-name" class="hint">Carregando espadas…</p><p id="alignment-note" class="hint"></p>
   <h2>02 · Prévia</h2>
   <label class="level-label">Nível de refino <output id="level-value">+13</output><input id="level" type="range" min="0" max="13" step="1" value="13"></label>
   <p class="hint">+0 sem efeito. Os níveis seguintes aumentam brilho, faíscas e filamentos.</p>
@@ -34,11 +34,32 @@
  <aside class="panel settings"><fieldset id="style-controls" disabled>
   <h2>03 · Estilo do efeito</h2>
   <label>Começar com um estilo<select id="preset"><option value="custom" disabled>Personalizado / salvo</option><option value="original">Rubi e ouro</option><option value="flame">Chama carmesim</option><option value="ice">Aura glacial</option><option value="violet">Energia violeta</option></select></label>
-  <div class="color-row"><label>Cor da aura<input id="color" type="color" value="#ff1505"></label><label>Núcleo da lâmina<input id="coreColor" type="color" value="#ffcf80"></label><label>Filamentos<input id="strandColor" type="color" value="#ff6e21"></label></div>
+  <div class="color-row"><label>Cor da aura<input id="color" type="color" value="#ff1505"></label><label>Núcleo da lâmina<input id="coreColor" type="color" value="#ffcf80"></label></div>
+  <p class="hint">Largura, comprimento e ponta moldam o efeito de refino ao redor da arma.</p>
   <div id="sliders"></div>
+  <h2>04 · Filamentos de energia</h2>
+  <p class="hint">Aparecem a partir de +5. A espessura é visível no mobile e no desktop.</p>
+  <div id="strand-sliders"></div>
+  <label for="strandAura">Tipo de aura do filamento</label>
+  <select id="strandAura"><option value="none">Sem aura · fio luminoso</option><option value="soft">Aura suave</option><option value="flame">Chama em movimento</option><option value="electric">Energia elétrica</option></select>
+  <label for="strandColorMode">Cores dos filamentos</label>
+  <select id="strandColorMode"><option value="solid">Uma cor</option><option value="gradient">Degradê de duas cores</option><option value="alternate">Alternar cores por filamento</option><option value="rainbow">Arco-íris em movimento</option></select>
+  <div class="color-row"><label>Primeira cor<input id="strandColor" type="color" value="#ff6e21"></label><label>Segunda cor<input id="strandColor2" type="color" value="#ffe4a3"></label></div>
+  <h2>05 · Superfície da arma</h2>
+  <label class="check"><input id="weaponSurface" type="checkbox" checked> A textura acompanha o refino</label>
+  <p class="hint">A cor e o brilho percorrem a própria superfície da arma, mantendo os detalhes da textura.</p>
+  <div id="weapon-surface-sliders"></div>
+  <label for="surfacePattern">Movimento do brilho na textura</label><select id="surfacePattern"><option value="steady">Contínuo</option><option value="pulse">Pulsação</option><option value="flow">Ondas de energia</option></select>
+  <h2>06 · Brilho dos equipamentos</h2>
+  <p class="hint">Brilho da textura e aura externa são independentes em cada peça. Zero desliga o respectivo efeito. Este brilho é visual e não altera os atributos de combate.</p>
+  <label for="hatModel">Chapéu para testar</label><select id="hatModel"><option value="none">Sem chapéu</option><option value="royal-major">Royal Major Hat · original</option></select>
+  <div id="armor-surface-sliders"></div>
+  <p id="hat-availability" class="hint"></p>
+  <label class="check"><input id="armorFollow" type="checkbox" checked> Equipamentos acompanham a cor da aura</label>
+  <label>Cor própria dos equipamentos<input id="armorColor" type="color" value="#ffe4a3"></label>
   <button id="reset-style">Restaurar padrão deste perfil</button>
   <div class="note"><strong id="profile-label">Perfil Lance / Crusader</strong><p>Salvar aplica este estilo ao personagem e classe no jogo, neste navegador. Cada perfil é independente. Exporte o JSON para guardar ou publicar em outro dispositivo.</p></div>
  </fieldset></aside>
 </main>
-<script type="module" src="tests/refinement-editor.mjs?v=1"></script>
+<script type="module" src="tests/refinement-editor.mjs?v=9"></script>
 </body></html>
