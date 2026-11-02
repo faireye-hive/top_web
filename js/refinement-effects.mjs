@@ -1,4 +1,4 @@
-import {normalizeRefinementStyle,styledRefinementVisual,refinementBladeRange,refinementTipWidth,REFINEMENT_COLOR_MODES,REFINEMENT_STRAND_AURAS} from './refinement-profiles.mjs?v=3';
+import {normalizeRefinementStyle,styledRefinementVisual,refinementBladeRange,refinementTipWidth,REFINEMENT_COLOR_MODES,REFINEMENT_STRAND_AURAS} from './refinement-profiles.mjs?v=4';
 import {isWeaponAdditiveLayer} from './weapon-materials.mjs?v=3';
 import {refinementFollowsSurface,refinementSurfaceSamples,refinementSurfaceSpine} from './refinement-geometry.mjs?v=4';
 // Aura vermelha/dourada baseada na referência do jogador. A malha histórica,

@@ -14,15 +14,15 @@ import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCame
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
 import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement } from './hero-state.mjs?v=6';
 import {createRefinementHeadgear} from './refinement-headgear.mjs?v=2';
-import {createRefinementSurfaces} from './refinement-surfaces.mjs?v=4';
-import {createRefinementEffects} from './refinement-effects.mjs?v=9';
+import {createRefinementSurfaces} from './refinement-surfaces.mjs?v=5';
+import {createRefinementEffects} from './refinement-effects.mjs?v=10';
 import { resolvePrimaryAction } from './context-action.mjs?v=4';
 import { createCombat, COMBAT } from './combat-state.mjs?v=9';
 import {createNavalCombat} from './naval-combat.mjs?v=2';
 import {restoreBoat,serializeBoat,boatSnapshot,raiseBoatLevel,boatMovementSpeed} from './boat-state.mjs?v=2';
 import {initBoatStatsUi} from './boat-stats-ui.mjs';
 import {monsterMapDots} from './monster-map.mjs';
-import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs?v=3';
+import {readRefinementProfiles,refinementStyle,REFINEMENT_STORAGE_KEY} from './refinement-profiles.mjs?v=4';
 import {createNavalEffects} from './naval-effects.mjs';
 import {createCombatFeedback} from './combat-feedback.mjs?v=1';
 import { createMonsterManager } from './monster-manager.mjs?v=7';

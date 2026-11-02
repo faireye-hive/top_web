@@ -92,7 +92,7 @@ moldam a energia visual do refino, mantendo o encaixe no cabo:
   espessura da ponta escolhida. Também permite alargar a ponta.
 
 Em **Filamentos de energia**, ajuste quantidade, raio de órbita, largura
-(0,25× a 5×) e força da aura. Escolha fio sem aura, aura suave, chama ou energia
+(0,25× a 30×) e força da aura. Escolha fio sem aura, aura suave, chama ou energia
 elétrica. As chamas ondulam e a eletricidade muda o contorno em pequenos saltos.
 Escolha **Uma cor**, **Degradê de duas cores**, **Alternar cores por filamento**
 ou **Arco-íris em movimento**. As duas cores têm seletores independentes; no
