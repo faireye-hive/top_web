@@ -13,9 +13,11 @@ mostra o raio real; o diâmetro define a largura do traço. Use a roda para
 aproximar a câmera ao pintar detalhes pequenos.
 
 Escolha uma textura, ajuste a **Suavidade** da borda e a **Intensidade** e
-arraste no cenário. Em **Aplicar suavidade**, escolha os dois lados, mais
-na esquerda ou mais na direita. Os lados acompanham a direção em que você
-desenha. O outro lado permanece bem definido. Os ajustes valem para os
+arraste no cenário. Em **Aplicar suavidade**, escolha **Todos os lados**,
+**Sem suavidade**, **Em cima · fim do traço**, **Embaixo · início do traço**,
+**Mais na esquerda** ou **Mais na direita**. Cima e baixo correspondem às
+pontas final e inicial; esquerda e direita acompanham a direção do desenho.
+As bordas não selecionadas permanecem definidas. Os ajustes valem para os
 próximos traços. Caminhos oferecem atalhos de terra, areia e pedra e removem
 a grama no espaço pintado. Não alteram as colisões: desenhar sobre uma área
 bloqueada não a transforma em passagem. Os caminhos desenhados aparecem também no minimapa e no mapa completo, em cores simplificadas.

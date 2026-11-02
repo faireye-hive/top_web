@@ -47,3 +47,19 @@ test('drawn paths appear on both navigation map scales without drawing other bru
   assert.equal(drawTerrainPaths(ctx,strokes,{x:0,z:0,w:100,h:100},{width:200,height:200},()=>'#fff'),1);
   assert.deepEqual(calls,[[20,40],[40,60],'stroke']);
 });
+
+test('edge options persist all, none, left, right and either cap independently',async()=>{
+  const {strokeEdgeStyle}=await import('../js/terrain-strokes.mjs');
+  const expected={both:[.8,.8,0],none:[0,0,0],left:[.8,0,0],right:[0,.8,0],top:[0,0,1],bottom:[0,0,-1]};
+  for(const [edge,values] of Object.entries(expected)){
+    const stroke=path({edge}),saved=normalizeTerrainDesign({...design(),strokes:[stroke]}).strokes[0];
+    assert.equal(saved.edge,edge);const {left,right,cap}=strokeEdgeStyle(saved);assert.deepEqual([left,right,cap],values);
+  }
+});
+test('top and bottom coordinates identify the actual end and start caps after reversing the stroke',()=>{
+  for(const points of [[[10,10],[12,10]],[[12,10],[10,10]],[[10,10],[10,12]]]){
+    const vertices=[];strokeTriangles(path({points,radius:.3}),(a,b,c)=>vertices.push(a,b,c));
+    const first=points[0],last=points.at(-1),dx=last[0]-first[0],dz=last[1]-first[1];
+    for(const v of vertices){if(v[3]>.01)assert.ok((v[0]-last[0])*dx+(v[1]-last[1])*dz>=-1e-8);if(v[3]<-.01)assert.ok((v[0]-first[0])*dx+(v[1]-first[1])*dz<=1e-8);}
+  }
+});
