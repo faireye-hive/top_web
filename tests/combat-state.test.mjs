@@ -38,6 +38,25 @@ test('ataque aplica impacto após preparação, respeita cadência e alcance',()
   advance(combat,.4);assert.equal(events.filter(e=>e.type==='swing').length,1);
   const hp=enemies[0].hp;advance(combat,2,{x:10,z:0});assert.equal(enemies[0].hp,hp);
 });
+test('golpe iniciado acompanha alvo que sai do alcance; não inicia outro golpe à distância',()=>{
+  for(const x of [3,31]){
+    const enemy=monster({attack:0,immobile:true}),{combat,events,hero}=setup([enemy]),position={x:0,z:0};
+    combat.manualAttack(position);assert.equal(events.filter(e=>e.type==='swing').length,1);
+    enemy.x=x;advance(combat,2,position,{busy:true});
+    assert.ok(enemy.hp<60,'o movimento do alvo não apaga o impacto já aceito');
+    assert.equal(events.filter(e=>e.type==='hit').length,1);
+    assert.equal(events.filter(e=>e.type==='swing').length,1,'o próximo golpe continua exigindo alcance');
+    assert.equal(hero.practice.unarmed.uses,1);
+  }
+});
+test('alvo morto ou em retorno não recebe golpe pendente nem concede prática ou XP',()=>{
+  for(const state of ['dead','return']){
+    const enemy=monster({attack:0,immobile:true}),{combat,events,hero}=setup([enemy]);
+    combat.manualAttack({x:0,z:0});if(state==='dead'){enemy.hp=0;enemy.respawnIn=10;}else enemy.motion='return';
+    advance(combat,1,{x:0,z:0},{busy:true});
+    assert.equal(events.filter(e=>e.type==='hit').length,0);assert.equal(hero.xp,0);assert.equal(hero.practice.unarmed.uses,0);
+  }
+});
 test('mover ou abrir menu cancela o golpe pendente e o modo auto',()=>{
   for(const options of [{moving:true},{paused:true}]) {
     const {combat,enemies}=setup();combat.toggle();combat.update(.01,{x:0,z:0});

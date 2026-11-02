@@ -33,6 +33,12 @@ test('canhão seleciona somente criaturas marinhas, exige alcance e aplica dano 
   other.combat.manualAttack({x:0,z:0});assert.equal(other.combat.approach.range,NAVAL.range);
   advance(other.combat,3);assert.equal(far.hp,650);
 });
+test('canhão já disparado mantém impacto quando a criatura sai do alcance',()=>{
+  const enemy=sea({attack:0,immobile:true}),{combat,events}=setup([enemy]);
+  combat.manualAttack({x:0,z:0});enemy.x=55;
+  advance(combat,1);assert.ok(enemy.hp<650);
+  assert.equal(events.filter(e=>e.type==='swing').length,1);assert.equal(events.filter(e=>e.type==='hit').length,1);
+});
 test('manual para após um abate, Auto continua e a XP vai ao barco',()=>{
   for(const auto of [false,true]){
     const first=sea({hp:1,xp:160,attack:0}),second=sea({id:2,x:13,hp:1,attack:0}),state=setup([first,second]);

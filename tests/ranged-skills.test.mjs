@@ -32,6 +32,17 @@ test('projétil a longa distância não é substituído por ataque mais rápido'
   hero.stats.attackSpeed=5;
   combat.toggle();advance(combat,1.2);assert.ok(enemies[0].hp<10000);
 });
+test('tiro e habilidade já iniciados acertam alvo que se afasta durante animação e voo',()=>{
+  for(const action of ['basic','targeted-skill','line-skill']){
+    const m=enemy(action==='line-skill'?8:12);m.immobile=true;
+    const {combat,events}=setup(action==='line-skill'?'crusader':'hunter',[m]);
+    if(action==='basic')combat.manualAttack(position);
+    else{combat.selectTarget(m,position);combat.queueSkill({id:action==='line-skill'?81:90},position);combat.update(.01,position);}
+    assert.ok(events.some(e=>e.type===(action==='basic'?'swing':'cast')));
+    m.x=32;advance(combat,1.5,position,{busy:true});
+    assert.ok(m.hp<10000,action);assert.equal(events.filter(e=>e.type==='hit'||e.type==='skillhit').length,1);
+  }
+});
 test('trocar alvo percorre visíveis por distância e mantém seleção explícita',()=>{
   const a=enemy(12),b=enemy(8),wall=enemy(6),far=enemy(31);
   const {combat}=setup('hunter',[a,b,wall,far],(p,m)=>m!==wall);

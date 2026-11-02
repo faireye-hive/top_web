@@ -5,7 +5,7 @@ import {NPC_NAMEPLATE_LIMITS,visibleNpcNameCandidates,
 
 // Loader opcional: sem NPCs em manifest.json, não carrega modelos nem cria draw calls.
 // Modelos são GLBs com texturas embutidas; tipos repetidos compartilham GPU assets.
-export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json?v=2'}) {
+export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json?v=2',modelLoader=null}) {
   const res=await fetch(url);
   if(!res.ok)throw new Error('Manifesto de NPCs não encontrado: '+url);
   const manifest=await res.json();
@@ -25,7 +25,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
   }
   const projected=new THREE.Vector3();
   const bbox=new THREE.Box3();
-  const loader=new (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader();
+  const loader=modelLoader||new (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader();
   const glbCache=new Map();
   // 404/rede falha uma vez por GLB e não é repetido a cada atualização do jogo.
   const failedModels=new Set();

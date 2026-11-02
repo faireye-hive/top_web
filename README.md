@@ -1,5 +1,17 @@
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 
+**Ateliê de Texturas:** em **Menu → Editor de texturas do mundo**, inspecione
+1.039 imagens de terreno, personagens, equipamentos, monstros, NPCs e cenário.
+Compare o original e a edição, pinte, ajuste cores/nitidez, importe imagens e
+salve para aplicar no jogo aberto. Há restauração do original e exportação de
+pacotes. Corrigimos também o esticamento na repetição do terreno e recuperamos
+um atlas sem compressão JPEG adicional. [Guia e diagnóstico](docs/EDITOR_DE_TEXTURAS.md).
+
+**Impacto dos ataques:** sair do alcance depois do início de um golpe, disparo,
+habilidade com alvo ou tiro de canhão já aceito não cancela seu impacto. O
+alcance continua sendo exigido para iniciar o próximo ataque; morte, retorno
+do monstro, interrupção do jogador e obstáculos mantêm suas regras.
+
 **Mapa, barco e Estúdio de Refino:** os mapas mostram pontos vermelhos nas áreas
 originais de monstros, em terra e mar. Veja os stats em **Menu → Atributos do
 barco** ou toque no nome do barco durante a navegação. Cada nível aumenta HP,
