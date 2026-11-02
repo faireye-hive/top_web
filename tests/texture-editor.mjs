@@ -32,7 +32,7 @@ function diagnostic(){
     ['Edição salva',saved.has(selected.id)?'Sim, neste navegador':'Não']
   ]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=title;dd.textContent=text;$('source-info').append(dt,dd);}
   $('diagnosis').textContent=selected.id.startsWith('terrain:')?
-    `A imagem original tem ${selected.width} px de largura. No atlas padrão, cada repetição cobre 4 m com 252 pixels úteis (63 px/m). O modo HD preserva até 504 pixels úteis de uma imagem nova. O arquivo JPEG anterior acrescentava compressão. A repetição distorcida foi corrigida. As bordas quadradas entre grama e terra dependem também da mistura de camadas do mapa.`:
+    `A imagem original tem ${selected.width} px de largura. No atlas padrão, cada repetição cobre 4 m com 252 pixels úteis (63 px/m). O modo HD preserva até 504 pixels úteis de uma imagem nova. O arquivo JPEG anterior acrescentava compressão. A repetição distorcida foi corrigida. Use Menu → Editor de terreno e vegetação para suavizar as bordas entre solos, pintar o mapa e plantar grama alta.`:
     `Esta imagem ${Math.max(selected.width,selected.height)<=256?'tem resolução pequena':'é compartilhada pelo material do modelo'}. Aumentar a resolução sem acrescentar detalhes apenas amplia os pixels. Importe uma imagem melhor ou use o pincel; a aplicação preserva os encaixes da textura e a transparência.`;
 }
 function resetAdjustments(){for(const id of ['brightness','contrast','saturation'])$(id).value='1';$('sharpness').value='0';}

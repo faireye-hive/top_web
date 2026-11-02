@@ -21,7 +21,7 @@ function fixture(){
   const state={
     MOBILE_UI:true,sailing:false,boardingBoat:false,mobileAutoModeEnabled:false,attackPlaying:false,playClip(){return true},
     changingCharacter:false,changingLoadout:false,skillAnimationLocked:false,
-    arenaUi:null,arenaTransition:false,
+    arenaUi:null,arenaTransition:false,terrainEditor:null,
     hero:{hp:100},rpgHud:{isOpen:()=>false},seated:null,
     keys:new Set(['KeyW']),touchMove:{forward:1,sideways:0},
     moverTarget:{},pendingPose:{},waypoint:{hide(){}},
@@ -105,4 +105,10 @@ test('HUD reflete modo pequeno e execução apenas no botão principal',()=>{
   assert.match(html,/main\.js\?v=\d+/);
   assert.match(html,/mobile-landscape\.css\?v=5/);
   assert.match(css,/#mobile-attack\.auto-mode-selected/);
+});
+
+test('editor de terreno suspende a ação principal durante a pintura',()=>{
+  const {state}=fixture();state.terrainEditor={isOpen:()=>true};
+  state.primaryContext=()=>{throw Error('Editor não deve iniciar interação ou combate');};
+  assert.equal(invoke(primary,'primaryAction',state),undefined);
 });

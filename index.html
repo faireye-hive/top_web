@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="./npc-nameplates.css?v=1">
 <link rel="stylesheet" href="./gm-controls.css?v=1">
 <link rel="stylesheet" href="./naval-combat.css?v=2">
+<link rel="stylesheet" href="./terrain-editor.css?v=1">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./pwa/top-icon.svg" type="image/svg+xml">
@@ -128,6 +129,7 @@ font:600 12px system-ui,sans-serif}
   <a href="./tests/pose-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#a6f6e3;text-decoration:none;font-size:12px">⚔ Editor de poses e armas ↗</a>
   <a href="./tests/refinement-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#ffbc83;text-decoration:none;font-size:12px">🔥 Editor de efeitos de refino ↗</a>
   <a href="./tests/weapon-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#93ddff;text-decoration:none;font-size:12px">🗡 Editor de texturas e materiais das armas ↗</a>
+  <a id="terrain-editor-link" href="?terrainEditor=1" style="display:block;margin-bottom:12px;color:#c8e295;text-decoration:none;font-size:12px">❧ Editor de terreno e vegetação</a>
   <a id="texture-editor-link" href="./tests/texture-editor.html" target="_blank" rel="noopener" style="display:block;margin-bottom:12px;color:#b7d69d;text-decoration:none;font-size:12px">▧ Editor de texturas do mundo ↗</a>
   <div class="section">RENDERIZAÇÃO</div>
   <div class="col">
@@ -408,7 +410,7 @@ font:600 12px system-ui,sans-serif}
  <p class="arena-note">Ao subir: recupera 20% do HP e 30% da mana. Melhorias duram até o fim da tentativa.</p>
  <button type="button" id="arena-choice-leave">Encerrar tentativa e voltar a Argent</button>
 </dialog>
-<script type="module" src="./js/main.js?v=82"></script>
+<script type="module" src="./js/main.js?v=83"></script>
 <div id="pwa-install-banner" hidden role="region" aria-label="Instalar TOP Web">
   <button type="button" id="pwa-install-button">＋ Instalar jogo</button>
   <span id="pwa-install-tip" aria-live="polite"></span>
