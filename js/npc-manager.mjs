@@ -5,19 +5,19 @@ import {NPC_NAMEPLATE_LIMITS,visibleNpcNameCandidates,
 
 // Loader opcional: sem NPCs em manifest.json, não carrega modelos nem cria draw calls.
 // Modelos são GLBs com texturas embutidas; tipos repetidos compartilham GPU assets.
-export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json?v=2',modelLoader=null}) {
-  const res=await fetch(url);
-  if(!res.ok)throw new Error('Manifesto de NPCs não encontrado: '+url);
-  const manifest=await res.json();
+export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/manifest.json?v=3',modelLoader=null,manifest:initialManifest=null}) {
+  let manifest=initialManifest;
+  if(!manifest){const res=await fetch(url);if(!res.ok)throw new Error('Manifesto de NPCs não encontrado: '+url);manifest=await res.json();}
   if(!manifest||!Array.isArray(manifest.npcs))throw new Error('Manifesto de NPCs inválido');
-  const records=manifest.npcs.filter(n=>n&&typeof n.model==='string'&&n.model.startsWith('models/')&&
+  const makeRecords=npcs=>npcs.filter(n=>n&&typeof n.model==='string'&&n.model.startsWith('models/')&&
     Number.isFinite(n.x)&&Number.isFinite(n.z)).map(n=>({
       ...n,visible:false,object:null,mixer:null,label:null,anchor:null,pending:false
     }));
+  let records=makeRecords(manifest.npcs);
   const group=new THREE.Group();group.name='NPCs de Garner';scene.add(group);
   // One DOM layer for all nearby labels, zero additional WebGL draws.
   // pointer-events:none ensures NPC interaction and camera controls still work.
-  const nameLayer=records.length?document.createElement('div'):null;
+  const nameLayer=document.createElement('div');
   if(nameLayer){
     nameLayer.id='npc-nameplates';
     nameLayer.setAttribute('aria-hidden','true');
@@ -52,7 +52,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
     try{
       const gltf=await loadModel(npc.model);
       if(!gltf){npc.failed=true;return;}
-      if(disposed)return;
+      if(disposed||!records.includes(npc))return;
       const object=cloneSkeleton(gltf.scene);
       object.name='NPC · '+npc.name;
       object.position.set(npc.x,heightAt(npc.x,npc.z),npc.z);
@@ -73,6 +73,7 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
         label.textContent=npc.name; // textContent, never HTML from manifest.
         label.hidden=true;
         label.dataset.serial=String(npc.serial??npc.characterId??'');
+        label.dataset.npcId=npc.id;
         npc.label=label;nameLayer.append(label);
       }
       const idle=gltf.animations.find(a=>/parado|idle/i.test(a.name));
@@ -138,9 +139,22 @@ export async function createNpcManager({THREE,scene,heightAt,url='assets/npcs/ma
     return best;
   }
   function dispose(){
-    disposed=true;for(const npc of records)if(npc.object)group.remove(npc.object);
+    disposed=true;clearRecords();
     nameLayer?.remove();
     scene.remove(group);
   }
-  return {update,updateLabels,nearest,dispose,count:records.length};
+  function clearRecords(){
+    for(const npc of records){
+      npc.mixer?.stopAllAction();
+      if(npc.object){
+        npc.mixer?.uncacheRoot(npc.object);group.remove(npc.object);
+        const skeletons=new Set();npc.object.traverse(o=>{if(o.skeleton)skeletons.add(o.skeleton);});
+        for(const skeleton of skeletons)skeleton.dispose();
+      }
+    }
+    nameLayer.replaceChildren();
+  }
+  return {update,updateLabels,nearest,dispose,get count(){return records.length;},setRecords(npcs){
+    clearRecords();records=makeRecords(npcs);lastUpdate=1;
+  }};
 }

@@ -17,7 +17,8 @@
       "z": 2776,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-0"
     },
     {
       "serial": 2,
@@ -27,7 +28,8 @@
       "z": 2706.12,
       "yaw": 114,
       "region": "Argent City",
-      "model": "models/npc_0020.glb"
+      "model": "models/npc_0020.glb",
+      "id": "garner-npc-2"
     },
     {
       "serial": 5,
@@ -37,7 +39,8 @@
       "z": 2769.25,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0018.glb"
+      "model": "models/npc_0018.glb",
+      "id": "garner-npc-5"
     },
     {
       "serial": 7,
@@ -47,7 +50,8 @@
       "z": 2821.94,
       "yaw": 234,
       "region": "Argent City",
-      "model": "models/npc_0017.glb"
+      "model": "models/npc_0017.glb",
+      "id": "garner-npc-7"
     },
     {
       "serial": 8,
@@ -57,7 +61,8 @@
       "z": 2770.25,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0017.glb"
+      "model": "models/npc_0017.glb",
+      "id": "garner-npc-8"
     },
     {
       "serial": 10,
@@ -67,7 +72,8 @@
       "z": 2781.25,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0013.glb"
+      "model": "models/npc_0013.glb",
+      "id": "garner-npc-10"
     },
     {
       "serial": 18,
@@ -77,7 +83,8 @@
       "z": 2729,
       "yaw": 175,
       "region": "Argent City",
-      "model": "models/npc_0017.glb"
+      "model": "models/npc_0017.glb",
+      "id": "garner-npc-18"
     },
     {
       "serial": 19,
@@ -87,7 +94,8 @@
       "z": 2704.75,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0018.glb"
+      "model": "models/npc_0018.glb",
+      "id": "garner-npc-19"
     },
     {
       "serial": 21,
@@ -97,7 +105,8 @@
       "z": 2785.25,
       "yaw": 180,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-21"
     },
     {
       "serial": 22,
@@ -107,7 +116,8 @@
       "z": 2887.5,
       "yaw": 264,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-22"
     },
     {
       "serial": 52,
@@ -117,7 +127,8 @@
       "z": 2893.4,
       "yaw": 264,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-52"
     },
     {
       "serial": 122,
@@ -127,7 +138,8 @@
       "z": 2853.75,
       "yaw": 269,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-122"
     },
     {
       "serial": 138,
@@ -137,7 +149,8 @@
       "z": 2715.19,
       "yaw": 264,
       "region": "Argent City",
-      "model": "models/npc_0011.glb"
+      "model": "models/npc_0011.glb",
+      "id": "garner-npc-138"
     },
     {
       "serial": 143,
@@ -147,7 +160,8 @@
       "z": 2792,
       "yaw": 351,
       "region": "Argent City",
-      "model": "models/npc_0018.glb"
+      "model": "models/npc_0018.glb",
+      "id": "garner-npc-143"
     }
   ]
 }

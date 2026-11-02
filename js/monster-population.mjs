@@ -30,7 +30,7 @@ export function createMonsterPopulation({manifest,findSpawn,budget=monsterBudget
     if(!free)return null; // Reavaliar depois de carregar terreno/colisões.
     const patrol=(spawn.route||[[free[0],free[1]],[free[0]+1.5,free[1]],[free[0]+1.5,free[1]+1.5],[free[0],free[1]+1.5]])
       .flatMap(point=>{const p=findSpawn(point[0],point[1],type);return p?[{x:p[0],z:p[1]}]:[];});
-    return {...type,...spawn,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
+    return {...type,...spawn,speciesId:spawn.species,x:free[0],z:free[1],home:{x:free[0],z:free[1]},patrol,hp:type.maxHp,
       ready:false,object:null,mixer:null,pending:false,failed:false,action:null,loadVersion:0};
   }
   function deactivate(m){

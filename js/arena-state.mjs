@@ -5,7 +5,7 @@ const attributes=['strength','intelligence','constitution','dexterity','agility'
 const primary={crusader:'strength',champion:'strength',sharpshooter:'dexterity',hunter:'dexterity',cleric:'intelligence','seal-master':'intelligence',voyager:'intelligence'};
 const labels={strength:'Força',intelligence:'Inteligência',constitution:'Constituição',dexterity:'Destreza',agility:'Agilidade'};
 const details={strength:'+6 ataque com espada ou espadão',intelligence:'+24 mana e +6 poder mágico',constitution:'+36 HP máximo e +3 defesa',dexterity:'+9 acerto; +6 ataque com arco ou tiro',agility:'+6 esquiva e velocidade de ataque'};
-export function isArenaAdministrator(npc){return npc?.serial===52||npc?.name==='Arena Administrator';}
+export function isArenaAdministrator(npc){return npc?.id?npc.id==='garner-npc-52':npc?.serial===52||npc?.name==='Arena Administrator';}
 export function arenaChoices(floor,job){
   const main=primary[job]||'strength',utilities=['agility','intelligence','dexterity'].filter(key=>key!==main);
   return [main,'constitution',utilities[(floor-1)%utilities.length]].map(attribute=>({attribute,label:labels[attribute],amount:3,detail:details[attribute]}));

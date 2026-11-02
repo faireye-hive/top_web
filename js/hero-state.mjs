@@ -65,6 +65,7 @@ export function gainExperience(hero,amount){
   if(!Number.isFinite(amount)||amount<0)return 0;
   hero.xp+=amount;let levels=0;
   while(hero.level<1000&&hero.xp>=hero.level*40){hero.xp-=hero.level*40;hero.level++;levels++;}
+  if(hero.level===1000)hero.xp=Math.min(hero.xp,hero.level*40-1);
   if(levels)refreshHero(hero,{heal:true});return levels;
 }
 export function heroSnapshot(hero){

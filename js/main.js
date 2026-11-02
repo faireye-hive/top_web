@@ -18,9 +18,13 @@ import { initMobileControls } from './mobile-controls.js?v=2';
 import { initRpgHud } from './rpg-hud.mjs?v=10';
 import {initDesktopHud} from './desktop-hud.mjs?v=2';
 import {heroInventory} from './inventory-view.mjs';
+import {loadContent,ADVENTURE_SAVE_KEY} from './content-data.mjs';
+import {createAdventure} from './adventure-state.mjs';
+import {createAdventureUi} from './adventure-ui.mjs';
+import {createContentEditor} from './content-editor.mjs';
 import {landCameraDistance,cameraProximityDistance,cameraProximityValue,landCameraPose,cameraFramingValue,cameraFramingOffset} from './camera-distance.mjs?v=2';
 import { loadMobileSkillCatalog, SKILL_ANIMATION_ACTORS, resolveSkillClip, getActionId } from './class-skills.mjs?v=3';
-import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement } from './hero-state.mjs?v=6';
+import { CHARACTERS, CLASSES, restoreHero, heroSnapshot, selectClass, refreshHero, serializeHero,currentRefinement,setRefinement,gainExperience } from './hero-state.mjs?v=6';
 import {createRefinementHeadgear} from './refinement-headgear.mjs?v=2';
 import {createRefinementSurfaces} from './refinement-surfaces.mjs?v=5';
 import {createRefinementEffects} from './refinement-effects.mjs?v=10';
@@ -40,7 +44,7 @@ import {ARENA_RETURN,ARENA_SPAWN,ARENA_RUN_KEY,ARENA_HERO_KEY,isArenaAdministrat
 import {initArenaUi} from './arena-ui.mjs';
 import { createPetManager } from './pet-manager.mjs?v=2';
 import { calculateMovementSpeed, WALK_SPEED } from './movement-speed.mjs';
-import { createNpcManager } from './npc-manager.mjs?v=7';
+import { createNpcManager } from './npc-manager.mjs?v=8';
 import { followAngle, cameraLiftAtDistance, cameraFovAtDistance, gentleOrbit, dragOrbitDelta, movementFromYaw, subtleFollowTarget } from './camera-behavior.mjs?v=4';
 import { basicAttackRange, skillWithRules } from './skill-rules.mjs';
 import { createSkillVisuals } from './skill-visuals-runtime.mjs?v=3';
@@ -161,6 +165,13 @@ let headBone=null, tailBone=null,cameraHeadHeight=1.55;
 let attackPlaying=false, testing=false;
 let rpgHud=null, desktopHud=null, gmControls=null, npcManager=null, monsterManager=null, petManager=null, combat=null, changingCharacter=false;
 let landCombat=null,navalCombat=null;
+let contentData=null,adventure=null,adventureUi=null,contentEditor=null;
+const contentBlocked=()=>!!(adventureUi?.isOpen()||contentEditor?.isOpen());
+const contentReady=isArenaMap?Promise.resolve(null):loadContent().catch(error=>{
+  console.error('Conteúdo de aventuras indisponível:',error);
+  $('content-load-status').hidden=false;$('content-load-status').textContent='Missões e editor indisponíveis: '+error.message;
+  return null;
+});
 let mobileSkillCatalog=null;
 let skillActionQueue=[];
 let skillAnimationLocked=false; // só libera no mixer.finished do último clipe GLB
@@ -594,7 +605,7 @@ async function selectMapDestination(point){
   drawMinimap();
 }
 function openWorldMap(){
-  if(!world||!seaTravelReady||mapIsOpen())return;
+  if(!world||!seaTravelReady||mapIsOpen()||contentBlocked())return;
   if(skillAnimationLocked){toast('Aguarde a skill terminar para abrir o mapa.');return;}
   stopCombat();keys.clear();touchMove.forward=0;touchMove.sideways=0;
   document.dispatchEvent(new Event('topweb:menu-open'));rpgHud?.dismiss();
@@ -844,7 +855,7 @@ function primaryContext(){
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
-  if(terrainEditor?.isOpen()||changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
+  if(contentBlocked()||terrainEditor?.isOpen()||changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
   const context=primaryContext();
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='attack'||context.type==='naval-attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
@@ -852,14 +863,16 @@ function primaryAction(){
 }
 function tryPose(){
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
+  if(contentBlocked())return false;
   stopCombat();
   const context=primaryContext();
   if(context.type==='recovering')return false;
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='stand'){if(standUp())toast('Em pé.');return true;}
   if(context.type==='npc'){
-    if(isArenaAdministrator(context.npc))arenaUi?.openEntry();
-    else toast(context.npc.name+' · diálogo em desenvolvimento');
+    if(adventureUi)adventureUi.show(context.npc);
+    else if(isArenaAdministrator(context.npc))arenaUi?.openEntry();
+    else toast('Conteúdo de diálogos indisponível. Confira o aviso no Menu.');
     return true;
   }
   if(context.type==='pose'){
@@ -938,6 +951,7 @@ function selectMobileAutoMode(){
   return mobileAutoModeEnabled;
 }
 function toggleAutoAttack(){
+  if(contentBlocked())return false;
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   if(boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0||sailing&&ship.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
@@ -954,6 +968,7 @@ function toggleAutoAttack(){
   return true;
 }
 function manualAttack(){
+  if(contentBlocked())return false;
   if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
   if(boardingBoat||!combat||changingCharacter||changingLoadout||rpgHud?.isOpen()||hero.hp<=0||sailing&&ship.hp<=0)return false;
   if(seated){toast('Levante antes de combater.');return false;}
@@ -1114,7 +1129,7 @@ function combatEvent(event){
     extendCityCombatPose();
     if(feedback)feedback.textContent=event.damage?`Você recebeu ${event.damage} de dano.`:'Você esquivou.';
   }
-  if(event.type==='kill'&&!isArenaMap)toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}`);
+  if(event.type==='kill'&&!isArenaMap)toast(`${event.monster.name} derrotado · +${event.monster.xp} XP${event.levels?' · Nível '+hero.level+'!':''}${adventureLoot(event.monster)}`);
   if(event.type==='defeat'){
     skillAnimationLocked=false;skillActionQueue=[];attackPlaying=false;cityCombatUntil=0;playClip('Parado');
     if(isArenaMap){leaveArena(true);return;}
@@ -1129,7 +1144,7 @@ function navalEvent(event){
     navalEffects.fire(event,playerPos);
     if(event.type==='swing'&&boat)boat.rotation.y=Math.atan2(playerPos.x-event.monster.x,playerPos.z-event.monster.z);
   }
-  if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP do barco${event.levels?' · Barco nível '+ship.level+'!':''}`);
+  if(event.type==='kill')toast(`${event.monster.name} derrotado · +${event.monster.xp} XP do barco${event.levels?' · Barco nível '+ship.level+'!':''}${adventureLoot(event.monster)}`);
   if(event.type==='hurt')$('combat-feedback').textContent=event.damage?`Casco atingido: −${event.damage} HP.`:'O barco esquivou.';
   if(event.type==='hit')$('combat-feedback').textContent=event.damage?`Canhão: −${event.damage} HP em ${event.monster.name}.`:'O alvo esquivou.';
   if(event.type==='defeat'){navalEffects.update(0,{active:false});toast('Barco afundado. Resgate no porto em 5 segundos…');}
@@ -1226,7 +1241,7 @@ function updateCombatHud(){
     if(arenaRun&&monsterManager)arenaUi?.update(arenaRun,monsterManager.monsters);
   }
   desktopHud?.update({stats:sailing?boatSnapshot(ship,boatProfile?.name):snapshot,position:playerPos,context,target,auto:combat?.auto,sailing,
-    blocked:boardingBoat||defeated||changingCharacter||changingLoadout||skillAnimationLocked||!!arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'),
+    blocked:contentBlocked()||boardingBoat||defeated||changingCharacter||changingLoadout||skillAnimationLocked||!!arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'),
     character:hero.character,map:isArenaMap?'teampk':'garner',primaryLabel:label?.textContent});
 
 }
@@ -2202,16 +2217,18 @@ async function boot(){
       $('scene3d').disabled=true;
       toast('Biblioteca de cenário ausente: use montar_mundo.py para gerar o GLB.');
     }
+    contentData=await contentReady;
+    if(contentData)setupAdventure();
     // Carrega NPCs apenas quando manifest.json tiver GLBs convertidos e posições.
     // Sem NPCs, o módulo não cria nenhum mesh / draw call adicional.
     try{
-      if(!isArenaMap)npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight,modelLoader});
+      if(!isArenaMap)npcManager=await createNpcManager({THREE,scene,heightAt:sampleHeight,modelLoader,manifest:contentData?{npcs:contentData.project.npcs}:null});
       if(npcManager?.count)console.info('TOP NPCs de Garner:',npcManager.count,'registros no manifesto.');
     }catch(error){console.warn('NPCs ainda não disponíveis:',error);}
     try{
       monsterManager=await createMonsterManager({scene,mobile:MOBILE_UI,modelLoader,
         heightAt:(x,z,m)=>m?.habitat==='sea'?SEA_LEVEL:sampleHeight(x,z),
-        manifest:isArenaMap?arenaWave(arenaRun.floor):null,findSpawn:(x,z,type)=>{
+        manifest:isArenaMap?arenaWave(arenaRun.floor):contentData?.monsterManifest,findSpawn:(x,z,type)=>{
         // Validar apenas a vizinhança carregada; nunca buscar terreno do mapa
         // inteiro só para instanciar um nascimento distante.
         if(!world.hasArea(x,z,9))return null;
@@ -2331,7 +2348,7 @@ function update(dt){
       if(mark)sitDown(mark);
     }
   }
-  const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
+  const combatPaused=!!(contentBlocked()||(MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
   landCombat?.update(dt,playerPos,{paused:combatPaused||sailing||terrainEditor?.isOpen(),moving:manualMove,busy:attackPlaying});
   navalCombat?.update(dt,playerPos,{active:sailing,paused:combatPaused,moving:manualMove});
   if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
@@ -2623,6 +2640,7 @@ $('go-arena-administrator').addEventListener('click',()=>{
 rpgHud=initRpgHud({
   onOpen:()=>{
     if(skillAnimationLocked){rpgHud?.dismiss();toast('Aguarde a skill terminar para abrir o menu.');return;}
+    if(contentBlocked()){rpgHud?.dismiss();return;}
     stopCombat();
     keys.clear();touchMove.forward=0;touchMove.sideways=0;
     moverTarget=null;pendingPose=null;waypoint.hide();
@@ -2642,6 +2660,7 @@ rpgHud=initRpgHud({
     return played;
   },
   onPlaySkill:skill=>{
+    if(contentBlocked())return false;
     if(sailing||boardingBoat){toast('Desembarque antes de usar skills.');return false;}
     if(skillAnimationLocked){toast('Aguarde a animação da skill terminar.');return false;}
     if(!combat||hero.hp<=0||changingCharacter||changingLoadout||seated)return false;
@@ -2658,14 +2677,14 @@ desktopHud=initDesktopHud({
   onTarget:()=>{if(!boardingBoat)combat?.cycleTarget(playerPos);},
   onRest:()=>$('idle').click(),onOpen:tab=>rpgHud.open(tab),onMap:openWorldMap,
   onPause:()=>{clearTravelInput();stopCombat();rpgHud?.dismiss();},
-  canOpen:()=>!skillAnimationLocked&&!changingCharacter&&!changingLoadout&&!arenaUi?.blocked()&&!arenaTransition&&!mapIsOpen()
+  canOpen:()=>!contentBlocked()&&!skillAnimationLocked&&!changingCharacter&&!changingLoadout&&!arenaUi?.blocked()&&!arenaTransition&&!mapIsOpen()
 });
 function updateEquipmentUi(){
   $('hero-class').value=hero.job;$('hero-character').value=hero.character;
   for(const option of $('hero-character').options)option.disabled=!CLASSES[hero.job].characters.includes(option.value);
   $('equipment-toggle').textContent=hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1';
   const items=equipmentManifest?.sets?.[hero.job]?.items||[];
-  rpgHud?.setItems(heroInventory(hero,equipmentManifest));
+  rpgHud?.setItems([...heroInventory(hero,equipmentManifest),...(adventure?.bagItems()||[])]);
   const labels={2:'Corpo',3:'Mãos',4:'Pés',6:'Mão esquerda',9:'Mão direita'};
   const list=$('equipment-list');list.replaceChildren();
   for(const item of items){
@@ -2943,7 +2962,7 @@ function orderMove(x,z,pose){
 }
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
-  if(typing||rpgHud?.isOpen()||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
+  if(contentBlocked()||typing||rpgHud?.isOpen()||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
   if(terrainEditor?.isOpen()&&(['Digit1','Digit2','Digit3','Digit4','Space','Insert'].includes(e.code)))return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
@@ -3157,6 +3176,7 @@ renderer.domElement.addEventListener('pointermove',e=>{
 });
 renderer.domElement.addEventListener('pointerup',e=>{
   if(drag&&e.pointerId===drag.id)drag=null;
+  if(contentBlocked()){mouseDown=null;return;}
   if(e.button!==0||!mouseDown||!world)return;
   const moved=Math.hypot(mouseDown.x-e.clientX,mouseDown.y-e.clientY);mouseDown=null;
   if(moved>7)return;
@@ -3198,7 +3218,7 @@ terrainBrush.visible=false;terrainBrush.renderOrder=10;terrainBrush.frustumCulle
 const sceneAssetBox=new THREE.Box3(),sceneAssetMatrix=new THREE.Matrix4();
 const sceneAssetHighlight=new THREE.Box3Helper(sceneAssetBox,0xffe099);sceneAssetHighlight.visible=false;sceneAssetHighlight.material.depthTest=false;sceneAssetHighlight.renderOrder=11;scene.add(sceneAssetHighlight);
 terrainEditor=createTerrainEditor({canvas:renderer.domElement,design:terrainDesign,tileAt:getTile,pick:groundAt,
-  canEdit:()=>!!world&&!isArenaMap&&!sailing,
+  canEdit:()=>!!world&&!isArenaMap&&!sailing&&!contentBlocked(),
   onOpen:()=>{clearTravelInput();stopCombat();},
   pickAsset:(clientX,clientY)=>{
     if(!sceneObjs3D?.visible)return null;
@@ -3254,5 +3274,48 @@ const performanceMonitor=initPerformanceMonitor({renderer,
   enabled:launchParams.has('debug')?defaultMonitor:getPref('topweb_dev_monitor',defaultMonitor?'1':'0')==='1',
   onToggle:enabled=>setPref('topweb_dev_monitor',enabled?'1':'0'),
   getResources:()=>({terrain:world?.stats(),objects:sceneStats.active,effects:effectStats.active,wake:boatEffects.stats().particles,resources:renderResources()})
+});
+function adventureLoot(monster){
+  if(!adventure||isArenaMap)return '';
+  const loot=adventure.kill(monster.speciesId||monster.species);
+  return loot.length?' · Coletado: '+loot.map(s=>`${s.quantity} × ${adventure.item(s.itemId).name}`).join(', '):'';
+}
+function setupAdventure(){
+  adventure=createAdventure({content:contentData.project,raw:getPref(ADVENTURE_SAVE_KEY,'null'),onChange:()=>{
+    try{localStorage.setItem(ADVENTURE_SAVE_KEY,adventure.serialize());}
+    catch{toast('Não foi possível salvar os itens e missões neste navegador.');}
+    updateEquipmentUi();
+  }});
+  const canOpen=()=>!!world&&!isArenaMap&&!sailing&&hero.hp>0&&!boardingBoat&&!changingCharacter&&!changingLoadout&&!skillAnimationLocked&&!arenaUi?.blocked()&&!arenaTransition&&!mapIsOpen()&&!boatStatsUi?.isOpen();
+  const pause=()=>{
+    clearTravelInput();rpgHud?.dismiss();terrainEditor?.show(false);
+    document.body.classList.remove('mobile-settings-open','desktop-settings-open');
+    $('mobile-settings').setAttribute('aria-expanded','false');
+  };
+  adventureUi=createAdventureUi({getContent:()=>({...contentData.project,species:contentData.species}),adventure,getLevel:()=>hero.level,
+    canOpen:()=>canOpen()&&!contentEditor?.isOpen(),onPause:pause,onMessage:toast,
+    onReward:reward=>{gainExperience(hero,reward.xp);saveHero();rpgHud?.setStats(heroSnapshot(hero));},
+    onArena:{isAdministrator:isArenaAdministrator,open:()=>arenaUi?.openEntry()}});
+  contentEditor=createContentEditor({project:contentData.project,published:contentData.published,species:contentData.species,
+    canvas:renderer.domElement,position:()=>playerPos,
+    canOpen:()=>canOpen()&&!adventureUi.isOpen(),onOpen:pause,
+    pick:(x,y)=>{const p=groundAt(x,y);return p&&canLand(p.x,p.z)?p:null;},
+    apply:project=>{contentData.project=project;adventure.setContent(project);npcManager?.setRecords(project.npcs);updateEquipmentUi();}
+  });
+  if(contentData.warning){$('content-load-status').hidden=false;$('content-load-status').textContent=contentData.warning;}
+  updateEquipmentUi();
+}
+$('adventure-journal').addEventListener('click',()=>{
+  if(!adventureUi){toast('Missões indisponíveis. Aguarde o carregamento ou confira o aviso no Menu.');return;}
+  adventureUi.show();
+});
+$('content-editor-open').addEventListener('click',()=>{
+  if(!contentEditor){toast('Editor indisponível. Aguarde o carregamento ou confira o aviso no Menu.');return;}
+  contentEditor.show();
+});
+$('go-quest-guide').addEventListener('click',()=>{
+  if(contentBlocked()||!world||isArenaMap||sailing||hero.hp<=0||skillAnimationLocked)return;
+  const npc=contentData?.project.npcs.find(n=>n.id==='garner-npc-21');if(!npc)return;
+  if(teleport(npc.x,npc.z+1.5)){clearTravelInput();document.body.classList.remove('mobile-settings-open','desktop-settings-open');toast('Senna · aproxime-se e toque em Conversar.');}
 });
 boot();

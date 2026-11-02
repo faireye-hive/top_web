@@ -1,0 +1,35 @@
+[
+  {
+    "id": "argent-first-supplies",
+    "name": "Primeiros suprimentos de Argent",
+    "description": "Senna precisa de ajuda na floresta. Derrote 3 Forest Spirits e recolha 2 méis das Mini Bees. Entregue os materiais à Innkeeper Marriam.",
+    "startNpcId": "garner-npc-21",
+    "endNpcId": "garner-npc-10",
+    "minimumLevel": 1,
+    "requires": [],
+    "objectives": [
+      {
+        "id": "defeat-spirits",
+        "type": "kill",
+        "speciesId": "original-103",
+        "quantity": 3
+      },
+      {
+        "id": "collect-honey",
+        "type": "collect",
+        "itemId": "bee-honey",
+        "quantity": 2
+      }
+    ],
+    "rewards": {
+      "gold": 40,
+      "xp": 80,
+      "items": [
+        {
+          "itemId": "supply-token",
+          "quantity": 1
+        }
+      ]
+    }
+  }
+]

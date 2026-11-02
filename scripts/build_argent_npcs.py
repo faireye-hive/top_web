@@ -34,7 +34,7 @@ def parse_npc_table(path, radius):
         if character_id <= 0 or not cols[1].strip():
             continue
         records.append({
-            "serial": serial, "name": cols[1].strip(),
+            "id": f"garner-npc-{serial}", "serial": serial, "name": cols[1].strip(),
             "characterId": character_id,
             "x": round(x, 2), "z": round(z, 2),
             "yaw": yaw, "region": cols[8].strip()

@@ -237,7 +237,8 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     detail.hidden=!item;if(!item)return;
     $('bag-item-name').textContent=item.name;
     $('bag-item-description').textContent=item.description||item.slotName||'Equipamento';
-    $('bag-item-status').textContent=item.equipped?'Equipado · parte do conjunto ativo':'Disponível · use Equipar conjunto para vestir';
+    $('bag-item-status').textContent=item.key?.startsWith('content:')?`Quantidade: ${item.quantity} · venda: ${item.sellPrice} ouro por unidade`:
+      item.equipped?'Equipado · parte do conjunto ativo':'Disponível · use Equipar conjunto para vestir';
   }
   function drawInventory(){
     const grid=$('rpg-inventory-grid');if(!grid)return;
@@ -245,7 +246,7 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
     const valid=filterInventory(items,{query:$('bag-search')?.value||'',kind:$('bag-filter')?.value||'all'});
     const selected=inventorySelection(valid,selectedItemKey);selectedItemKey=selected?.key||null;
     const filtered=!!$('bag-search')?.value||$('bag-filter')?.value!=='all';
-    const count=filtered?valid.length:24;
+    const count=filtered?valid.length:Math.max(24,valid.length);
     for(let i=0;i<count;i++){
       const item=valid[i],button=document.createElement('button');button.type='button';
       button.className='rpg-item-slot';button.disabled=!item;
@@ -273,14 +274,14 @@ export function initRpgHud({onPlayClip,onPlaySkill,onOpen,onClose,onMessage}={})
       grid.append(button);
     }
     const empty=$('rpg-inventory-empty');if(empty)empty.hidden=valid.some(Boolean);
-    const counter=$('bag-count');if(counter)counter.textContent=filtered?`${valid.length} de ${items.length} itens`:`${items.length} / 24 espaços · classe atual`;
+    const counter=$('bag-count');if(counter)counter.textContent=filtered?`${valid.length} de ${items.length} itens`:`${items.length} itens · equipamentos e materiais`;
     drawItemDetail(selected);
   }
   function drawMobileSet(){
     const preview=$('bag-mobile-set-summary');
     if(!preview)return;
     preview.replaceChildren();
-    for(const item of items){
+    for(const item of items.filter(item=>!item.key?.startsWith('content:'))){
       // Use the same equipment data as the inventory; this is a visual
       // summary only. The original #equipment-toggle handles equip/unequip.
       const row=document.createElement('div');row.className='bag-mobile-set-row';
