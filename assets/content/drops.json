@@ -1,0 +1,24 @@
+[
+  {
+    "speciesId": "original-103",
+    "items": [
+      {
+        "itemId": "forest-seed",
+        "chance": 1,
+        "min": 1,
+        "max": 2
+      }
+    ]
+  },
+  {
+    "speciesId": "original-206",
+    "items": [
+      {
+        "itemId": "bee-honey",
+        "chance": 1,
+        "min": 1,
+        "max": 1
+      }
+    ]
+  }
+]

@@ -1,3 +1,5 @@
+**NPCs, missões e comércio em JSON:** cada NPC tem um ID permanente; monstros usam o ID da espécie para drops e objetivos. **Menu → Ir à Senna** inicia a missão de exemplo, com abates de Forest Spirits, mel de Mini Bees e entrega a Marriam. Jimberry demonstra compras, vendas e trocas. O **Editor de NPCs, itens e missões** permite mover/duplicar NPCs, girar em graus, criar missões, editar JSON e importar/exportar o projeto. [Guia com exemplos e publicação](docs/CONTEUDO_E_MISSOES.md).
+
 Editor de cenário: **Menu → Editor de terreno e vegetação** permite pintar detalhes a partir de 3 cm, desenhar caminhos com bordas independentes, suavizar bordas locais, plantar grama alta e identificar objetos direto no cenário. [Guia de edição e publicação](docs/EDITOR_DE_TERRENO.md).
 
 # TOP Web — Pose & Weapon Studio (31/10/2026)

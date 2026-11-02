@@ -1,0 +1,52 @@
+[
+  {
+    "npcId": "garner-npc-21",
+    "dialogue": "Bem-vindo a Argent! Traga suprimentos para Marriam. Consulte os objetivos e o NPC de entrega no diário de missões.",
+    "buysItems": false,
+    "shop": [],
+    "trades": []
+  },
+  {
+    "npcId": "garner-npc-10",
+    "dialogue": "Senna me avisou sobre os suprimentos. Quando terminar os objetivos, entregue a missão aqui.",
+    "buysItems": false,
+    "shop": [],
+    "trades": []
+  },
+  {
+    "npcId": "garner-npc-18",
+    "dialogue": "Compro seus materiais e vendo suprimentos. Também troco 3 sementes por um mel.",
+    "buysItems": true,
+    "shop": [
+      {
+        "itemId": "bee-honey",
+        "quantity": 1,
+        "price": 8
+      },
+      {
+        "itemId": "supply-token",
+        "quantity": 1,
+        "price": 25
+      }
+    ],
+    "trades": [
+      {
+        "id": "seeds-for-honey",
+        "name": "3 sementes por 1 mel",
+        "goldCost": 0,
+        "cost": [
+          {
+            "itemId": "forest-seed",
+            "quantity": 3
+          }
+        ],
+        "reward": [
+          {
+            "itemId": "bee-honey",
+            "quantity": 1
+          }
+        ]
+      }
+    ]
+  }
+]

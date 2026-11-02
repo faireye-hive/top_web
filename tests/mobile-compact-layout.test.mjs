@@ -157,7 +157,7 @@ test('Bolsa mobile mostra slots na metade esquerda e peças de Set na direita',(
   assert.ok(js.includes('drawMobileSet();'));
   assert.ok(game.includes("hero.equipped?'Remover conjunto':'Equipar Evanescence · nível 1'"));
   assert.ok(game.includes("hero.equipped=!hero.equipped"));
-  assert.ok(game.includes('rpgHud?.setItems(heroInventory(hero,equipmentManifest))'));
+  assert.ok(game.includes('rpgHud?.setItems([...heroInventory(hero,equipmentManifest),...(adventure?.bagItems()||[])])'));
   assert.ok(inventory.includes('hero.equipped'));
 });
 
@@ -173,7 +173,7 @@ test('Busca e título redundante desaparecem somente no mobile, sem perder itens
   assert.ok(js.includes("if(search)search.value=''"));
   assert.ok(js.includes("if(filter)filter.value='all'"));
   assert.ok(js.includes('drawInventory();'));
-  assert.ok(js.includes('const count=filtered?valid.length:24'));
+  assert.ok(js.includes('const count=filtered?valid.length:Math.max(24,valid.length)'));
   assert.ok(js.includes("setBagLayout(initialLayout);"));
   assert.ok(!game.includes('mobile-bag-layout-saved')); // Nenhuma preferência nova no desktop
 });

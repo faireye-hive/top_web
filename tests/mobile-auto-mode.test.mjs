@@ -21,7 +21,7 @@ function fixture(){
   const state={
     MOBILE_UI:true,sailing:false,boardingBoat:false,mobileAutoModeEnabled:false,attackPlaying:false,playClip(){return true},
     changingCharacter:false,changingLoadout:false,skillAnimationLocked:false,
-    arenaUi:null,arenaTransition:false,terrainEditor:null,
+    arenaUi:null,arenaTransition:false,terrainEditor:null,contentBlocked:()=>false,
     hero:{hp:100},rpgHud:{isOpen:()=>false},seated:null,
     keys:new Set(['KeyW']),touchMove:{forward:1,sideways:0},
     moverTarget:{},pendingPose:{},waypoint:{hide(){}},
@@ -111,4 +111,10 @@ test('editor de terreno suspende a ação principal durante a pintura',()=>{
   const {state}=fixture();state.terrainEditor={isOpen:()=>true};
   state.primaryContext=()=>{throw Error('Editor não deve iniciar interação ou combate');};
   assert.equal(invoke(primary,'primaryAction',state),undefined);
+});
+test('diálogo e editor de conteúdo suspendem interação e início de ataques',()=>{
+  const {state}=fixture();state.contentBlocked=()=>true;
+  state.primaryContext=()=>{throw Error('Diálogo não deve iniciar interação ou combate');};
+  assert.equal(invoke(primary,'primaryAction',state),undefined);
+  assert.equal(invoke(auto,'toggleAutoAttack',state),false);assert.equal(state.combat.toggles,0);
 });

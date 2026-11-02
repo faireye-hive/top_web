@@ -1,0 +1,26 @@
+[
+  {
+    "id": "bee-honey",
+    "name": "Mel de Mini Bee",
+    "kind": "material",
+    "symbol": "◆",
+    "description": "Mel coletado das Mini Bees. Senna pede este material em sua missão.",
+    "sellPrice": 3
+  },
+  {
+    "id": "forest-seed",
+    "name": "Semente da floresta",
+    "kind": "material",
+    "symbol": "❧",
+    "description": "Semente encontrada nos Forest Spirits. Jimberry aceita sementes em troca de suprimentos.",
+    "sellPrice": 2
+  },
+  {
+    "id": "supply-token",
+    "name": "Vale de suprimentos",
+    "kind": "quest",
+    "symbol": "✦",
+    "description": "Comprovante de ajuda a Argent. Pode ser vendido por ouro ou guardado para novas missões.",
+    "sellPrice": 10
+  }
+]
