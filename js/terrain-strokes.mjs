@@ -40,7 +40,7 @@ export function strokeTriangles(stroke,emit){
   }
   function cap(p,n,end){
     const forward=[-n[1]*end,n[0]*end],rings=Math.max(1,Math.ceil(radius/.35)),segments=24;
-    const v=(r,a)=>[p[0]+radius*r*(n[0]*Math.cos(a)+forward[0]*Math.sin(a)),p[1]+radius*r*(n[1]*Math.cos(a)+forward[1]*Math.sin(a)),r*Math.cos(a),r*Math.sin(a)];
+    const v=(r,a)=>[p[0]+radius*r*(n[0]*Math.cos(a)+forward[0]*Math.sin(a)),p[1]+radius*r*(n[1]*Math.cos(a)+forward[1]*Math.sin(a)),r*Math.cos(a),end*r*Math.sin(a)];
     for(let ring=0;ring<rings;ring++)for(let j=0;j<segments;j++){
       const a=j*Math.PI/segments,b=(j+1)*Math.PI/segments,r0=ring/rings,r1=(ring+1)/rings;
       emit(v(r0,a),v(r1,a),v(r1,b));if(ring)emit(v(r0,a),v(r1,b),v(r0,b));
@@ -67,4 +67,11 @@ export function drawTerrainPaths(ctx,strokes,view,size,colorFor){
     ctx.stroke();count++;
   }
   ctx.restore();return count;
+}
+
+// Keep both/left/right compatible with existing projects. New cap modes use
+// signed longitudinal coordinates: the start is negative, the end positive.
+export function strokeEdgeStyle(stroke){
+  const f=stroke.feather;
+  return {left:['both','left'].includes(stroke.edge)?f:0,right:['both','right'].includes(stroke.edge)?f:0,cap:stroke.edge==='top'?1:stroke.edge==='bottom'?-1:0,feather:f};
 }

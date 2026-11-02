@@ -34,7 +34,7 @@ export function normalizeTerrainDesign(raw){
     const points=stroke.points.map(p=>{if(!Array.isArray(p)||p.length!==2||!p.every(n=>Number.isFinite(n)&&n>=0&&n<4096))throw Error('Ponto fora de Garner.');return [...p];});
     const result={tool:stroke.tool,radius:stroke.radius,points};
     if(['texture','path'].includes(stroke.tool)){
-      if(!Number.isInteger(stroke.tex)||stroke.tex<1||stroke.tex>49||!['left','right','both'].includes(stroke.edge)||!Number.isFinite(stroke.feather)||stroke.feather<0||stroke.feather>1||!Number.isFinite(stroke.opacity)||stroke.opacity<.05||stroke.opacity>1)throw Error('Borda de traço inválida.');
+      if(!Number.isInteger(stroke.tex)||stroke.tex<1||stroke.tex>49||!['left','right','both','none','top','bottom'].includes(stroke.edge)||!Number.isFinite(stroke.feather)||stroke.feather<0||stroke.feather>1||!Number.isFinite(stroke.opacity)||stroke.opacity<.05||stroke.opacity>1)throw Error('Borda de traço inválida.');
       Object.assign(result,{tex:stroke.tex,edge:stroke.edge,feather:stroke.feather,opacity:stroke.opacity});
     }else if(stroke.tool==='grass'){
       const g=stroke.grass;

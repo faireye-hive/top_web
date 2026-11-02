@@ -17,9 +17,9 @@ export function createTerrainEditor({canvas,design:initial,apply,tileAt,pick,pic
   <div class="terrain-actions terrain-presets"><button type="button" data-radius="0.03">3 cm</button><button type="button" data-radius="0.1">10 cm</button><button type="button" data-radius="0.25">25 cm</button><button type="button" data-radius="1">1 m</button></div>
   <fieldset id="terrain-stroke-controls"><legend>Bordas do traço · próximos traços</legend>
     <label for="terrain-feather">Suavidade <output id="terrain-feather-value">65%</output><input id="terrain-feather" type="range" min="0" max="1" step="0.01" value="0.65"></label>
-    <label for="terrain-edge">Aplicar suavidade<select id="terrain-edge"><option value="both">Nos dois lados</option><option value="left">Mais na esquerda do traço</option><option value="right">Mais na direita do traço</option></select></label>
+    <label for="terrain-edge">Aplicar suavidade<select id="terrain-edge"><option value="both">Todos os lados</option><option value="none">Sem suavidade</option><option value="top">Em cima · fim do traço</option><option value="bottom">Embaixo · início do traço</option><option value="left">Mais na esquerda do traço</option><option value="right">Mais na direita do traço</option></select></label>
     <label for="terrain-opacity">Intensidade <output id="terrain-opacity-value">100%</output><input id="terrain-opacity" type="range" min="0.05" max="1" step="0.01" value="1"></label>
-    <p>Esquerda e direita acompanham a direção em que você desenha. O diâmetro do pincel é a largura do caminho.</p>
+    <p>Cima e baixo são as pontas final e inicial do traço. Esquerda e direita acompanham a direção do desenho. O diâmetro define a largura do caminho.</p>
   </fieldset>
   <fieldset id="terrain-local-controls" hidden><legend>Borda local do mapa</legend>
     <label for="terrain-local-side">Borda do quadrado<select id="terrain-local-side"><option value="all">Todas</option><option value="north">Norte · −Z</option><option value="south">Sul · +Z</option><option value="east">Leste · +X</option><option value="west">Oeste · −X</option></select></label>
