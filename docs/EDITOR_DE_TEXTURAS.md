@@ -48,7 +48,7 @@ até 24 MiB. Endereços externos e caminhos fora de `assets/` são rejeitados.
   cantos contínuos e elimina esse esticamento periódico.
 - As bordas quadradas entre tipos de chão também dependem das camadas de
   transição do mapa original. O formato GNR1 atual carrega a textura base;
-  este trabalho ainda não implementa a mistura das camadas secundárias.
+  o **Editor de terreno e vegetação** agora mistura os solos naturais vizinhos e permite pintar o mapa e grama alta ([guia](EDITOR_DE_TERRENO.md)). Essa mistura visual não recupera as camadas secundárias do arquivo histórico.
 
 O atlas padrão continua com 2.048 × 2.048 pixels, cerca de 21 MiB na GPU com
 mipmaps. O WebP ocupa aproximadamente 6 MB para baixar, contra 1,7 MB do JPEG

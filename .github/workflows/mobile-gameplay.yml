@@ -22,6 +22,8 @@ on:
       - 'tests/refinement-editor.*'
       - 'tests/texture-editor.*'
       - 'assets/textures/**'
+      - 'assets/terrain/**'
+      - 'terrain-editor.css'
       - 'scripts/build_texture_catalog.py'
       - 'assets/weapons/refinement-effects.json'
       - 'assets/equipment/headgear/**'
@@ -57,6 +59,8 @@ jobs:
         run: python -m py_compile scripts/build_mobile_boat.py scripts/build_garner_stream.py scripts/build_default_pet.py scripts/build_arena_map.py scripts/build_garner_monsters.py scripts/build_texture_catalog.py
       - name: Check texture editor syntax
         run: node --check js/terrain-textures.mjs && node --check js/texture-library.mjs && node --check js/texture-runtime.mjs && node --check js/texture-pixels.mjs && node --check tests/texture-editor.mjs
+      - name: Check terrain editor syntax
+        run: node --check js/terrain-design.mjs && node --check js/terrain-surface.mjs && node --check js/terrain-editor.mjs
       - name: Verify original monster assets
         run: python scripts/verify_mobile_assets.py
       - name: Check combat and pet syntax

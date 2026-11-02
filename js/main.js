@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {createTextureRuntime} from './texture-runtime.mjs?v=1';
 import {writeTerrainUV} from './terrain-textures.mjs?v=1';
+import {DEFAULT_TERRAIN_DESIGN,normalizeTerrainDesign,readTerrainDesign,terrainVisualTile,packedTerrainNeighborhood,grassInstances} from './terrain-design.mjs';
+import {installTerrainBlend,createTerrainGrass} from './terrain-surface.mjs';
+import {createTerrainEditor} from './terrain-editor.mjs';
 import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
@@ -247,7 +250,10 @@ let fountain=null;
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.62,24),new THREE.MeshBasicMaterial({color:0x07141c,transparent:true,opacity:.38,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
 let terrainAtlas=null;
+let terrainDesign=readTerrainDesign(),terrainEditor=null;
+const terrainGrass=createTerrainGrass(THREE);
 const landMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+const terrainBlend=installTerrainBlend(landMat,terrainDesign.blend);
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
 // some quando o terreno está acima de −0,5 m, para a praia não ficar coberta.
 const seaMat=createSeaMaterial(THREE,marineDesign.water,{lightweight:MOBILE_UI});
@@ -278,7 +284,7 @@ window.addEventListener('resize',resize);resize();
 function getTile(x,z){
   if(!world)return null;
   const base=world.tileAt(x,z);
-  return isArenaMap?base:editedTile(base,x,z,marineDesign);
+  return isArenaMap?base:terrainVisualTile(editedTile(base,x,z,marineDesign),x,z,terrainDesign);
 }
 function sampleHeight(x,z){
   const tile=getTile(x,z);if(!tile)return 0;
@@ -339,9 +345,10 @@ function gridHeight(ix,iz){
 // Normal pela diferença central da altura. O mesmo vértice na borda de dois
 // setores recebe o mesmo vetor, então a luz não racha entre os chunks.
 // Plano: (0, 1, 0). Subida em +x (dhx>0): componente x negativa.
-function writeNormal(out,offset,x,z){
-  const dhx=gridHeight(x+1,z)-gridHeight(x-1,z);
-  const dhz=gridHeight(x,z+1)-gridHeight(x,z-1);
+function writeNormal(out,offset,x,z,tileAt=getTile){
+  const height=(x,z)=>tileAt(x,z)?.height??0;
+  const dhx=height(x+1,z)-height(x-1,z);
+  const dhz=height(x,z+1)-height(x,z-1);
   const nx=-dhx, ny=2, nz=-dhz;
   const len=Math.hypot(nx,ny,nz)||1;
   out[offset]=Math.round(nx/len*127);out[offset+1]=Math.round(ny/len*127);out[offset+2]=Math.round(nz/len*127);
@@ -350,19 +357,23 @@ function buildChunk(cx,cz){
   const baseX=world.ox+cx*CHUNK,baseZ=world.oz+cz*CHUNK;
   const sideX=Math.min(CHUNK,world.w-cx*CHUNK),sideZ=Math.min(CHUNK,world.h-cz*CHUNK);
   if(sideX<=0||sideZ<=0||!world.hasArea(baseX+sideX/2,baseZ+sideZ/2,CHUNK/2+2))return null;
-  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8);
+  const halo=sideX+3,tiles=Array.from({length:halo*(sideZ+3)},(_,i)=>getTile(baseX+i%halo-1,baseZ+Math.floor(i/halo)-1));
+  const chunkTile=(x,z)=>tiles[(z-baseZ+1)*halo+x-baseX+1];
+  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8),terrainIds=new Float32Array(count*12);
   let j=0,ii=0,sea=false;
   for(let z=0;z<sideZ;z++)for(let x=0;x<sideX;x++){
-    const gx=baseX+x,gz=baseZ+z, t=getTile(gx,gz),clr=colorFor(t,gx,gz);
-    const h00=t?.height??-2,h10=getTile(gx+1,gz)?.height??h00;
-    const h01=getTile(gx,gz+1)?.height??h00,h11=getTile(gx+1,gz+1)?.height??h00;
+    const gx=baseX+x,gz=baseZ+z, t=chunkTile(gx,gz),clr=colorFor(t,gx,gz);
+    const h00=t?.height??-2,h10=chunkTile(gx+1,gz)?.height??h00;
+    const h01=chunkTile(gx,gz+1)?.height??h00,h11=chunkTile(gx+1,gz+1)?.height??h00;
     if(h00<-.05||h10<-.05||h01<-.05||h11<-.05)sea=true;
     const verts=[gx,h00,gz, gx+1,h10,gz, gx,h01,gz+1, gx+1,h11,gz+1];
     positions.set(verts,j*12);
-    writeNormal(normals,j*12,gx,gz);
-    writeNormal(normals,j*12+3,gx+1,gz);
-    writeNormal(normals,j*12+6,gx,gz+1);
-    writeNormal(normals,j*12+9,gx+1,gz+1);
+    const neighborhood=packedTerrainNeighborhood(chunkTile,gx,gz);
+    for(let k=0;k<4;k++)terrainIds.set(neighborhood,j*12+k*3);
+    writeNormal(normals,j*12,gx,gz,chunkTile);
+    writeNormal(normals,j*12+3,gx+1,gz,chunkTile);
+    writeNormal(normals,j*12+6,gx,gz+1,chunkTile);
+    writeNormal(normals,j*12+9,gx+1,gz+1,chunkTile);
     for(let k=0;k<4;k++)for(let c=0;c<3;c++)colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);
     // 4 vertices: (x,z), (x+1,z), (x,z+1), (x+1,z+1)
     writeTerrainUV(uvs,j*8,t?.tex??0,gx,gz,0,0);
@@ -378,9 +389,12 @@ function buildChunk(cx,cz){
   geom.setAttribute('normal',new THREE.BufferAttribute(normals,3,true));
   geom.setAttribute('color',new THREE.BufferAttribute(colors,3,true));
   geom.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
+  geom.setAttribute('terrainIds',new THREE.BufferAttribute(terrainIds,3));
   geom.setIndex(new THREE.BufferAttribute(indices,1));
   const mesh=new THREE.Mesh(geom,landMat);mesh.userData.terrain=true;mesh.frustumCulled=true;scene.add(mesh);
-  const chunk={mesh,water:null,cx,cz};
+  const grass=isArenaMap?null:terrainGrass.build(grassInstances(terrainDesign,getTile,baseX,baseZ,sideX,sideZ,MOBILE_UI?192:512),sampleHeight);
+  if(grass)scene.add(grass);
+  const chunk={mesh,water:null,grass,cx,cz};
   if(sea){
     const seaPos=[], shore=[];
     const x0=Math.ceil(baseX/4)*4, z0=Math.ceil(baseZ/4)*4;
@@ -406,7 +420,7 @@ function buildChunk(cx,cz){
   }
   return chunk;
 }
-function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
+function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
 function updateChunks(){
   void world.focus(playerPos.x,playerPos.z,(RADIUS+1)*CHUNK+4).catch(error=>{console.warn('Setor de Garner:',error);});
   const cx=Math.floor((playerPos.x-world.ox)/CHUNK),cz=Math.floor((playerPos.z-world.oz)/CHUNK);
@@ -418,7 +432,7 @@ function updateChunks(){
     if(!chunkMap.has(key)){const c=buildChunk(x,z);if(c){chunkMap.set(key,c);created++}}
   }
   for(const [key,c] of chunkMap){if(!need.has(key)){
-    scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.water){scene.remove(c.water);c.water.geometry.dispose()}
+    scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}
     chunkMap.delete(key);
   }}
   return created;
@@ -711,6 +725,7 @@ function teleport(x,z){
 function updateHUD(){
   const t=getTile(playerPos.x,playerPos.z);
   $('textureinfo').textContent=t?`Textura #${t.tex} · ${TERRAIN_LABELS[t.tex]||'sem nome'}`:'—';
+  $('terrain-editor-link').href='?terrainEditor=1&spawn='+playerPos.x.toFixed(2)+','+playerPos.z.toFixed(2);
   $('texture-editor-link').href='./tests/texture-editor.html'+(t?.tex?'?terrain='+t.tex:'');
   $('coords').textContent=`${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}`;
   $('height').textContent=`${playerPos.y.toFixed(2)} m`;
@@ -814,7 +829,7 @@ function primaryContext(){
     npc:npcManager?.nearest(playerPos.x,playerPos.z),pose:poseHere(playerPos.x,playerPos.z)});
 }
 function primaryAction(){
-  if(changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
+  if(terrainEditor?.isOpen()||changingLoadout||changingCharacter||rpgHud?.isOpen()||arenaUi?.blocked()||arenaTransition)return;
   const context=primaryContext();
   if(['embark','disembark','sailing'].includes(context.type))return toggleSeaTravel();
   if(context.type==='attack'||context.type==='naval-attack')return mobileAutoModeEnabled?toggleAutoAttack():manualAttack();
@@ -2109,6 +2124,13 @@ async function boot(){
     if(ORIGIN.x<world.ox || ORIGIN.x>=world.ox+world.w || ORIGIN.z<world.oz || ORIGIN.z>=world.oz+world.h){
       ORIGIN.x=world.ox+world.w/2; ORIGIN.z=world.oz+world.h/2;
     }
+    if(!isArenaMap){
+      try{
+        const response=await fetch('assets/terrain/design.json');
+        if(response.ok)terrainDesign=readTerrainDesign(normalizeTerrainDesign(await response.json()));
+      }catch(error){console.warn('Projeto de terreno:',error);}
+      terrainBlend.setBlend(terrainDesign.blend);terrainEditor.setDesign(terrainDesign);
+    }
     progress(20,'Carregando atlas das texturas históricas...');
     try{
       await textureRuntime.ready;
@@ -2289,7 +2311,7 @@ function update(dt){
     }
   }
   const combatPaused=!!((MOBILE_UI&&innerHeight>innerWidth)||rpgHud?.isOpen()||document.body.classList.contains('mobile-settings-open')||document.body.classList.contains('desktop-settings-open')||seated||changingCharacter||boardingBoat||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||arenaRun&&arenaRun.phase!=='fighting');
-  landCombat?.update(dt,playerPos,{paused:combatPaused||sailing,moving:manualMove,busy:attackPlaying});
+  landCombat?.update(dt,playerPos,{paused:combatPaused||sailing||terrainEditor?.isOpen(),moving:manualMove,busy:attackPlaying});
   navalCombat?.update(dt,playerPos,{active:sailing,paused:combatPaused,moving:manualMove});
   if(arenaRun&&!combatPaused&&monsterManager&&arenaRun.complete(monsterManager.monsters)){
     saveArenaRun();clearTravelInput();arenaUi.showChoice(arenaRun,hero);
@@ -2470,6 +2492,8 @@ function animate(time=performance.now()){
   if(document.hidden||(MOBILE_UI&&innerHeight>innerWidth)){stopCombat();lastFrameTime=0;qualitySampleTime=0;qualityFrameCount=0;qualityFrameMs=0;return;}
   if(!testing)update(dt);
   performanceMonitor.beginFrame();
+  terrainGrass.update(time*.001,playerPos);
+  for(const chunk of chunkMap.values())if(chunk.grass)chunk.grass.visible=colorMode==='textured'&&Math.hypot(chunk.cx*CHUNK+world.ox+CHUNK/2-playerPos.x,chunk.cz*CHUNK+world.oz+CHUNK/2-playerPos.z)<48+CHUNK*.71;
   renderer.render(scene,camera);
   performanceMonitor.endFrame(time,performance.now()-workStart);
   adaptMobileResolution(time);
@@ -2898,6 +2922,7 @@ function orderMove(x,z,pose){
 window.addEventListener('keydown',e=>{
   const typing=e.target&&['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName);
   if(typing||rpgHud?.isOpen()||mapIsOpen()||boatStatsUi?.isOpen()||arenaUi?.blocked()||arenaTransition||document.body.classList.contains('desktop-settings-open'))return;
+  if(terrainEditor?.isOpen()&&(['Digit1','Digit2','Digit3','Digit4','Space','Insert'].includes(e.code)))return;
   if(['Digit1','Digit2','Digit3','Digit4'].includes(e.code)){
     e.preventDefault();
     if(!e.repeat)rpgHud?.triggerSkill(Number(e.code.slice(-1)));
@@ -3144,6 +3169,44 @@ setInterval(()=>{
     localStorage.setItem('topweb_garner_camera',JSON.stringify({yaw:+CAM.yaw.toFixed(3),dist:+CAM.dist.toFixed(2),lift:+CAM.lift.toFixed(3)}));
   }catch{}
 },5000);
+const terrainBrushGeometry=new THREE.BufferGeometry();
+terrainBrushGeometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(64*3),3));
+const terrainBrush=new THREE.LineLoop(terrainBrushGeometry,new THREE.LineBasicMaterial({color:0xe0ff9b,depthTest:false,transparent:true,opacity:.9}));
+terrainBrush.visible=false;terrainBrush.renderOrder=10;terrainBrush.frustumCulled=false;scene.add(terrainBrush);
+terrainEditor=createTerrainEditor({canvas:renderer.domElement,design:terrainDesign,tileAt:getTile,pick:groundAt,
+  canEdit:()=>!!world&&!isArenaMap&&!sailing,
+  onOpen:()=>{clearTravelInput();stopCombat();},
+  onHover:(point,radius)=>{
+    terrainBrush.visible=!!point;if(!point)return;
+    const points=terrainBrushGeometry.attributes.position;
+    for(let i=0;i<64;i++){
+      const angle=i*Math.PI/32,x=point.x+Math.cos(angle)*(radius+.5),z=point.z+Math.sin(angle)*(radius+.5);
+      points.setXYZ(i,x,sampleHeight(x,z)+.04,z);
+    }
+    points.needsUpdate=true;
+  },
+  apply:(design,bounds)=>{
+    terrainDesign=design;terrainBlend.setBlend(design.blend);
+    if(!world||bounds?.blendOnly)return;
+    for(const [key,c] of chunkMap){
+      const x=world.ox+c.cx*CHUNK,z=world.oz+c.cz*CHUNK;
+      if(bounds&&(x>bounds.x1||z>bounds.z1||x+CHUNK<bounds.x0||z+CHUNK<bounds.z0))continue;
+      scene.remove(c.mesh);c.mesh.geometry.dispose();
+      if(c.water){scene.remove(c.water);c.water.geometry.dispose();}
+      if(c.grass){scene.remove(c.grass);c.grass.dispose();}
+      chunkMap.delete(key);
+    }
+    forceChunks=true;
+  }
+});
+$('terrain-editor-link').addEventListener('click',event=>{
+  event.preventDefault();
+  if(!world||isArenaMap||sailing){toast('Abra o editor em terra firme, no mapa de Garner.');return;}
+  terrainEditor.show();
+});
+if(launchParams.has('terrainEditor')){
+  const openEditor=setInterval(()=>{if(world){clearInterval(openEditor);terrainEditor.show();}},500);
+}
 const defaultMonitor=developmentMonitorDefault(location.hostname,location.search);
 const performanceMonitor=initPerformanceMonitor({renderer,
   enabled:launchParams.has('debug')?defaultMonitor:getPref('topweb_dev_monitor',defaultMonitor?'1':'0')==='1',
