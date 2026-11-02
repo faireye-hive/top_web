@@ -1,4 +1,4 @@
-Editor de cenário: **Menu → Editor de terreno e vegetação** permite pintar o chão, suavizar bordas e plantar grama alta junto aos objetos. [Guia de edição e publicação](docs/EDITOR_DE_TERRENO.md).
+Editor de cenário: **Menu → Editor de terreno e vegetação** permite pintar detalhes a partir de 3 cm, desenhar caminhos com bordas independentes, suavizar bordas locais, plantar grama alta e identificar objetos direto no cenário. [Guia de edição e publicação](docs/EDITOR_DE_TERRENO.md).
 
 # TOP Web — Pose & Weapon Studio (31/10/2026)
 

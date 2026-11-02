@@ -4,9 +4,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {createTextureRuntime} from './texture-runtime.mjs?v=1';
 import {writeTerrainUV} from './terrain-textures.mjs?v=1';
-import {DEFAULT_TERRAIN_DESIGN,normalizeTerrainDesign,readTerrainDesign,terrainVisualTile,packedTerrainNeighborhood,grassInstances} from './terrain-design.mjs';
-import {installTerrainBlend,createTerrainGrass} from './terrain-surface.mjs';
-import {createTerrainEditor} from './terrain-editor.mjs';
+import {NATURAL_TILES,DEFAULT_TERRAIN_DESIGN,normalizeTerrainDesign,readTerrainDesign,terrainVisualTile,packedTerrainNeighborhood,grassInstances} from './terrain-design.mjs?v=2';
+import {installTerrainBlend,createTerrainGrass} from './terrain-surface.mjs?v=2';
+import {createTerrainEditor} from './terrain-editor.mjs?v=2';
+import {createTerrainPaint} from './terrain-paint.mjs';
+import {sceneAssetFromHit} from './scene-asset-picker.mjs';
+import {drawTerrainPaths} from './terrain-strokes.mjs';
 import { attachBrightness } from './brightness.js?v=2';
 import { applyCursor } from './cursors.js?v=1';
 import { createWaypoint } from './waypoint.js?v=1';
@@ -252,6 +255,7 @@ shadow.rotation.x=-Math.PI/2; shadow.renderOrder=2; scene.add(shadow);
 let terrainAtlas=null;
 let terrainDesign=readTerrainDesign(),terrainEditor=null;
 const terrainGrass=createTerrainGrass(THREE);
+const terrainPaint=createTerrainPaint(THREE);
 const landMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
 const terrainBlend=installTerrainBlend(landMat,terrainDesign.blend);
 // Água no nível 0, quadras de 4 m, como MPMap::RenderSea. O alpha do vértice
@@ -359,7 +363,13 @@ function buildChunk(cx,cz){
   if(sideX<=0||sideZ<=0||!world.hasArea(baseX+sideX/2,baseZ+sideZ/2,CHUNK/2+2))return null;
   const halo=sideX+3,tiles=Array.from({length:halo*(sideZ+3)},(_,i)=>getTile(baseX+i%halo-1,baseZ+Math.floor(i/halo)-1));
   const chunkTile=(x,z)=>tiles[(z-baseZ+1)*halo+x-baseX+1];
-  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8),terrainIds=new Float32Array(count*12);
+  const count=sideX*sideZ,positions=new Float32Array(count*12),normals=new Int8Array(count*12),colors=new Uint8Array(count*12),indices=new Uint16Array(count*6),uvs=new Float32Array(count*8),terrainIds=new Float32Array(count*12),terrainSoftness=new Float32Array(count*4).fill(-1),terrainTint=new Float32Array(count*12);
+  const cornerTints=new Float32Array((sideX+1)*(sideZ+1)*3);
+  for(let z=0;z<=sideZ;z++)for(let x=0;x<=sideX;x++){
+    const sum=[0,0,0];let n=0;
+    for(const [dx,dz] of [[-1,-1],[0,-1],[-1,0],[0,0]]){const tile=chunkTile(baseX+x+dx,baseZ+z+dz);if(tile&&NATURAL_TILES.has(tile.tex)){const tint=colorFor(tile,baseX+x+dx,baseZ+z+dz);for(let c=0;c<3;c++)sum[c]+=tint[c];n++;}}
+    for(let c=0;c<3;c++)cornerTints[(z*(sideX+1)+x)*3+c]=n?sum[c]/n:1;
+  }
   let j=0,ii=0,sea=false;
   for(let z=0;z<sideZ;z++)for(let x=0;x<sideX;x++){
     const gx=baseX+x,gz=baseZ+z, t=chunkTile(gx,gz),clr=colorFor(t,gx,gz);
@@ -369,12 +379,12 @@ function buildChunk(cx,cz){
     const verts=[gx,h00,gz, gx+1,h10,gz, gx,h01,gz+1, gx+1,h11,gz+1];
     positions.set(verts,j*12);
     const neighborhood=packedTerrainNeighborhood(chunkTile,gx,gz);
-    for(let k=0;k<4;k++)terrainIds.set(neighborhood,j*12+k*3);
+    for(let k=0;k<4;k++){terrainIds.set(neighborhood,j*12+k*3);terrainSoftness[j*4+k]=terrainDesign.tiles[`${gx+k%2}/${gz+Math.floor(k/2)}`]?.softness??-1;}
     writeNormal(normals,j*12,gx,gz,chunkTile);
     writeNormal(normals,j*12+3,gx+1,gz,chunkTile);
     writeNormal(normals,j*12+6,gx,gz+1,chunkTile);
     writeNormal(normals,j*12+9,gx+1,gz+1,chunkTile);
-    for(let k=0;k<4;k++)for(let c=0;c<3;c++)colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);
+    for(let k=0;k<4;k++)for(let c=0;c<3;c++){colors[j*12+k*3+c]=Math.round(Math.max(0,Math.min(1,clr[c]))*255);terrainTint[j*12+k*3+c]=NATURAL_TILES.has(t?.tex)?cornerTints[((z+Math.floor(k/2))*(sideX+1)+x+k%2)*3+c]:clr[c];}
     // 4 vertices: (x,z), (x+1,z), (x,z+1), (x+1,z+1)
     writeTerrainUV(uvs,j*8,t?.tex??0,gx,gz,0,0);
     writeTerrainUV(uvs,j*8+2,t?.tex??0,gx,gz,1,0);
@@ -390,11 +400,15 @@ function buildChunk(cx,cz){
   geom.setAttribute('color',new THREE.BufferAttribute(colors,3,true));
   geom.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
   geom.setAttribute('terrainIds',new THREE.BufferAttribute(terrainIds,3));
+  geom.setAttribute('terrainSoftness',new THREE.BufferAttribute(terrainSoftness,1));
+  geom.setAttribute('terrainTint',new THREE.BufferAttribute(terrainTint,3));
   geom.setIndex(new THREE.BufferAttribute(indices,1));
   const mesh=new THREE.Mesh(geom,landMat);mesh.userData.terrain=true;mesh.frustumCulled=true;scene.add(mesh);
   const grass=isArenaMap?null:terrainGrass.build(grassInstances(terrainDesign,getTile,baseX,baseZ,sideX,sideZ,MOBILE_UI?192:512),sampleHeight);
   if(grass)scene.add(grass);
-  const chunk={mesh,water:null,grass,cx,cz};
+  const paint=isArenaMap?null:terrainPaint.build(terrainDesign,getTile,sampleHeight,colorFor,baseX,baseZ,sideX,sideZ);
+  if(paint)scene.add(paint);
+  const chunk={mesh,water:null,grass,paint,cx,cz};
   if(sea){
     const seaPos=[], shore=[];
     const x0=Math.ceil(baseX/4)*4, z0=Math.ceil(baseZ/4)*4;
@@ -420,7 +434,7 @@ function buildChunk(cx,cz){
   }
   return chunk;
 }
-function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
+function clearChunks(){for(const c of chunkMap.values()){scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.paint){scene.remove(c.paint);c.paint.geometry.dispose();}if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}}chunkMap.clear()}
 function updateChunks(){
   void world.focus(playerPos.x,playerPos.z,(RADIUS+1)*CHUNK+4).catch(error=>{console.warn('Setor de Garner:',error);});
   const cx=Math.floor((playerPos.x-world.ox)/CHUNK),cz=Math.floor((playerPos.z-world.oz)/CHUNK);
@@ -432,7 +446,7 @@ function updateChunks(){
     if(!chunkMap.has(key)){const c=buildChunk(x,z);if(c){chunkMap.set(key,c);created++}}
   }
   for(const [key,c] of chunkMap){if(!need.has(key)){
-    scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}
+    scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.paint){scene.remove(c.paint);c.paint.geometry.dispose();}if(c.grass){scene.remove(c.grass);c.grass.dispose();}if(c.water){scene.remove(c.water);c.water.geometry.dispose()}
     chunkMap.delete(key);
   }}
   return created;
@@ -506,6 +520,7 @@ function drawNavigationMap(canvas,view,full=false){
     ctx.fillRect((patch.x-view.x)/view.w*size,(patch.z-view.z)/view.h*mapHeight,Math.max(1,size/view.w),Math.max(1,mapHeight/view.h));
   }
   ctx.imageSmoothingEnabled=true;
+  if(!isArenaMap)drawTerrainPaths(ctx,terrainDesign.strokes,view,sizeXY,tex=>`rgb(${mapTileColor({tex,region:1,height:1,blocks:0,rgb:65535}).join(',')})`);
   if(full){
     ctx.strokeStyle='#b7edf322';ctx.lineWidth=1;
     for(let n=1;n<8;n++){ctx.beginPath();ctx.moveTo(n*size/8,0);ctx.lineTo(n*size/8,mapHeight);ctx.moveTo(0,n*mapHeight/8);ctx.lineTo(size,n*mapHeight/8);ctx.stroke();}
@@ -1536,6 +1551,12 @@ function createSceneLibrary(gltf){
       instance.frustumCulled=true;
       instance.count=0;instance.visible=false;
       instance.userData.localMatrix=obj.matrixWorld.clone();
+      instance.userData.sourceFile=name;
+      instance.userData.textureIds=(Array.isArray(obj.material)?obj.material:[obj.material]).map(material=>{
+        const index=gltf.parser?.associations.get(material?.map)?.textures;
+        const image=gltf.parser?.json.textures?.[index]?.source;
+        return Number.isInteger(image)?`glb:${world.manifest.scenery}#${image}`:null;
+      });
       instance.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       sceneObjs3D.add(instance);
       meshes.push(instance);
@@ -1593,7 +1614,7 @@ function updateSceneInstances(force=false){
         mesh.setMatrixAt(i,local);
       }
     }
-    for(const mesh of group.meshes){mesh.count=recs.length;mesh.visible=true;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
+    for(const mesh of group.meshes){mesh.userData.sceneRecords=recs;mesh.count=recs.length;mesh.visible=true;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();}
     amount+=recs.length;
   }
   sceneStats.active=amount;
@@ -2141,7 +2162,7 @@ async function boot(){
       terrainAtlas.minFilter=THREE.LinearMipmapLinearFilter;
       terrainAtlas.anisotropy=Math.min(MOBILE_UI?2:8,renderer.capabilities.getMaxAnisotropy());
       await textureRuntime.bindTerrain(terrainAtlas,textureRuntime.atlasUrl);
-      landMat.map=terrainAtlas;landMat.needsUpdate=true;
+      landMat.map=terrainAtlas;landMat.needsUpdate=true;terrainPaint.setAtlas(terrainAtlas);
     }catch(error){console.warn('Falha ao carregar texturas, usando cores provisórias:',error);colorMode='palette';$('colormode').value='palette';}
     progress(31,'Construindo minimapa e primeiro terreno...');
     try{objects=await (await fetch(world.manifest.objects)).json()}catch{objects=[]}
@@ -2493,6 +2514,7 @@ function animate(time=performance.now()){
   if(!testing)update(dt);
   performanceMonitor.beginFrame();
   terrainGrass.update(time*.001,playerPos);
+  for(const chunk of chunkMap.values())if(chunk.paint)chunk.paint.visible=colorMode==='textured';
   for(const chunk of chunkMap.values())if(chunk.grass)chunk.grass.visible=colorMode==='textured'&&Math.hypot(chunk.cx*CHUNK+world.ox+CHUNK/2-playerPos.x,chunk.cz*CHUNK+world.oz+CHUNK/2-playerPos.z)<48+CHUNK*.71;
   renderer.render(scene,camera);
   performanceMonitor.endFrame(time,performance.now()-workStart);
@@ -3173,14 +3195,34 @@ const terrainBrushGeometry=new THREE.BufferGeometry();
 terrainBrushGeometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(64*3),3));
 const terrainBrush=new THREE.LineLoop(terrainBrushGeometry,new THREE.LineBasicMaterial({color:0xe0ff9b,depthTest:false,transparent:true,opacity:.9}));
 terrainBrush.visible=false;terrainBrush.renderOrder=10;terrainBrush.frustumCulled=false;scene.add(terrainBrush);
+const sceneAssetBox=new THREE.Box3(),sceneAssetMatrix=new THREE.Matrix4();
+const sceneAssetHighlight=new THREE.Box3Helper(sceneAssetBox,0xffe099);sceneAssetHighlight.visible=false;sceneAssetHighlight.material.depthTest=false;sceneAssetHighlight.renderOrder=11;scene.add(sceneAssetHighlight);
 terrainEditor=createTerrainEditor({canvas:renderer.domElement,design:terrainDesign,tileAt:getTile,pick:groundAt,
   canEdit:()=>!!world&&!isArenaMap&&!sailing,
   onOpen:()=>{clearTravelInput();stopCombat();},
-  onHover:(point,radius)=>{
+  pickAsset:(clientX,clientY)=>{
+    if(!sceneObjs3D?.visible)return null;
+    _aim.set(clientX/innerWidth*2-1,-clientY/innerHeight*2+1);_caster.setFromCamera(_aim,camera);
+    const hit=_caster.intersectObjects(modelInstances.filter(mesh=>mesh.visible&&mesh.count>0),false)[0];
+    const asset=sceneAssetFromHit(hit,objectCatalog);sceneAssetHighlight.visible=!!asset;
+    if(asset){
+      sceneAssetBox.makeEmpty();const group=modelGroups.get(asset.file);
+      for(const mesh of group?.meshes||[]){mesh.getMatrixAt(hit.instanceId,sceneAssetMatrix);if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();sceneAssetBox.union(mesh.geometry.boundingBox.clone().applyMatrix4(sceneAssetMatrix));}
+      sceneAssetHighlight.updateMatrixWorld(true);
+    }
+    return asset;
+  },
+  clearAsset:()=>{sceneAssetHighlight.visible=false;},
+  onHover:(point,radius,side)=>{
     terrainBrush.visible=!!point;if(!point)return;
     const points=terrainBrushGeometry.attributes.position;
     for(let i=0;i<64;i++){
-      const angle=i*Math.PI/32,x=point.x+Math.cos(angle)*(radius+.5),z=point.z+Math.sin(angle)*(radius+.5);
+      const angle=i*Math.PI/32;let x=point.x+Math.cos(angle)*radius,z=point.z+Math.sin(angle)*radius;
+      if(side){
+        const px=Math.floor(point.x),pz=Math.floor(point.z),t=i/63;
+        if(side==='north'){x=px+t;z=pz;}else if(side==='south'){x=px+t;z=pz+1;}else if(side==='east'){x=px+1;z=pz+t;}else if(side==='west'){x=px;z=pz+t;}
+        else{const corner=Math.floor(i/16),f=(i%16)/16;x=px+(corner===0?f:corner===1?1:corner===2?1-f:0);z=pz+(corner===0?0:corner===1?f:corner===2?1:1-f);}
+      }
       points.setXYZ(i,x,sampleHeight(x,z)+.04,z);
     }
     points.needsUpdate=true;
@@ -3191,12 +3233,12 @@ terrainEditor=createTerrainEditor({canvas:renderer.domElement,design:terrainDesi
     for(const [key,c] of chunkMap){
       const x=world.ox+c.cx*CHUNK,z=world.oz+c.cz*CHUNK;
       if(bounds&&(x>bounds.x1||z>bounds.z1||x+CHUNK<bounds.x0||z+CHUNK<bounds.z0))continue;
-      scene.remove(c.mesh);c.mesh.geometry.dispose();
+      scene.remove(c.mesh);c.mesh.geometry.dispose();if(c.paint){scene.remove(c.paint);c.paint.geometry.dispose();}
       if(c.water){scene.remove(c.water);c.water.geometry.dispose();}
       if(c.grass){scene.remove(c.grass);c.grass.dispose();}
       chunkMap.delete(key);
     }
-    forceChunks=true;
+    forceChunks=true;drawMinimap();
   }
 });
 $('terrain-editor-link').addEventListener('click',event=>{

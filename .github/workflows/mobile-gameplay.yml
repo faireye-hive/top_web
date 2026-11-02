@@ -60,7 +60,7 @@ jobs:
       - name: Check texture editor syntax
         run: node --check js/terrain-textures.mjs && node --check js/texture-library.mjs && node --check js/texture-runtime.mjs && node --check js/texture-pixels.mjs && node --check tests/texture-editor.mjs
       - name: Check terrain editor syntax
-        run: node --check js/terrain-design.mjs && node --check js/terrain-surface.mjs && node --check js/terrain-editor.mjs
+        run: node --check js/terrain-design.mjs && node --check js/terrain-surface.mjs && node --check js/terrain-editor.mjs && node --check js/terrain-strokes.mjs && node --check js/terrain-paint.mjs && node --check js/scene-asset-picker.mjs
       - name: Verify original monster assets
         run: python scripts/verify_mobile_assets.py
       - name: Check combat and pet syntax
