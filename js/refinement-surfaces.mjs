@@ -1,7 +1,7 @@
 import {weaponMeshNodes} from './pose-studio-runtime.mjs?v=7';
 import {weaponPrimitives,isWeaponAdditiveLayer} from './weapon-materials.mjs?v=3';
 import {refinementFollowsSurface} from './refinement-geometry.mjs?v=4';
-import {normalizeRefinementStyle,REFINEMENT_SURFACE_PATTERNS,REFINEMENT_COLOR_MODES,REFINEMENT_STRAND_AURAS} from './refinement-profiles.mjs?v=3';
+import {normalizeRefinementStyle,REFINEMENT_SURFACE_PATTERNS,REFINEMENT_COLOR_MODES,REFINEMENT_STRAND_AURAS} from './refinement-profiles.mjs?v=4';
 
 export const REFINEMENT_EQUIPMENT=['armor','gloves','boots','hat'];
 export function refinementSurfaceNodes(avatar,actor){

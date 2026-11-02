@@ -14,7 +14,7 @@ export const REFINEMENT_SURFACE_PATTERNS=Object.freeze(['steady','pulse','flow']
 const ranges={width:[.25,3],length:[.35,2],tipWidth:[0,2],tipLength:[.1,.6],
   armorAura:[0,3],glovesAura:[0,3],bootsAura:[0,3],hatAura:[0,3],equipmentAuraWidth:[.25,3],
   surfaceTint:[0,1],surfaceGlow:[0,3],armorGlow:[0,3],glovesGlow:[0,3],bootsGlow:[0,3],hatGlow:[0,3],armorTint:[0,1],
-  strandWidth:[.25,5],strandGlow:[0,3],intensity:[.1,3],aura:[0,3],pulse:[0,1],speed:[.1,3],
+  strandWidth:[.25,30],strandGlow:[0,3],intensity:[.1,3],aura:[0,3],pulse:[0,1],speed:[.1,3],
   particles:[0,2],particleSize:[.25,2],strands:[0,1.4],radius:[.2,3]};
 export function normalizeRefinementStyle(value={}){
   const out={...DEFAULT_REFINEMENT_STYLE};

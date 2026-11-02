@@ -4,10 +4,10 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {WeaponHolster,readPoseProfiles,poseProfile,selectPoseName} from '../js/pose-studio-runtime.mjs?v=7';
 import {readWeaponMaterialProfiles,applyWeaponAppearance,updateWeaponMaterialGlow} from '../js/weapon-materials.mjs?v=3';
 import {createRefinementHeadgear} from '../js/refinement-headgear.mjs?v=2';
-import {createRefinementSurfaces} from '../js/refinement-surfaces.mjs?v=4';
-import {createRefinementEffects} from '../js/refinement-effects.mjs?v=9';
+import {createRefinementSurfaces} from '../js/refinement-surfaces.mjs?v=5';
+import {createRefinementEffects} from '../js/refinement-effects.mjs?v=10';
 import {refinementFollowsSurface} from '../js/refinement-geometry.mjs?v=4';
-import {DEFAULT_REFINEMENT_STYLE,normalizeRefinementStyle,readRefinementProfiles,refinementStyle,parseRefinementProfiles,saveRefinementProfiles,styledRefinementVisual} from '../js/refinement-profiles.mjs?v=3';
+import {DEFAULT_REFINEMENT_STYLE,normalizeRefinementStyle,readRefinementProfiles,refinementStyle,parseRefinementProfiles,saveRefinementProfiles,styledRefinementVisual} from '../js/refinement-profiles.mjs?v=4';
 
 const $=id=>document.getElementById(id),actor=$('actor'),job=$('job'),canvas=$('view');
 const sliderFields=[
@@ -17,7 +17,7 @@ const sliderFields=[
  ['aura','Aura ao redor',0,3,.05],['pulse','Pulsação',0,1,.05],['speed','Velocidade do efeito',.1,3,.05],
  ['particles','Quantidade de faíscas',0,2,.05],['particleSize','Tamanho das faíscas',.25,2,.05],
  ['strands','Quantidade de filamentos',0,1.4,.1],['radius','Raio de órbita',.2,3,.05],
- ['strandWidth','Largura dos filamentos',.25,5,.05],['strandGlow','Força da aura do filamento',0,3,.05],
+ ['strandWidth','Largura dos filamentos',.25,30,.05],['strandGlow','Força da aura do filamento',0,3,.05],
  ['surfaceTint','Cor na superfície da arma',0,1,.05],['surfaceGlow','Brilho na superfície da arma',0,3,.05],
  ['armorGlow','Brilho da armadura',0,3,.05],['glovesGlow','Brilho das luvas',0,3,.05],
  ['bootsGlow','Brilho das botas',0,3,.05],['hatGlow','Brilho do chapéu',0,3,.05],
