@@ -5,3 +5,5 @@
 
 #style-controls{margin:0;padding:0;border:0;min-width:0}#style-controls:disabled{opacity:.5}
 .actions>*{min-width:0;padding:8px 5px}.panel{overflow-x:hidden}.panel button,.panel select{min-height:44px}
+
+.control-hint{display:block;font-size:10px;color:var(--muted);line-height:1.5;margin-top:-7px}.color-row input:disabled{opacity:.4}

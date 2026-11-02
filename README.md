@@ -4,7 +4,11 @@
 originais de monstros, em terra e mar. Veja os stats em **Menu → Atributos do
 barco** ou toque no nome do barco durante a navegação. Cada nível aumenta HP,
 ataque, defesa e velocidade (+1% da base). Em **Menu → Editor de efeitos de
-refino**, ajuste aura, cores, brilho, faíscas e filamentos com prévia 3D e salve
+refino**, ajuste aura, cores, brilho, faíscas, comprimento e ponta da energia
+na lâmina. Filamentos têm espessura, aura suave/chama/elétrica, degradê, cores
+alternadas e arco-íris. A textura da arma acompanha o refino; armadura, luvas,
+botas e chapéu têm brilho e aura externa separados. Há um chapéu original
+opcional para os quatro personagens. Use a prévia 3D e salve
 no jogo, ou importe/exporte seus estilos por personagem e classe.
 
 **Combate naval e refino:** barcos agora lutam contra os monstros marinhos,

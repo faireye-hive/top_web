@@ -82,8 +82,31 @@ A prévia carrega os equipamentos reais de Lance, Phyllis, Carsise e Ami; escolh
 classe, refino +0 a +13, animação e posição nas mãos/costas. Arraste para girar
 e use pinça/roda para aproximar. O botão Pausar congela a animação e o efeito.
 
-Ajuste cores de aura, núcleo e filamentos; largura, intensidade, aura externa,
-pulsação, velocidade, quantidade/tamanho de faíscas e raio da órbita. Há quatro
+Ajuste cores de aura e núcleo; largura, comprimento, intensidade, aura externa,
+pulsação, velocidade e quantidade/tamanho de faíscas. Os controles da lâmina
+moldam a energia visual do refino, mantendo o encaixe no cabo:
+
+- **Comprimento na lâmina:** de 0,35× a 2× do comprimento do efeito original.
+- **Espessura da ponta:** 0% pontiaguda, 100% reta e 200% mais grossa.
+- **Trecho de afunilamento:** os últimos 10% a 60% do efeito transitam até a
+  espessura da ponta escolhida. Também permite alargar a ponta.
+
+Em **Filamentos de energia**, ajuste quantidade, raio de órbita, largura
+(0,25× a 5×) e força da aura. Escolha fio sem aura, aura suave, chama ou energia
+elétrica. As chamas ondulam e a eletricidade muda o contorno em pequenos saltos.
+Escolha **Uma cor**, **Degradê de duas cores**, **Alternar cores por filamento**
+ou **Arco-íris em movimento**. As duas cores têm seletores independentes; no
+modo de uma cor ou arco-íris, os seletores que não se aplicam ficam desativados.
+A força da aura fica desativada enquanto o tipo escolhido é Sem aura.
+
+Os filamentos usam faixas de triângulos com espessura real, visível também em
+celular, e uma camada opcional de aura. São no máximo duas armas,
+quatro filamentos por arma e 32 segmentos por filamento, com buffers
+fixos reutilizados durante a animação. Arquivos e estilos antigos recebem
+comprimento 1×, ponta reta, fio de uma cor e sem aura adicional, preservando as
+cores e ajustes já salvos.
+
+Há quatro
 estilos iniciais: Rubi e ouro, Chama carmesim, Aura glacial e Energia violeta.
 O editor e o jogo usam o mesmo renderizador. Os limites de 24 faíscas por arma
 no mobile e 48 no desktop permanecem ativos mesmo no máximo dos controles.
@@ -99,6 +122,45 @@ na prévia; salve para aplicar. Para distribuir o estilo a outros dispositivos,
 publique o arquivo em `assets/weapons/refinement-effects.json`. Preferências
 locais prevalecem sobre o arquivo publicado. O botão Restaurar padrão deste
 perfil restaura o vermelho/dourado apenas no perfil selecionado; salve depois.
+
+## Superfície da arma, aura dos equipamentos e chapéu
+
+Em **Superfície da arma**, habilite **A textura acompanha o refino**. Cor e
+emissão animadas são aplicadas na superfície texturizada, preservando seus
+detalhes. Ajuste intensidade da cor e brilho; escolha movimento contínuo,
+pulsação ou ondas de energia. Na arma, a intensidade cresce com o refino real;
++0 desativa essa camada. Materiais personalizados continuam servindo de base.
+
+Em **Brilho dos equipamentos**, cada peça tem dois controles independentes:
+brilho na textura e **aura externa**. Armadura, luvas, botas e chapéu podem ser
+ajustados separadamente; 0 desliga o respectivo efeito. Ajuste também a largura
+da aura dos equipamentos. As peças podem acompanhar as cores da aura da arma
+ou usar uma cor própria. Esses ajustes são visuais e não concedem atributos
+nem dependem de a arma estar refinada. Retirar o equipamento desativa o visual.
+
+A aura externa acompanha a forma e a animação da peça, usando sua própria
+geometria. Cajados de Cleric e Seal Master, armas de Voyager, arcos de Hunter
+e rifles de Sharpshooter usam esse contorno e um halo suave ancorado nas
+arestas animadas da arma, inclusive nas costas. Assim a aura não vira uma
+faixa diagonal fora da arma. O halo tem até 64 pontos por arma no mobile e
+96 no desktop, em um único desenho compartilhado; permanece visível mesmo
+com faíscas e brilho de textura desligados. Além do contorno, uma aura ampla
+e filamentos em órbita envolvem essas armas: os centros acompanham seções
+da malha animada, incluindo curvas e hastes com poucos polígonos. O arco de
+Hunter recebe uma corda luminosa entre suas duas pontas, animada junto com
+a arma. Comprimento e afunilamento são ajustes específicos de espadas.
+
+**Chapéu para testar → Royal Major Hat · original** equipa o item original
+5488, exportado para os quatro personagens. A escolha persiste com o perfil e
+aparece no jogo. Ao retirar o chapéu, o penteado original retorna. Rosto e cabelo
+não recebem brilho por engano. O chapéu usa os ossos já animados do personagem;
+cada modelo tem menos de 300 KiB e é carregado apenas quando selecionado.
+
+Para reconstruir os chapéus a partir do Client:
+
+```sh
+python3 scripts/build_refinement_headgear.py /caminho/Client
+```
 
 ## Pontos de monstros no mapa
 
@@ -122,5 +184,6 @@ python3 scripts/verify_mobile_assets.py
 Os testes cobrem progressão e saves de cascos independentes, dano no impacto,
 alcance e barreiras, manual/Auto, retaliação, reparo fora de combate, pausa,
 resgate, velocidade por nível, migração de saves de herói, agrupamento de pontos
-terrestres/marinhos e importação/persistência/limites dos estilos de refino.
+terrestres/marinhos, comprimento/afunilamento da energia e importação,
+migração, persistência, cores e limites dos estilos de refino.
 Prévia e jogo também foram conferidos em desktop e tela mobile de 844 × 390.
