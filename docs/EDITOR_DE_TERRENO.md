@@ -1,60 +1,86 @@
-# Editor de terreno e vegetação
+# Editor de terreno, caminhos e vegetação
 
-Abra **Menu → Editor de terreno e vegetação**. A edição acontece no próprio
-cenário, com os prédios, árvores e demais objetos visíveis. Também é possível
-abrir `?terrainEditor=1`; `&spawn=2218.5,2776.5` escolhe o ponto inicial.
-O editor funciona em terra firme no mapa de Garner.
+Abra **Menu → Editor de terreno e vegetação**. Edite no cenário real, com os
+objetos visíveis. O editor funciona em terra firme em Garner. Projetos da
+primeira versão continuam abrindo, incluindo texturas e grama salvas.
 
-1. Ative **Pincel ativo**, escolha **Pintar chão** e uma das 49 texturas.
-   Clique ou arraste no cenário. O círculo mostra o alcance do pincel.
-   **Conta-gotas de chão** seleciona a textura existente no ponto clicado.
-2. Ajuste **Suavidade das bordas** para a mistura de solos naturais no mapa
-   inteiro. O padrão é 0,32 m; zero mostra bordas secas. Grama, terra, areia,
-   neve e rocha se misturam. Calçadas e pisos mantêm os recortes definidos.
-3. Escolha **Plantar grama alta**, ajuste altura, densidade e cor, e pinte
-   perto dos pés de árvores, pedras e construções. Os ajustes valem para os
-   próximos traços; repinte uma área para mudar a grama que já está nela.
-   A vegetação tem volume, variação de direção e balanço leve de vento.
-4. Use **Remover grama** para limpar caminhos. **Restaurar área original**
-   remove todas as edições visuais locais nos quadrados alcançados.
-5. **Desfazer** e **Refazer** guardam até 40 operações, agrupando cada arrasto.
-   **Prévia original** mostra o terreno sem edições e sem mistura; também
-   pode ser desfeita.
+## Detalhes e caminhos
 
-Botão direito arrasta a câmera; roda aproxima e afasta. Desative o pincel
-para usar o clique normal do jogo ou girar a câmera por toque. WASD continua
-movendo o personagem fora dos campos do painel. Feche o editor para retomar
-o combate. O pincel atua no terreno sob os objetos, sem selecionar ou mover
-os próprios modelos.
+**Pintar detalhes do chão** e **Desenhar caminhos** criam traços contínuos,
+sem prender o pincel aos quadrados de 1 m do mapa. O raio vai de **3 cm a
+8 m**, com controle numérico e atalhos de 3, 10 e 25 cm ou 1 m. O círculo
+mostra o raio real; o diâmetro define a largura do traço. Use a roda para
+aproximar a câmera ao pintar detalhes pequenos.
 
-## Salvar e publicar
+Escolha uma textura, ajuste a **Suavidade** da borda e a **Intensidade** e
+arraste no cenário. Em **Aplicar suavidade**, escolha os dois lados, mais
+na esquerda ou mais na direita. Os lados acompanham a direção em que você
+desenha. O outro lado permanece bem definido. Os ajustes valem para os
+próximos traços. Caminhos oferecem atalhos de terra, areia e pedra e removem
+a grama no espaço pintado. Não alteram as colisões: desenhar sobre uma área
+bloqueada não a transforma em passagem. Os caminhos desenhados aparecem também no minimapa e no mapa completo, em cores simplificadas.
 
-As alterações aparecem imediatamente como prévia. **Salvar no navegador**
-guarda o projeto neste endereço e dispositivo. **Exportar projeto** baixa
-`terrain-design.json`, incluindo a prévia atual mesmo antes de salvar.
-**Importar projeto** substitui a prévia por esse arquivo, com possibilidade
-de desfazer; salve para mantê-lo após recarregar. Exporte uma cópia antes de
-limpar os dados do navegador.
+**Conta-gotas de chão** identifica tanto a textura base como os traços
+pintados. **Apagar traço inteiro** remove o traço tocado por completo;
+**Desfazer** recupera a operação. **Restaurar quadrado original · 1 m**
+continua removendo as edições antigas do quadrado, sem apagar novos traços.
+
+## Suavizar mais e escolher a borda
+
+A mistura geral agora usa nove amostras vizinhas e suaviza também a coloração
+do terreno, reduzindo os recortes quadrados. Abra **Suavidade geral do mapa**
+para ajustar até **1 m**; zero mantém a borda seca. O novo padrão é 0,55 m.
+O valor de projetos já salvos é preservado. Pisos e calçadas mantêm o recorte.
+
+Para um ajuste localizado, escolha **Suavizar uma borda do mapa**, selecione
+norte, sul, leste, oeste ou todas, ajuste a suavidade local e pinte. O desenho
+no chão mostra a borda do quadrado selecionada. A orientação usa os eixos do
+mapa, independentemente da rotação da câmera. Esse ajuste usa os cantos
+compartilhados do terreno: afeta a área próxima à borda sem abrir costuras
+entre quadrados. A suavidade local tem prioridade sobre a geral. A pintura
+fina e os caminhos têm sua própria suavidade, independente desse ajuste.
+
+## Grama e objetos
+
+**Plantar grama alta** também usa o raio fino. Ajuste altura, densidade e cor;
+repinte para mudar a aparência. **Remover grama** limpa somente a região do
+traço. A grama aparece em terra carregada, inclusive junto a quadrados
+bloqueados de árvores e construções, nunca no mar. Tufos pequenos podem ter
+folhas que se estendem além do ponto onde foram plantados.
+
+Em **Selecionar objeto do cenário**, passe o cursor sobre um objeto para ver
+nome, arquivo, ID e posição, com uma caixa destacando aquela instância.
+Clique para fixar a seleção. **Abrir textura deste objeto** abre o Ateliê de
+Texturas na imagem do material atingido, sem precisar adivinhar o nome.
+**Soltar seleção** volta à identificação ao passar o cursor. Objetos com
+vários materiais podem abrir imagens diferentes conforme a parte clicada.
+Editar uma textura compartilhada altera todas as instâncias que a utilizam.
+A seleção identifica o asset; não move nem remodela o objeto.
+
+Botão direito gira a câmera; roda aproxima e afasta. Desative o pincel para
+usar a navegação normal por clique ou toque. WASD move o personagem fora
+dos campos do painel. Feche o editor para retomar o combate.
+
+## Salvar, publicar e limites
+
+**Desfazer** e **Refazer** guardam até 40 operações; um arrasto conta como uma
+operação. **Salvar no navegador** guarda o projeto neste endereço e
+aparelho. **Exportar projeto** baixa a prévia atual como `terrain-design.json`,
+incluindo caminhos, bordas e grama. **Importar projeto** substitui a prévia,
+com possibilidade de desfazer; salve para mantê-la após recarregar.
 
 Para publicar para todos, substitua `assets/terrain/design.json` pelo arquivo
-exportado e envie ao repositório. Esse arquivo define o padrão do jogo.
-Um projeto salvo no navegador tem prioridade sobre o padrão publicado;
-importe o projeto publicado e salve para substituir a cópia local.
+exportado e envie ao repositório. O projeto salvo no navegador tem prioridade
+sobre esse padrão. As texturas personalizadas usam o pacote separado do
+Ateliê de Texturas (`assets/textures/overrides.json`).
 
-O projeto aceita até 20.000 quadrados alterados e arquivos de até 5 MB.
-Texturas personalizadas continuam no **Editor de texturas do mundo** e usam
-seu próprio pacote (`assets/textures/overrides.json`).
+Limites: 20.000 quadrados legados/cantos editados, 2.000 traços, 4.096 pontos
+por traço, 100.000 pontos por projeto e arquivos importados de até 8 MB.
+Solte o pincel para começar outro traço ao atingir o limite por gesto. A
+pintura usa no máximo 100.000 triângulos por chunk. A grama mantém o limite
+de 512 tufos por chunk no desktop e 192 no celular, com redução entre 28 e
+48 m. Áreas muito densas usam uma amostra estável para respeitar esse limite.
 
-## Escopo e desempenho
-
-Este é um editor visual: não muda alturas, colisões, navegação, regiões nem
-posições dos assets. A grama só é criada em terra carregada, inclusive em
-quadrados bloqueados junto aos objetos, nunca no mar. Escolha com o pincel
-onde ela deve aparecer para evitar atravessar pisos e modelos.
-
-A transição usa as texturas vizinhas do formato GNR1 atual, inclusive entre
-setores. Não recupera as camadas secundárias do `.map` histórico. A grama é
-geometria agrupada, sem downloads de imagens ou modelos adicionais, com
-limite de 512 tufos por chunk no desktop e 192 no celular. Some gradualmente
-entre 28 e 48 m; áreas muito densas usam uma amostra espacial estável para
-respeitar esses limites.
+A edição é visual: preserva alturas, bloqueios, regiões, navegação e posições
+dos modelos. A mistura usa o terreno GNR1 atual; não recupera as camadas
+secundárias nem os caminhos ausentes do `.map` histórico automaticamente.

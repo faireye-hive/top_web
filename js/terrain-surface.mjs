@@ -1,4 +1,4 @@
-// The 3×3 IDs fit losslessly in three base-64 floats per vertex. Four atlas
+// The 3×3 IDs fit losslessly in three base-64 floats per vertex. Nine atlas
 // samples blend natural surfaces around cell centers, in world coordinates.
 export function installTerrainBlend(material,blend=.32){
   const uniform={value:blend};
@@ -7,12 +7,20 @@ export function installTerrainBlend(material,blend=.32){
     shader.uniforms.terrainAtlas={value:material.map};
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
 attribute vec3 terrainIds;
+attribute float terrainSoftness;
+attribute vec3 terrainTint;
+uniform float terrainBlend;
+varying float vTerrainBlend;
 varying vec3 vTerrainIds;
 varying vec2 vTerrainWorld;`).replace('#include <begin_vertex>',`#include <begin_vertex>
 vTerrainIds=terrainIds;
+vTerrainBlend=terrainSoftness<0.?terrainBlend:terrainSoftness;
+#if defined(USE_MAP) && defined(USE_COLOR) && !defined(USE_COLOR_ALPHA)
+  vColor=mix(color,terrainTint,step(.001,vTerrainBlend));
+#endif
 vTerrainWorld=position.xz;`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
-uniform float terrainBlend;
+varying float vTerrainBlend;
 uniform sampler2D terrainAtlas;
 varying vec3 vTerrainIds;
 varying vec2 vTerrainWorld;
@@ -28,19 +36,24 @@ vec4 terrainSample(float id,vec2 p){
 #endif`).replace('#include <map_fragment>',`
 #ifdef USE_MAP
   vec2 p=vTerrainWorld;
-  vec2 q=step(vec2(.5),fract(p));
   vec3 row0=terrainRow(vTerrainIds.x),row1=terrainRow(vTerrainIds.y),row2=terrainRow(vTerrainIds.z);
-  vec3 a=mix(row0,row1,q.y),b=mix(row1,row2,q.y);
-  float i00=mix(a.x,a.y,q.x),i10=mix(a.y,a.z,q.x);
-  float i01=mix(b.x,b.y,q.x),i11=mix(b.y,b.z,q.x);
-  vec2 noise=vec2(sin(p.y*13.+sin(p.x*7.)),sin(p.x*11.+sin(p.y*9.)))*.035;
-  float width=max(.0001,terrainBlend);
-  vec2 weights=smoothstep(vec2(.5-width),vec2(.5+width),fract(p-.5)+noise*step(.001,terrainBlend));
-  vec4 sampledDiffuseColor=mix(mix(terrainSample(i00,p),terrainSample(i10,p),weights.x),mix(terrainSample(i01,p),terrainSample(i11,p),weights.x),weights.y);
+  vec2 noise=vec2(sin(p.y*13.+sin(p.x*7.)),sin(p.x*11.+sin(p.y*9.)))*.035*step(.001,vTerrainBlend);
+  float support=.5+clamp(vTerrainBlend,0.,1.)*.96;
+  vec4 sampledDiffuseColor=vec4(0.);float sum=0.;
+  for(int iz=0;iz<3;iz++){
+    vec3 row=iz==0?row0:iz==1?row1:row2;
+    for(int ix=0;ix<3;ix++){
+      float id=ix==0?row.x:ix==1?row.y:row.z;
+      vec2 t=clamp(1.-abs(vec2(float(ix)-.5,float(iz)-.5)-fract(p)+noise)/support,0.,1.);
+      vec2 k=t*t*(3.-2.*t);float weight=k.x*k.y;
+      sampledDiffuseColor+=terrainSample(id,p)*weight;sum+=weight;
+    }
+  }
+  sampledDiffuseColor=sum>.00001?sampledDiffuseColor/sum:terrainSample(row1.y,p);
   diffuseColor*=sampledDiffuseColor;
 #endif`);
   };
-  material.customProgramCacheKey=()=> 'terrain-natural-blend-v1';
+  material.customProgramCacheKey=()=> 'terrain-natural-blend-v2';
   return {setBlend:value=>{uniform.value=value;}};
 }
 

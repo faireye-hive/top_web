@@ -25,7 +25,7 @@ test('grass can decorate blocked land around assets, skips sea and unloaded squa
   restoreTerrainPatch(d,before);assert.deepEqual(d.tiles,{});
 });
 test('saved and published map projects validate bounds, textures and grass parameters',()=>{
-  for(const patch of [{blend:NaN},{blend:1},{map:'arena'},{tiles:{'4096/0':{tex:9}}},{tiles:{'1/0':{tex:64}}},{tiles:{'1/0':{grass:{height:-1,density:1,color:'#ffffff'}}}},{tiles:[]}])assert.throws(()=>normalizeTerrainDesign({...design(),...patch}));
+  for(const patch of [{blend:NaN},{blend:1.01},{map:'arena'},{tiles:{'4096/0':{tex:9}}},{tiles:{'1/0':{tex:64}}},{tiles:{'1/0':{grass:{height:-1,density:1,color:'#ffffff'}}}},{tiles:[]}])assert.throws(()=>normalizeTerrainDesign({...design(),...patch}));
   assert.deepEqual(readTerrainDesign(design(),{getItem:()=>'{invalid'}),design());
   const published={...design(),blend:.2};assert.deepEqual(readTerrainDesign(published,{getItem:()=>null}),published);
   const local={...design(),blend:0};assert.deepEqual(readTerrainDesign(published,{getItem:()=>JSON.stringify(local)}),local);

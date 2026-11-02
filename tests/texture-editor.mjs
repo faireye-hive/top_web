@@ -193,7 +193,10 @@ async function init(){
     catalog=await (await response('assets/textures/catalog.json?v=2')).json();entries=[...catalog.terrain,...catalog.textures];
     try{const rows=await repository.list();saved=new Map(rows.filter(row=>row.id!=='@quality').map(row=>[row.id,row]));quality=textureQuality(rows.find(row=>row.id==='@quality')?.quality);}catch(error){status(error.message);}
     $('category').replaceChildren();for(const category of [...new Set(entries.map(e=>e.category))]){const option=document.createElement('option');option.textContent=category;$('category').append(option);}
+    const targetId=new URLSearchParams(location.search).get('texture'),target=entries.find(entry=>entry.id===targetId);
+    if(target)$('category').value=target.category;
     qualityFields();filterLibrary();
+    if(target){$('texture').value=target.id;void selectTexture();}
     const terrain=new URLSearchParams(location.search).get('terrain');
     if(terrain&&entries.some(entry=>entry.id==='terrain:'+terrain)){$('texture').value='terrain:'+terrain;void selectTexture();}
   }catch(error){status('Não foi possível abrir a biblioteca: '+error.message);}
